@@ -1,22 +1,22 @@
 import { useEffect } from 'react';
 import { X, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-import type { ToastMessage } from '../../types';
+import type { ToastMessage, ToastType } from '../../types/index.ts';
 
-const icons = {
+const icons: Record<ToastType, React.ElementType> = {
   success: CheckCircle2,
   error: AlertCircle,
   warning: AlertTriangle,
   info: Info,
 };
 
-const colors = {
+const colors: Record<ToastType, string> = {
   success: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200',
   error: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200',
   warning: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200',
   info: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200',
 };
 
-const iconColors = {
+const iconColors: Record<ToastType, string> = {
   success: 'text-emerald-500',
   error: 'text-red-500',
   warning: 'text-amber-500',
