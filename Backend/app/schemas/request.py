@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -8,7 +7,7 @@ from pydantic import BaseModel, Field
 class RequestCreate(BaseModel):
     route: str = Field(..., min_length=1, max_length=100)
     pax: int = Field(..., gt=0)
-    price: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
+    price: float = Field(..., gt=0)
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
@@ -19,7 +18,7 @@ class RequestCreate(BaseModel):
 class RequestUpdate(BaseModel):
     route: str | None = Field(None, min_length=1, max_length=100)
     pax: int | None = Field(None, gt=0)
-    price: Decimal | None = Field(None, gt=0, max_digits=12, decimal_places=2)
+    price: float | None = Field(None, gt=0)
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
@@ -42,7 +41,7 @@ class RequestRead(BaseModel):
     agent: AgentInfo | None = None
     route: str
     pax: int
-    price: Decimal
+    price: float
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
@@ -62,7 +61,7 @@ class RequestListItem(BaseModel):
     agent_name: str | None = None
     route: str
     pax: int
-    price: Decimal
+    price: float
     status: str
     priority: str
     travel_date: date | None = None

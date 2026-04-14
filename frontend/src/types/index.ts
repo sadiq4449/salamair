@@ -49,20 +49,33 @@ export interface AgentInfo {
 export interface RequestItem {
   id: string;
   request_code: string;
+  agent_id: string;
+  agent_name: string | null;
+  route: string;
+  pax: number;
+  price: number;
+  travel_date: string | null;
+  status: string;
+  priority: string;
+  created_at: string;
+}
+
+export interface RequestDetail {
+  id: string;
+  request_code: string;
+  agent_id: string;
+  agent: AgentInfo;
   route: string;
   pax: number;
   price: number;
   travel_date: string | null;
   return_date: string | null;
   notes: string | null;
-  status: RequestStatus;
-  priority: Priority;
-  agent: AgentInfo;
+  status: string;
+  priority: string;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface RequestDetail extends RequestItem {
   attachments: Attachment[];
 }
 

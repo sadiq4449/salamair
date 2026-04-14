@@ -101,7 +101,7 @@ export default function SalesRequestDetail() {
                 <InfoItem label="Route" value={req.route} />
                 <InfoItem label="Travel Date" value={req.travel_date ?? '—'} />
                 <InfoItem label="Passengers" value={String(req.pax)} />
-                <InfoItem label="Proposed Price" value={`${req.price.toFixed(2)} OMR`} highlight />
+                <InfoItem label="Proposed Price" value={`${Number(req.price).toFixed(2)} OMR`} highlight />
                 <InfoItem label="Agent" value={req.agent.name} />
               </div>
 

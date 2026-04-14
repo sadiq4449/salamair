@@ -108,7 +108,7 @@ export default function AgentDashboard() {
                     <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.price.toFixed(2)} OMR</td>
+                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
                     <td className="px-6 py-3.5"><StatusBadge status={req.status as RequestStatus} /></td>
                     <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
                     <td className="px-6 py-3.5">

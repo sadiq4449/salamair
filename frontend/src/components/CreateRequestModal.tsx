@@ -4,11 +4,11 @@ import Button from './ui/Button';
 import { useRequestStore } from '../store/requestStore';
 
 const ROUTES = [
-  { value: 'MCT—DXB', label: 'MCT — DXB' },
-  { value: 'MCT—KHI', label: 'MCT — KHI' },
-  { value: 'MCT—BKK', label: 'MCT — BKK' },
-  { value: 'MCT—COK', label: 'MCT — COK' },
-  { value: 'MCT—MLE', label: 'MCT — MLE' },
+  { value: 'MCT-DXB', label: 'MCT - DXB' },
+  { value: 'MCT-KHI', label: 'MCT - KHI' },
+  { value: 'MCT-BKK', label: 'MCT - BKK' },
+  { value: 'MCT-COK', label: 'MCT - COK' },
+  { value: 'MCT-MLE', label: 'MCT - MLE' },
 ];
 
 interface Props {

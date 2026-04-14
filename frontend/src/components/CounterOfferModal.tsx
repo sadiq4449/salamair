@@ -51,7 +51,7 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Current Offer (OMR)</label>
             <input
               type="text"
-              value={currentPrice.toFixed(2)}
+              value={Number(currentPrice).toFixed(2)}
               readOnly
               className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed"
             />
