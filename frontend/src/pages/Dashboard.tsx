@@ -1,10 +1,22 @@
 import { User, Shield, MapPin, Calendar, Mail } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../utils/constants';
+import AgentDashboard from './agent/AgentDashboard';
+import SalesDashboard from './sales/SalesDashboard';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const role = user?.role ?? 'agent';
+
+  if (role === 'agent') return <AgentDashboard />;
+  if (role === 'sales') return <SalesDashboard />;
+
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
+  const { user } = useAuth();
+  const role = user?.role ?? 'admin';
 
   const createdDate = user?.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
@@ -46,17 +58,6 @@ export default function Dashboard() {
             valueColor={user?.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}
           />
         </div>
-      </div>
-
-      {/* What's next */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-          What's Coming Next
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          The platform is being built iteratively. Upcoming features include request management,
-          sales review workflows, email integration, messaging, analytics, and more. Stay tuned!
-        </p>
       </div>
     </div>
   );

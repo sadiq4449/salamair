@@ -8,14 +8,20 @@ interface HeaderProps {
 const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/requests': 'All Requests',
-  '/approvals': 'Pending Approvals',
+  '/pending': 'Pending Approvals',
   '/analytics': 'Analytics',
   '/users': 'User Management',
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { pathname } = useLocation();
-  const pageTitle = titleMap[pathname] ?? 'Dashboard';
+  const resolveTitle = () => {
+    if (titleMap[pathname]) return titleMap[pathname];
+    if (pathname.startsWith('/requests/')) return 'Request Detail';
+    if (pathname.startsWith('/pending/')) return 'Request Review';
+    return 'Dashboard';
+  };
+  const pageTitle = resolveTitle();
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6">

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Plane, Moon, Sun, LogOut, X } from 'lucide-react';
+import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
+import CreateRequestModal from '../CreateRequestModal';
 
 interface NavItem {
   label: string;
@@ -13,12 +15,14 @@ interface NavItem {
 const navByRole: Record<string, NavItem[]> = {
   agent: [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
+    { label: 'All Requests', path: '/requests', icon: List },
   ],
   sales: [
-    { label: 'Dashboard', path: '/dashboard', icon: Home },
+    { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
+    { label: 'Pending Approvals', path: '/pending', icon: Clock },
   ],
   admin: [
-    { label: 'Dashboard', path: '/dashboard', icon: Home },
+    { label: 'Dashboard', path: '/dashboard', icon: Shield },
   ],
 };
 
@@ -32,6 +36,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isDark, toggle } = useThemeStore();
+  const [showCreate, setShowCreate] = useState(false);
 
   const role = user?.role || 'agent';
   const items = navByRole[role] || navByRole.agent;
@@ -113,6 +118,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
+        {/* Agent quick action */}
+        {role === 'agent' && (
+          <div className="px-3 pb-2">
+            <div className="text-[0.65rem] font-semibold uppercase text-gray-400 px-3 pb-2 tracking-wider">
+              Actions
+            </div>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+            >
+              <Plus size={16} />
+              Create Request
+            </button>
+          </div>
+        )}
+
         {/* Bottom section */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <button
@@ -143,6 +164,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </div>
       </aside>
+
+      {role === 'agent' && (
+        <CreateRequestModal
+          isOpen={showCreate}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
     </>
   );
 }

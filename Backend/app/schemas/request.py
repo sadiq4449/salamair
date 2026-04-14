@@ -1,0 +1,83 @@
+from datetime import date, datetime
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class RequestCreate(BaseModel):
+    route: str = Field(..., min_length=1, max_length=100)
+    pax: int = Field(..., gt=0)
+    price: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
+    travel_date: date | None = None
+    return_date: date | None = None
+    notes: str | None = None
+    priority: str = Field("normal", pattern=r"^(normal|urgent)$")
+    is_draft: bool = False
+
+
+class RequestUpdate(BaseModel):
+    route: str | None = Field(None, min_length=1, max_length=100)
+    pax: int | None = Field(None, gt=0)
+    price: Decimal | None = Field(None, gt=0, max_digits=12, decimal_places=2)
+    travel_date: date | None = None
+    return_date: date | None = None
+    notes: str | None = None
+    priority: str | None = Field(None, pattern=r"^(normal|urgent)$")
+
+
+class AgentInfo(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    city: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class RequestRead(BaseModel):
+    id: UUID
+    request_code: str
+    agent_id: UUID
+    agent: AgentInfo | None = None
+    route: str
+    pax: int
+    price: Decimal
+    travel_date: date | None = None
+    return_date: date | None = None
+    notes: str | None = None
+    status: str
+    priority: str
+    assigned_to: UUID | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RequestListItem(BaseModel):
+    id: UUID
+    request_code: str
+    agent_id: UUID
+    agent_name: str | None = None
+    route: str
+    pax: int
+    price: Decimal
+    status: str
+    priority: str
+    travel_date: date | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RequestListResponse(BaseModel):
+    items: list[RequestListItem]
+    total: int
+    page: int
+    limit: int
+
+
+class StatusUpdate(BaseModel):
+    status: str
+    reason: str | None = None

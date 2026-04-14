@@ -1,25 +1,28 @@
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request as FastAPIRequest, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.requests import router as requests_router
+from app.api.routes.sales import router as sales_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import User  # noqa: F401 – ensure model is registered
+from app.models import User, Request, Attachment, RequestHistory, CounterOffer  # noqa: F401
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -39,7 +42,7 @@ app.add_middleware(
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(_request: Request, exc: HTTPException):
+async def http_exception_handler(_request: FastAPIRequest, exc: HTTPException):
     if isinstance(exc.detail, dict):
         content = exc.detail
     else:
@@ -48,7 +51,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_request: Request, exc: RequestValidationError):
+async def validation_exception_handler(_request: FastAPIRequest, exc: RequestValidationError):
     errors = []
     for err in exc.errors():
         field = " -> ".join(str(loc) for loc in err["loc"])
@@ -66,7 +69,7 @@ async def validation_exception_handler(_request: Request, exc: RequestValidation
 
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(_request: Request, _exc: Exception):
+async def generic_exception_handler(_request: FastAPIRequest, _exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
@@ -74,12 +77,17 @@ async def generic_exception_handler(_request: Request, _exc: Exception):
 
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(requests_router, prefix="/api/v1/requests", tags=["Requests"])
+app.include_router(sales_router, prefix="/api/v1/sales", tags=["Sales"])
 
 
 @app.get("/api/health", tags=["Health"])
 def health_check():
     return {"status": "healthy", "service": "Salam Air SmartDeal API"}
 
+
+if UPLOAD_DIR.exists():
+    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 if STATIC_DIR.exists():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
