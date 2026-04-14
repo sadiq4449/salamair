@@ -8,10 +8,10 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 
-COPY backend/requirements.txt ./
+COPY Backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ ./
+COPY Backend/ ./
 COPY --from=frontend-build /app/frontend/dist ./static
 
 EXPOSE ${PORT:-8000}
