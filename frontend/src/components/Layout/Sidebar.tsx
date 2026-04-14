@@ -1,18 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Home,
-  List,
-  BarChart3,
-  TrendingUp,
-  Clock,
-  Shield,
-  Users,
-  Plane,
-  Moon,
-  Sun,
-  LogOut,
-  X,
-} from 'lucide-react';
+import { Home, Plane, Moon, Sun, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
@@ -26,18 +13,12 @@ interface NavItem {
 const navByRole: Record<string, NavItem[]> = {
   agent: [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
-    { label: 'All Requests', path: '/requests', icon: List },
-    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
   ],
   sales: [
-    { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
-    { label: 'Pending Approvals', path: '/pending', icon: Clock },
-    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+    { label: 'Dashboard', path: '/dashboard', icon: Home },
   ],
   admin: [
-    { label: 'Admin Dashboard', path: '/dashboard', icon: Shield },
-    { label: 'User Management', path: '/users', icon: Users },
-    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+    { label: 'Dashboard', path: '/dashboard', icon: Home },
   ],
 };
 
@@ -68,7 +49,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-[99] md:hidden"
@@ -100,6 +80,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className={`inline-block px-3 py-1 rounded-full text-[0.7rem] font-semibold uppercase ${
               role === 'admin'
                 ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                : role === 'sales'
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                 : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'
             }`}
           >
@@ -133,7 +115,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Bottom section */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-          {/* Theme toggle */}
           <button
             onClick={toggle}
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -142,7 +123,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {isDark ? 'Light Mode' : 'Dark Mode'}
           </button>
 
-          {/* User profile */}
           <div className="flex items-center gap-3 p-3 rounded-lg">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-600 to-blue-500 flex items-center justify-center text-white font-semibold text-sm shrink-0">
               {initials}
