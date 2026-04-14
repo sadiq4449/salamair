@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, Send, AlertTriangle, CheckCircle, Eye } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import PriorityDot from '../../components/ui/PriorityDot';
+import type { Priority } from '../../types';
 
 export default function SalesDashboard() {
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ export default function SalesDashboard() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
+                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority as Priority} /></td>
                     <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400">{timeSince(req.created_at)}</td>
                     <td className="px-6 py-3.5">
                       <button

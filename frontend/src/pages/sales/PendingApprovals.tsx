@@ -4,7 +4,7 @@ import { Search, Eye, FileText, RotateCcw } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
-import type { RequestStatus } from '../../types';
+import type { RequestStatus, Priority } from '../../types';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -128,7 +128,7 @@ export default function PendingApprovals() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
                     <td className="px-6 py-3.5"><StatusBadge status={req.status as RequestStatus} /></td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
+                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority as Priority} /></td>
                     <td className="px-6 py-3.5">
                       <button
                         onClick={() => navigate(`/pending/${req.id}`)}
