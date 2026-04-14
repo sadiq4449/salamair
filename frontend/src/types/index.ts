@@ -21,6 +21,14 @@ export interface LoginResponse {
   user: User;
 }
 
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastMessage {
+  id: string;
+  type: ToastType;
+  message: string;
+}
+
 export interface ApiError {
   error: {
     code: string;
