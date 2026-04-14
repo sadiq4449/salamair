@@ -1,0 +1,168 @@
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Home,
+  List,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Shield,
+  Users,
+  Plane,
+  Moon,
+  Sun,
+  LogOut,
+  X,
+} from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { ROLE_LABELS } from '../../utils/constants';
+import { useThemeStore } from '../../store/themeStore';
+
+interface NavItem {
+  label: string;
+  path: string;
+  icon: React.ElementType;
+}
+
+const navByRole: Record<string, NavItem[]> = {
+  agent: [
+    { label: 'Dashboard', path: '/dashboard', icon: Home },
+    { label: 'All Requests', path: '/requests', icon: List },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  ],
+  sales: [
+    { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
+    { label: 'Pending Approvals', path: '/pending', icon: Clock },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  ],
+  admin: [
+    { label: 'Admin Dashboard', path: '/dashboard', icon: Shield },
+    { label: 'User Management', path: '/users', icon: Users },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  ],
+};
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isDark, toggle } = useThemeStore();
+
+  const role = user?.role || 'agent';
+  const items = navByRole[role] || navByRole.agent;
+  const initials = user?.name
+    ?.split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '??';
+
+  function handleNav(path: string) {
+    navigate(path);
+    if (window.innerWidth <= 768) onClose();
+  }
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[99] md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 left-0 h-screen w-[260px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col z-[100] transition-transform duration-300 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-blue-500 rounded-lg flex items-center justify-center text-white">
+              <Plane size={20} />
+            </div>
+            <span className="text-lg font-bold text-teal-600 dark:text-teal-400">Salam Air</span>
+          </div>
+          <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Role badge */}
+        <div className="px-5 pt-3 pb-1">
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-[0.7rem] font-semibold uppercase ${
+              role === 'admin'
+                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'
+            }`}
+          >
+            {ROLE_LABELS[role]}
+          </span>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          <div className="text-[0.65rem] font-semibold uppercase text-gray-400 px-3 pb-2 tracking-wider">
+            Main
+          </div>
+          {items.map((item) => {
+            const active = location.pathname === item.path;
+            return (
+              <div
+                key={item.path}
+                onClick={() => handleNav(item.path)}
+                className={`flex items-center gap-3 px-4 py-2.5 my-0.5 rounded-lg cursor-pointer text-[0.88rem] font-medium transition-all duration-200 ${
+                  active
+                    ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? 'Light Mode' : 'Dark Mode'}
+          </button>
+
+          {/* User profile */}
+          <div className="flex items-center gap-3 p-3 rounded-lg">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-600 to-blue-500 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                {user?.name}
+              </div>
+              <div className="text-[0.72rem] text-gray-400 truncate">{user?.email}</div>
+            </div>
+            <button
+              onClick={logout}
+              title="Sign out"
+              className="text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}

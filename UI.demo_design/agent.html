@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salam Air SmartDeal — Agent Portal</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="agent.css">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-head"><div class="logo"><div class="logo-icon"><i class="fas fa-plane"></i></div><span>Salam Air</span></div><span class="rb">Agent Portal</span></div>
+    <nav class="sb-nav">
+        <div class="ns"><div class="ns-t">Main</div>
+            <div class="ni active" onclick="go('dashboard')"><i class="fas fa-home"></i><span>Dashboard</span></div>
+            <div class="ni" onclick="go('requests')"><i class="fas fa-list"></i><span>All Requests</span></div>
+            <div class="ni" onclick="go('flights')"><i class="fas fa-plane-departure"></i><span>Flight Availability</span></div>
+            <div class="ni" onclick="go('analytics')"><i class="fas fa-chart-bar"></i><span>Analytics</span></div>
+        </div>
+        <div class="ns"><div class="ns-t">Actions</div>
+            <div class="ni" onclick="openCreateModal()"><i class="fas fa-plus-circle"></i><span>Create Request</span></div>
+        </div>
+    </nav>
+    <div class="sb-f"><div class="up" onclick="toggleTheme()"><div class="av">ST</div><div><div class="un">Sky Travels</div><div class="ue">agent@skytravels.com</div></div><i class="fas fa-moon" id="themeIcon"></i></div></div>
+</aside>
+<div class="sbo" id="sbOverlay" onclick="toggleSidebar()"></div>
+<main class="mn">
+<header class="hd">
+    <div class="hd-l"><button class="mb" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button><div><h1 class="pt" id="pageTitle">Agent Dashboard</h1><div class="bc" id="breadcrumb"><a href="#">Home</a> <i class="fas fa-chevron-right" style="font-size:.65rem"></i> <span>Dashboard</span></div></div></div>
+    <div class="hd-r"><button class="hb" onclick="toggleNotif()"><i class="fas fa-bell"></i><span class="nd2" id="notifDot">3</span></button></div>
+</header>
+<div class="ct2">
+
+<!-- DASHBOARD -->
+<div class="pg active" id="pg-dashboard">
+    <div class="sts" id="agentStats"></div>
+    <div class="qa">
+        <button class="btn btn-p btn-lg" onclick="openCreateModal()"><i class="fas fa-plus"></i> Create New Request</button>
+        <button class="btn btn-o" onclick="go('flights')"><i class="fas fa-plane"></i> Check Flights</button>
+        <button class="btn btn-o" onclick="go('requests')"><i class="fas fa-list"></i> All Requests</button>
+    </div>
+    <div class="cd"><div class="cd-h"><h3 class="cd-t">Recent Requests</h3><button class="btn btn-o btn-sm" onclick="go('requests')">View All</button></div><div class="cd-b"><div class="tw"><table><thead><tr><th>REQ ID</th><th>Route</th><th>Pax</th><th>Price</th><th>Status</th><th>Priority</th><th>Actions</th></tr></thead><tbody id="recentTbl"></tbody></table></div></div></div>
+</div>
+
+<!-- REQUEST LIST -->
+<div class="pg" id="pg-requests">
+    <div class="tb">
+        <div class="sbx"><i class="fas fa-search"></i><input type="text" placeholder="Search requests..." id="searchInput" onkeyup="filterReqs()"></div>
+        <div class="fg2" style="flex-wrap:wrap;gap:8px">
+            <select class="fselect" id="statusFilter" onchange="filterReqs()" style="width:130px"><option value="">All Status</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="review">Under Review</option><option value="rm">RM Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+            <select class="fselect" id="originFilter" onchange="filterReqs()" style="width:110px"><option value="">From (Origin)</option><option value="MCT">MCT (Muscat)</option><option value="DXB">DXB (Dubai)</option><option value="KHI">KHI (Karachi)</option><option value="BKK">BKK (Bangkok)</option><option value="COK">COK (Kochi)</option><option value="MLE">MLE (Maldives)</option></select>
+            <select class="fselect" id="destFilter" onchange="filterReqs()" style="width:110px"><option value="">To (Dest)</option><option value="MCT">MCT (Muscat)</option><option value="DXB">DXB (Dubai)</option><option value="KHI">KHI (Karachi)</option><option value="BKK">BKK (Bangkok)</option><option value="COK">COK (Kochi)</option><option value="MLE">MLE (Maldives)</option></select>
+            <select class="fselect" id="agentFilter" onchange="filterReqs()" style="width:130px"><option value="">All Agents</option><option value="Sky Travels">Sky Travels</option><option value="OUA Travel">OUA Travel</option><option value="Gulf Air Travels">Gulf Air Travels</option></select>
+            <input type="date" class="fi2" id="dateFrom" onchange="filterReqs()" style="width:130px" placeholder="From Date">
+            <input type="date" class="fi2" id="dateTo" onchange="filterReqs()" style="width:130px" placeholder="To Date">
+            <button class="btn btn-o btn-sm" onclick="resetFilters()"><i class="fas fa-undo"></i> Reset</button>
+        </div>
+        <button class="btn btn-p" onclick="openCreateModal()"><i class="fas fa-plus"></i> New Request</button>
+    </div>
+    <div class="cd"><div class="cd-b"><div class="tw"><table><thead><tr><th>REQ ID</th><th>Route</th><th>Date</th><th>Pax</th><th>Price</th><th>Status</th><th>Priority</th><th>Created</th><th>Actions</th></tr></thead><tbody id="allReqTbl"></tbody></table></div><div class="empty" id="emptyState" style="display:none"><div class="empty-i"><i class="fas fa-inbox"></i></div><div class="empty-t">No requests found</div><div class="empty-tx">Adjust your search or filters</div></div></div></div>
+</div>
+
+<!-- REQUEST DETAIL -->
+<div class="pg" id="pg-detail">
+    <button class="btn btn-o btn-sm" onclick="go('requests')" style="margin-bottom:16px"><i class="fas fa-arrow-left"></i> Back</button>
+    <div class="rd">
+        <div class="rm2">
+            <div class="cd"><div class="cd-h"><h3 class="cd-t">Request Information</h3><span class="badge" id="detailStatus">—</span></div><div class="cd-b">
+                <div class="ig"><div class="ii"><span class="il2">Request ID</span><span class="iv2" id="dId">—</span></div><div class="ii"><span class="il2">Route</span><span class="iv2" id="dRoute">—</span></div><div class="ii"><span class="il2">Travel Date</span><span class="iv2" id="dDate">—</span></div><div class="ii"><span class="il2">Passengers</span><span class="iv2" id="dPax">—</span></div><div class="ii"><span class="il2">Proposed Price</span><span class="iv2 price" id="dPrice">—</span></div><div class="ii"><span class="il2">Agent</span><span class="iv2" id="dAgent">—</span></div></div>
+                <div class="sf" id="statusFlow"></div>
+            </div></div>
+            <div class="cd"><div class="cd-h"><h3 class="cd-t"><i class="fas fa-comments"></i> Communication</h3></div><div class="cd-b">
+                <div class="ct-tabs">
+                    <div class="ct-tab active" onclick="switchConv('agent-sales')"><i class="fas fa-comment-dots"></i> Agent ↔ Sales</div>
+                    <div class="ct-tab" onclick="switchConv('sales-rm')"><i class="fas fa-envelope"></i> Sales ↔ RM (Email)</div>
+                </div>
+                <div class="ct-p active" id="conv-agent-sales">
+                    <div class="tl" id="tlAS"></div>
+                    <div style="margin-top:20px;border-top:1px solid var(--g200);padding-top:20px">
+                        <div class="fg"><textarea class="fta" placeholder="Type your message to Sales..." id="msgAS"></textarea></div>
+                        <div style="display:flex;justify-content:space-between;align-items:center"><button class="btn btn-o btn-sm"><i class="fas fa-paperclip"></i> Attach</button><button class="btn btn-p" onclick="sendMsg('agent-sales')"><i class="fas fa-paper-plane"></i> Send</button></div>
+                    </div>
+                </div>
+                <div class="ct-p" id="conv-sales-rm">
+                    <div class="tl" id="tlSR"></div>
+                    <div class="em-sim">
+                        <div class="em-sim-hd"><div class="em-sim-i"><i class="fas fa-envelope-open-text"></i></div><div><div class="em-sim-t">RM Email Thread</div><div class="em-sim-st">Emails between Sales and Revenue Management</div></div></div>
+                        <div class="em-f"><div class="em-f-l">From</div><div class="em-f-v">Sales Team &lt;sales@salamair.com&gt;</div></div>
+                        <div class="em-f"><div class="em-f-l">To</div><div class="em-f-v">RM Office &lt;rm@salamair.com&gt;</div></div>
+                        <div class="em-f"><div class="em-f-l">Subject</div><div class="em-f-v" id="emSubject">Fare Approval Request</div></div>
+                        <button class="btn btn-w" onclick="simulateRMReply()" style="width:100%"><i class="fas fa-envelope"></i> Simulate RM Reply</button>
+                    </div>
+                </div>
+            </div></div>
+        </div>
+        <div class="rs2">
+            <div class="ai-p"><div class="ai-hd"><div class="ai-ic"><i class="fas fa-robot"></i></div><div><div class="ai-t">AI Assistant</div><div class="ai-st">Smart Pricing Analysis</div></div></div><div class="ai-sg"><div class="ai-lb">Suggested Price</div><div class="ai-vl" id="aiPrice">90 OMR</div><div class="ai-cf"><div class="cf-b"><div class="cf-f" id="confFill" style="width:82%"></div></div><span class="cf-t" id="confText">82%</span></div></div><div class="ai-rc" id="aiRec"><i class="fas fa-check-circle"></i><span>Recommendation: Accept</span></div></div>
+            <div class="cd"><div class="cd-h"><h3 class="cd-t">Notes</h3></div><div class="cd-b"><p style="color:var(--g600);font-size:.85rem" id="dNotes">—</p></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- FLIGHTS -->
+<div class="pg" id="pg-flights">
+    <div class="tb">
+        <div class="sbx"><i class="fas fa-search"></i><input type="text" placeholder="Search flights..." id="flightSearch" onkeyup="filterFlights()"></div>
+        <div class="fg2"><select class="fs2" id="routeFltFilter" onchange="filterFlights()" style="width:140px"><option value="">All Routes</option><option value="MCT-DXB">MCT-DXB</option><option value="MCT-KHI">MCT-KHI</option><option value="MCT-BKK">MCT-BKK</option><option value="MCT-COK">MCT-COK</option><option value="MCT-MLE">MCT-MLE</option></select><select class="fs2" id="dateFltFilter" onchange="filterFlights()" style="width:140px"><option value="">All Dates</option><option value="2024-02-01">Feb 1</option><option value="2024-02-05">Feb 5</option><option value="2024-02-10">Feb 10</option><option value="2024-02-15">Feb 15</option></select></div>
+    </div>
+    <div class="fg-grid" id="flightGrid"></div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="pg" id="pg-analytics">
+    <div class="sts">
+        <div class="sc"><div class="si teal"><i class="fas fa-dollar-sign"></i></div><div><div class="sv">45,250 OMR</div><div class="sl">Revenue This Month</div><div class="sch pos"><i class="fas fa-arrow-up"></i> 18%</div></div></div>
+        <div class="sc"><div class="si green"><i class="fas fa-percentage"></i></div><div><div class="sv">76%</div><div class="sl">Approval Rate</div><div class="sch pos"><i class="fas fa-arrow-up"></i> 5%</div></div></div>
+        <div class="sc"><div class="si blue"><i class="fas fa-clock"></i></div><div><div class="sv">4.2h</div><div class="sl">Avg Response Time</div><div class="sch pos"><i class="fas fa-arrow-down"></i> 30min faster</div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px">
+        <div class="cd"><div class="cd-h"><h3 class="cd-t">Revenue Trend</h3></div><div class="cd-b"><div class="chb"><canvas id="revenueChart"></canvas></div></div></div>
+        <div class="cd"><div class="cd-h"><h3 class="cd-t">Status Distribution</h3></div><div class="cd-b"><div class="chb"><canvas id="statusChart"></canvas></div></div></div>
+    </div>
+</div>
+
+</div>
+</main>
+</div>
+
+<!-- CREATE MODAL -->
+<div class="mo" id="createModal">
+    <div class="md">
+        <div class="md-h"><h2 class="md-t">Create New Request</h2><button class="md-x" onclick="closeCreateModal()"><i class="fas fa-times"></i></button></div>
+        <div class="md-b">
+            <form id="createForm">
+                <div class="fr"><div class="fg"><label class="fl">Route *</label><select class="fs2" id="fRoute" required><option value="">Select Route</option><option value="MCT-DXB">MCT — DXB</option><option value="MCT-KHI">MCT — KHI</option><option value="MCT-BKK">MCT — BKK</option><option value="MCT-COK">MCT — COK</option><option value="MCT-MLE">MCT — MLE</option></select></div><div class="fg"><label class="fl">Passengers *</label><input type="number" class="fi2" id="fPax" min="1" placeholder="Pax count" required></div></div>
+                <div class="fr"><div class="fg"><label class="fl">Travel Date *</label><input type="date" class="fi2" id="fTravelDate" required></div><div class="fg"><label class="fl">Return Date</label><input type="date" class="fi2" id="fReturnDate"></div></div>
+                <div class="fr"><div class="fg"><label class="fl">Proposed Price (OMR) *</label><input type="number" class="fi2" id="fPrice" min="1" step="0.1" required></div><div class="fg"><label class="fl">Priority</label><select class="fs2" id="fPriority"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></div></div>
+                <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="fNotes" placeholder="Additional info..."></textarea></div>
+                <div class="fg"><label class="fl">Attachments</label><div style="border:2px dashed var(--g300);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer"><i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:var(--g400);display:block;margin-bottom:8px"></i><p style="color:var(--g500);font-size:.85rem">Click to upload</p><input type="file" style="display:none" multiple></div></div>
+            </form>
+        </div>
+        <div class="md-f"><button class="btn btn-s" onclick="saveDraft()">Save Draft</button><button class="btn btn-p" onclick="submitReq()">Submit Request</button></div>
+    </div>
+</div>
+
+<!-- NOTIF PANEL -->
+<div class="np" id="notifPanel">
+    <div class="np-hd"><h3 class="np-t">Notifications</h3><button class="np-x" onclick="toggleNotif()"><i class="fas fa-times"></i></button></div>
+    <div class="np-ls" id="notifList"></div>
+</div>
+
+<!-- TOAST -->
+<div class="tb2" id="toastBox"></div>
+
+<script src="agent.js"></script>
+</body>
+</html>
