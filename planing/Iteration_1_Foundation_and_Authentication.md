@@ -18,31 +18,31 @@ Set up the project infrastructure, database, and authentication system that form
 
 | # | Task | Details | Status |
 |---|------|---------|--------|
-| 1.1 | Project Scaffolding | Initialize FastAPI project with proper folder structure | Pending |
-| 1.2 | Database Setup | Configure PostgreSQL connection, SQLAlchemy ORM, Alembic migrations | Pending |
-| 1.3 | User Model | Create `users` table with fields: id, name, email, password, role, city, created_at, updated_at | Pending |
-| 1.4 | Password Hashing | Implement bcrypt password hashing via passlib | Pending |
-| 1.5 | JWT Authentication | Implement token generation and validation using python-jose | Pending |
-| 1.6 | Register API | `POST /api/v1/auth/register` - Create user account | Pending |
-| 1.7 | Login API | `POST /api/v1/auth/login` - Authenticate and return JWT token | Pending |
-| 1.8 | Current User API | `GET /api/v1/auth/me` - Return logged-in user profile | Pending |
-| 1.9 | Role-Based Access Control | Implement RBAC middleware for Agent, Sales Support, Admin roles | Pending |
-| 1.10 | Input Validation | Pydantic schemas for all request/response models | Pending |
-| 1.11 | Error Handling | Global exception handler with standard error response format | Pending |
-| 1.12 | CORS Configuration | Allow frontend origin for cross-origin requests | Pending |
+| 1.1 | Project Scaffolding | Initialize FastAPI project with proper folder structure | Done |
+| 1.2 | Database Setup | Configure PostgreSQL connection, SQLAlchemy ORM, Alembic migrations | Done |
+| 1.3 | User Model | Create `users` table with fields: id, name, email, password, role, city, created_at, updated_at | Done |
+| 1.4 | Password Hashing | Implement bcrypt password hashing via passlib | Done |
+| 1.5 | JWT Authentication | Implement token generation and validation using python-jose | Done |
+| 1.6 | Register API | `POST /api/v1/auth/register` - Create user account (agent self-register only) | Done |
+| 1.7 | Login API | `POST /api/v1/auth/login` - Authenticate and return JWT token | Done |
+| 1.8 | Current User API | `GET /api/v1/auth/me` - Return logged-in user profile | Done |
+| 1.9 | Role-Based Access Control | Implement RBAC middleware for Agent, Sales Support, Admin roles | Done |
+| 1.10 | Input Validation | Pydantic schemas for all request/response models | Done |
+| 1.11 | Error Handling | Global exception handler with standard error response format | Done |
+| 1.12 | CORS Configuration | Allow frontend origin for cross-origin requests | Done |
 
 ### Frontend Tasks
 
 | # | Task | Details | Status |
 |---|------|---------|--------|
-| 1.13 | Project Scaffolding | Initialize React project with Vite, Tailwind CSS, folder structure | Pending |
-| 1.14 | Routing Setup | Configure React Router with protected/public routes | Pending |
-| 1.15 | API Service Layer | Set up Axios instance with base URL, interceptors, token handling | Pending |
-| 1.16 | Auth Store | Zustand/Redux store for auth state (user, token, login/logout) | Pending |
-| 1.17 | Login Page | Email + password form, validation, error display | Pending |
-| 1.18 | App Layout | Sidebar navigation, header with user info, role-based menu items | Pending |
-| 1.19 | Route Guards | Redirect unauthenticated users to login, role-based route protection | Pending |
-| 1.20 | Token Persistence | Store JWT in localStorage/cookie, auto-refresh on app load | Pending |
+| 1.13 | Project Scaffolding | Initialize React project with Vite, Tailwind CSS, folder structure | Done |
+| 1.14 | Routing Setup | Configure React Router with protected/public routes | Done |
+| 1.15 | API Service Layer | Set up Axios instance with base URL, interceptors, token handling | Done |
+| 1.16 | Auth Store | Zustand/Redux store for auth state (user, token, login/logout) | Done |
+| 1.17 | Login Page | Email + password form, validation, error display | Done |
+| 1.18 | App Layout | Sidebar navigation, header with user info, role-based menu items | Done |
+| 1.19 | Route Guards | Redirect unauthenticated users to login, role-based route protection | Done |
+| 1.20 | Token Persistence | Store JWT in localStorage/cookie, auto-refresh on app load | Done |
 
 ---
 
@@ -190,19 +190,19 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] Backend starts without errors on `uvicorn app.main:app --reload`
-- [ ] PostgreSQL connected and migrations run successfully
-- [ ] User can register with valid data
-- [ ] Duplicate email returns proper error
-- [ ] User can login and receive JWT token
-- [ ] Invalid credentials return 401 error
-- [ ] Protected routes reject requests without valid token
-- [ ] Role-based access control blocks unauthorized roles
-- [ ] Frontend login page renders correctly
-- [ ] Successful login redirects to dashboard
-- [ ] Unauthenticated users redirected to login page
-- [ ] Layout displays correct menu items per role
-- [ ] Token persists across page refresh
+- [x] Backend starts without errors on `uvicorn app.main:app --reload`
+- [x] PostgreSQL connected and migrations run successfully
+- [x] User can register with valid data
+- [x] Duplicate email returns proper error
+- [x] User can login and receive JWT token
+- [x] Invalid credentials return 401 error
+- [x] Protected routes reject requests without valid token
+- [x] Role-based access control blocks unauthorized roles
+- [x] Frontend login page renders correctly
+- [x] Successful login redirects to dashboard
+- [x] Unauthenticated users redirected to login page
+- [x] Layout displays correct menu items per role
+- [x] Token persists across page refresh
 
 ---
 

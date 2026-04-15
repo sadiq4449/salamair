@@ -55,8 +55,8 @@ export interface RequestItem {
   pax: number;
   price: number;
   travel_date: string | null;
-  status: string;
-  priority: string;
+  status: RequestStatus;
+  priority: Priority;
   created_at: string;
 }
 
@@ -71,8 +71,8 @@ export interface RequestDetail {
   travel_date: string | null;
   return_date: string | null;
   notes: string | null;
-  status: string;
-  priority: string;
+  status: RequestStatus;
+  priority: Priority;
   assigned_to: string | null;
   created_at: string;
   updated_at: string;

@@ -9,8 +9,6 @@ const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/requests': 'All Requests',
   '/pending': 'Pending Approvals',
-  '/analytics': 'Analytics',
-  '/users': 'User Management',
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {

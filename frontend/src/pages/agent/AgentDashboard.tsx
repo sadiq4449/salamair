@@ -6,8 +6,6 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
 import Button from '../../components/ui/Button';
 import CreateRequestModal from '../../components/CreateRequestModal';
-import type { RequestStatus, Priority } from '../../types';
-
 export default function AgentDashboard() {
   const navigate = useNavigate();
   const { requests, fetchRequests, isLoading } = useRequestStore();
@@ -109,8 +107,8 @@ export default function AgentDashboard() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><StatusBadge status={req.status as RequestStatus} /></td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority as Priority} /></td>
+                    <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
+                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
                     <td className="px-6 py-3.5">
                       <button
                         onClick={() => navigate(`/requests/${req.id}`)}

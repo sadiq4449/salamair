@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-
-const THEME_KEY = 'salam_air_theme';
+import { THEME_KEY } from '../utils/constants';
 
 interface ThemeState {
   isDark: boolean;

@@ -6,8 +6,6 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
 import Button from '../../components/ui/Button';
 import CreateRequestModal from '../../components/CreateRequestModal';
-import type { RequestStatus, Priority } from '../../types';
-
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
   { value: 'draft', label: 'Draft' },
@@ -151,8 +149,8 @@ export default function RequestList() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><StatusBadge status={req.status as RequestStatus} /></td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority as Priority} /></td>
+                    <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
+                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
                     <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400">
                       {new Date(req.created_at).toLocaleDateString()}
                     </td>

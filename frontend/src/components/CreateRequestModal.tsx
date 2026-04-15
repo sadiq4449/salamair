@@ -2,6 +2,7 @@ import { useState, useRef, type FormEvent } from 'react';
 import { X, Upload } from 'lucide-react';
 import Button from './ui/Button';
 import { useRequestStore } from '../store/requestStore';
+import { requestService } from '../services/requestService';
 
 const ROUTES = [
   { value: 'MCT-DXB', label: 'MCT - DXB' },
@@ -55,7 +56,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
   async function handleSubmit(e: FormEvent, asDraft = false) {
     e.preventDefault();
     try {
-      await createRequest({
+      const created = await createRequest({
         route: form.route,
         pax: Number(form.pax),
         travel_date: form.travel_date,
@@ -65,6 +66,13 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
         notes: form.notes || undefined,
         status: asDraft ? 'draft' : 'submitted',
       });
+
+      if (files.length > 0) {
+        await Promise.all(
+          files.map((file) => requestService.uploadAttachment(created.id, file))
+        );
+      }
+
       onCreated?.();
       onClose();
       setForm({ route: '', pax: '', travel_date: '', return_date: '', price: '', priority: 'normal', notes: '' });

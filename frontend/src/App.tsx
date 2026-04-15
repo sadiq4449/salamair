@@ -8,7 +8,10 @@ import RequestList from './pages/agent/RequestList';
 import RequestDetail from './pages/agent/RequestDetail';
 import PendingApprovals from './pages/sales/PendingApprovals';
 import SalesRequestDetail from './pages/sales/SalesRequestDetail';
+import { ToastContainer } from './components/ui/Toast';
+import { useToastStore } from './store/toastStore';
 import { Loader2 } from 'lucide-react';
+import type { UserRole } from './types';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,6 +28,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  return <>{children}</>;
+}
+
+function RoleRoute({ roles, children }: { roles: UserRole[]; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -57,6 +68,8 @@ function AppInit({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { toasts, removeToast } = useToastStore();
+
   return (
     <BrowserRouter>
       <AppInit>
@@ -80,17 +93,19 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
 
             {/* Agent routes */}
-            <Route path="/requests" element={<RequestList />} />
-            <Route path="/requests/:id" element={<RequestDetail />} />
+            <Route path="/requests" element={<RoleRoute roles={['agent']}><RequestList /></RoleRoute>} />
+            <Route path="/requests/:id" element={<RoleRoute roles={['agent']}><RequestDetail /></RoleRoute>} />
 
             {/* Sales routes */}
-            <Route path="/pending" element={<PendingApprovals />} />
-            <Route path="/pending/:id" element={<SalesRequestDetail />} />
+            <Route path="/pending" element={<RoleRoute roles={['sales', 'admin']}><PendingApprovals /></RoleRoute>} />
+            <Route path="/pending/:id" element={<RoleRoute roles={['sales', 'admin']}><SalesRequestDetail /></RoleRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppInit>
+
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </BrowserRouter>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { X, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-import type { ToastMessage, ToastType } from '../../types/index.ts';
+import type { ToastMessage, ToastType } from '../../types';
 
 const icons: Record<ToastType, React.ElementType> = {
   success: CheckCircle2,

@@ -6,8 +6,6 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import Button from '../../components/ui/Button';
 import CounterOfferModal from '../../components/CounterOfferModal';
-import type { RequestStatus } from '../../types';
-
 interface Message {
   id: string;
   author: string;
@@ -93,7 +91,7 @@ export default function SalesRequestDetail() {
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">Request Information</h3>
-              <StatusBadge status={req.status as RequestStatus} />
+              <StatusBadge status={req.status} />
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
@@ -105,7 +103,7 @@ export default function SalesRequestDetail() {
                 <InfoItem label="Agent" value={req.agent.name} />
               </div>
 
-              <StatusFlow status={req.status as RequestStatus} />
+              <StatusFlow status={req.status} />
             </div>
           </div>
 

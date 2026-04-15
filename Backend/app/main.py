@@ -69,7 +69,9 @@ async def validation_exception_handler(_request: FastAPIRequest, exc: RequestVal
 
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(_request: FastAPIRequest, _exc: Exception):
+async def generic_exception_handler(_request: FastAPIRequest, exc: Exception):
+    import logging
+    logging.getLogger("uvicorn.error").exception("Unhandled error: %s", exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
