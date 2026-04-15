@@ -75,10 +75,27 @@ def send_email_to_rm(
 ):
     req = _get_request_or_404(db, payload.request_id)
 
+    # Queue can show "submitted"; sending to RM means sales has started review.
+    if req.status == "submitted":
+        _log_history(
+            db, req.id, "status_changed", current_user.id,
+            from_status="submitted", to_status="under_review",
+            details="Moved to under_review (Send to RM)",
+        )
+        req.status = "under_review"
+        if not req.assigned_to:
+            req.assigned_to = current_user.id
+        db.flush()
+
     if req.status not in ("under_review", "rm_pending"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": {"code": "INVALID_STATE", "message": "Request must be under_review or rm_pending to email RM"}},
+            detail={
+                "error": {
+                    "code": "INVALID_STATE",
+                    "message": "Cannot email RM in the current status (e.g. draft, approved, or rejected).",
+                }
+            },
         )
 
     rm_email = payload.to or settings.RM_DEFAULT_EMAIL
@@ -145,12 +162,22 @@ def send_email_to_rm(
     db.commit()
     db.refresh(email_msg)
 
+    delivered = message_id is not None
+    msg = (
+        "Email sent successfully"
+        if delivered
+        else (
+            "Request saved, but SMTP did not send the message. "
+            "Set EMAIL_ENABLED=true and valid SMTP_* variables on the server (e.g. Railway env)."
+        )
+    )
     return SendEmailResponse(
-        message="Email sent successfully",
+        message=msg,
         email_id=email_msg.id,
         request_code=req.request_code,
         status=req.status,
         sent_at=email_msg.sent_at,
+        smtp_delivered=delivered,
     )
 
 
@@ -271,10 +298,20 @@ def reply_to_rm(
     db.commit()
     db.refresh(email_msg)
 
+    delivered = message_id is not None
+    msg = (
+        "Reply sent successfully"
+        if delivered
+        else (
+            "Reply saved, but SMTP did not send. "
+            "Set EMAIL_ENABLED=true and valid SMTP_* on the server."
+        )
+    )
     return ReplyEmailResponse(
-        message="Reply sent successfully",
+        message=msg,
         email_id=email_msg.id,
         sent_at=email_msg.sent_at,
+        smtp_delivered=delivered,
     )
 
 
