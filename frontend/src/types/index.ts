@@ -169,6 +169,8 @@ export interface SendEmailResponse {
   request_code: string;
   status: string;
   sent_at: string;
+  smtp_delivered?: boolean;
+  smtp_error?: string | null;
 }
 
 export interface PollInboxResponse {
@@ -184,6 +186,8 @@ export interface ReplyEmailResponse {
   message: string;
   email_id: string;
   sent_at: string;
+  smtp_delivered?: boolean;
+  smtp_error?: string | null;
 }
 
 // ── Message / Chat Types (Iteration 5) ──

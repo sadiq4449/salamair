@@ -113,7 +113,7 @@ def send_email_to_rm(
         current_user.email, current_user.id,
     )
 
-    message_id = send_smtp_email(rm_email, subject, plain_body, html_body)
+    message_id, smtp_err = send_smtp_email(rm_email, subject, plain_body, html_body)
 
     thread = db.query(EmailThread).filter(EmailThread.request_id == req.id).first()
     if not thread:
@@ -155,9 +155,15 @@ def send_email_to_rm(
     if req.status == "under_review":
         req.status = "rm_pending"
 
-    _log_history(db, req.id, "email_sent_to_rm", current_user.id,
-                 from_status=old_status, to_status=req.status,
-                 details=f"Email sent to {rm_email}")
+    _log_history(
+        db, req.id, "email_sent_to_rm", current_user.id,
+        from_status=old_status, to_status=req.status,
+        details=(
+            f"Email sent to {rm_email}"
+            if message_id
+            else f"SMTP failed to {rm_email}: {smtp_err or 'unknown error'}"
+        ),
+    )
 
     db.commit()
     db.refresh(email_msg)
@@ -178,6 +184,7 @@ def send_email_to_rm(
         status=req.status,
         sent_at=email_msg.sent_at,
         smtp_delivered=delivered,
+        smtp_error=smtp_err,
     )
 
 
@@ -274,7 +281,7 @@ def reply_to_rm(
     )
     in_reply_to = last_msg.message_id if last_msg else None
 
-    message_id = send_smtp_email(thread.rm_email, subject, plain_body, html_body)
+    message_id, smtp_err = send_smtp_email(thread.rm_email, subject, plain_body, html_body)
 
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
@@ -292,8 +299,14 @@ def reply_to_rm(
     )
     db.add(email_msg)
 
-    _log_history(db, req.id, "email_reply_sent", current_user.id,
-                 details=f"Reply sent to {thread.rm_email}")
+    _log_history(
+        db, req.id, "email_reply_sent", current_user.id,
+        details=(
+            f"Reply sent to {thread.rm_email}"
+            if message_id
+            else f"SMTP reply failed to {thread.rm_email}: {smtp_err or 'unknown error'}"
+        ),
+    )
 
     db.commit()
     db.refresh(email_msg)
@@ -312,6 +325,7 @@ def reply_to_rm(
         email_id=email_msg.id,
         sent_at=email_msg.sent_at,
         smtp_delivered=delivered,
+        smtp_error=smtp_err,
     )
 
 

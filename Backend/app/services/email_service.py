@@ -102,11 +102,11 @@ def send_smtp_email(
     subject: str,
     body_text: str,
     body_html: str,
-) -> str | None:
-    """Send email via SMTP. Returns Message-ID on success, None if disabled or on failure."""
+) -> tuple[str | None, str | None]:
+    """Send via SMTP. Returns (message_id, None) on success, (None, error_hint) if skipped or failed."""
     if not settings.EMAIL_ENABLED:
         logger.info("EMAIL_ENABLED=false — SMTP not sent to %s: %s", to_email, subject)
-        return None
+        return None, "EMAIL_ENABLED is false (set true in server env, e.g. Railway)"
 
     try:
         msg = MIMEMultipart("alternative")
@@ -119,7 +119,7 @@ def send_smtp_email(
         msg.attach(MIMEText(body_text, "plain"))
         msg.attach(MIMEText(body_html, "html"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
             if settings.SMTP_USE_TLS:
                 server.starttls()
             if settings.SMTP_USER and settings.SMTP_PASSWORD:
@@ -127,7 +127,8 @@ def send_smtp_email(
             server.send_message(msg)
 
         logger.info("Email sent to %s: %s", to_email, subject)
-        return message_id
-    except Exception:
+        return message_id, None
+    except Exception as e:
+        err = str(e)[:800]
         logger.exception("Failed to send email to %s", to_email)
-        return None
+        return None, err

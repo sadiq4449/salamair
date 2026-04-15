@@ -24,6 +24,8 @@ function formatTime(iso: string) {
 
 function EmailBubble({ email }: { email: EmailMessageItem }) {
   const isOutgoing = email.direction === 'outgoing';
+  const deliveryFailed = isOutgoing && email.status === 'failed';
+  const deliveryOk = isOutgoing && email.status === 'sent';
 
   return (
     <div className="flex gap-3">
@@ -33,7 +35,7 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
         {isOutgoing ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
             {isOutgoing ? 'Sales Team' : 'Revenue Management'}
           </span>
@@ -43,13 +45,27 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
               : email.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
               : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
           }`}>
-            {email.status}
+            {email.status === 'sent' && isOutgoing ? 'smtp sent' : email.status}
           </span>
           <span className="text-xs text-gray-400 ml-auto shrink-0">{formatTime(email.sent_at)}</span>
         </div>
+        {deliveryFailed && (
+          <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+            <strong className="font-semibold">Not delivered.</strong> The portal saved this draft, but the mail server did not accept the message.
+            On Railway, set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=true</code> and valid Gmail{' '}
+            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_*</code> variables, then send again.
+          </div>
+        )}
+        {deliveryOk && (
+          <p className="mb-2 text-[0.7rem] text-gray-500 dark:text-gray-400">
+            Handed to your SMTP server for <span className="font-medium">{email.to_email}</span>. If RM sees nothing, check spam and that the address exists.
+          </p>
+        )}
         <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
           isOutgoing
-            ? 'bg-teal-50 dark:bg-teal-900/20 border-l-3 border-teal-400 text-gray-700 dark:text-gray-300'
+            ? deliveryFailed
+              ? 'bg-red-50/80 dark:bg-red-950/20 border-l-3 border-red-400 text-gray-700 dark:text-gray-300'
+              : 'bg-teal-50 dark:bg-teal-900/20 border-l-3 border-teal-400 text-gray-700 dark:text-gray-300'
             : 'bg-amber-50 dark:bg-amber-900/20 border-l-3 border-amber-400 text-gray-700 dark:text-gray-300'
         }`}>
           <p className="text-xs text-gray-400 mb-1.5">
@@ -98,6 +114,7 @@ export default function EmailThreadView({ requestId, canReply = false, canSimula
 
   const emails = thread?.emails ?? [];
   const hasThread = thread && thread.status !== 'empty' && emails.length > 0;
+  const hasOutgoingFailed = emails.some((e) => e.direction === 'outgoing' && e.status === 'failed');
 
   async function handleReply() {
     if (!replyText.trim() || !thread || thread.status === 'empty') return;
@@ -125,6 +142,18 @@ export default function EmailThreadView({ requestId, canReply = false, canSimula
 
   return (
     <div>
+      <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
+        This panel shows what the <strong className="text-gray-700 dark:text-gray-300">portal stored</strong>. Real delivery to RM only happens when SMTP succeeds (badge <strong>smtp sent</strong>).
+        The address <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong> must be a real inbox you can open.
+      </p>
+      {hasOutgoingFailed && (
+        <div className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
+          <Mail className="shrink-0 mt-0.5" size={14} />
+          <span>
+            At least one outgoing message was <strong>not</strong> accepted by the mail server (status failed). Configure production SMTP on the host (e.g. Railway variables) or resend after fixing credentials.
+          </span>
+        </div>
+      )}
       {/* Email Header */}
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Mail, Paperclip, Send, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Mail, Paperclip, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import type { RequestDetail } from '../types';
 
@@ -11,12 +11,20 @@ interface Props {
 }
 
 export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: Props) {
-  const { sendEmail, isSending } = useEmailStore();
+  const { sendEmail, isSending, error, clearError } = useEmailStore();
+  const [smtpWarning, setSmtpWarning] = useState<string | null>(null);
   const [message, setMessage] = useState(
     `Please review and approve the fare for ${request.route} route.\n\nDetails:\n- Passengers: ${request.pax}\n- Requested Price: ${Number(request.price).toFixed(2)} OMR\n- Travel Date: ${request.travel_date ?? 'N/A'}`
   );
   const [rmEmail, setRmEmail] = useState('rm@salamair.com');
   const [includeAttachments, setIncludeAttachments] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      clearError();
+      setSmtpWarning(null);
+    }
+  }, [isOpen, clearError]);
 
   if (!isOpen) return null;
 
@@ -24,15 +32,22 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
 
   async function handleSend() {
     try {
-      await sendEmail({
+      const result = await sendEmail({
         request_id: request.id,
         to: rmEmail,
         message: message.trim(),
         include_attachments: includeAttachments,
       });
+      if (result.smtp_delivered === false) {
+        const detail = [result.message, result.smtp_error].filter(Boolean).join('\n\n');
+        setSmtpWarning(detail);
+        return;
+      }
       onSent?.();
       onClose();
-    } catch { /* handled in store */ }
+    } catch {
+      /* error text is in store */
+    }
   }
 
   return (
@@ -61,7 +76,9 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
           <div className="space-y-2.5">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0">From</span>
-              <span className="text-sm text-gray-700 dark:text-gray-300">sales@salamair.com</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Your server’s SMTP sender (<code className="text-xs">SMTP_FROM_EMAIL</code> in env) — not shown in the preview
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0">To</span>
@@ -123,6 +140,23 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
             </label>
           )}
         </div>
+
+        {(error || smtpWarning) && (
+          <div className="px-6 pb-2 space-y-2">
+            {error && (
+              <div className="flex gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-800 dark:text-red-200">
+                <AlertTriangle className="shrink-0 mt-0.5" size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+            {smtpWarning && (
+              <div className="flex gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                <AlertTriangle className="shrink-0 mt-0.5" size={16} />
+                <span>{smtpWarning}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800">

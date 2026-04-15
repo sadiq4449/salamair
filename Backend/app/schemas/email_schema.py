@@ -66,12 +66,16 @@ class SendEmailResponse(BaseModel):
     request_code: str
     status: str
     sent_at: datetime
+    smtp_delivered: bool = True
+    smtp_error: str | None = None
 
 
 class ReplyEmailResponse(BaseModel):
     message: str
     email_id: UUID
     sent_at: datetime
+    smtp_delivered: bool = True
+    smtp_error: str | None = None
 
 
 class PollInboxResponse(BaseModel):
