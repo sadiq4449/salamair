@@ -19,7 +19,25 @@ from app.api.routes.ws import router as ws_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import User, Request, Attachment, RequestHistory, CounterOffer, EmailThread, EmailMessage, EmailAttachment, Message, MessageAttachment, MessageReadStatus, Notification, NotificationPreference, AnalyticsSnapshot  # noqa: F401
+from app.models import (  # noqa: F401
+    User,
+    AgentProfile,
+    Request,
+    Attachment,
+    RequestHistory,
+    CounterOffer,
+    EmailThread,
+    EmailMessage,
+    EmailAttachment,
+    Message,
+    MessageAttachment,
+    MessageReadStatus,
+    Notification,
+    NotificationPreference,
+    AnalyticsSnapshot,
+    SystemLog,
+    SystemConfig,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -41,6 +59,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=(settings.CORS_ORIGIN_REGEX.strip() or None),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

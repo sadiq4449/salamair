@@ -294,3 +294,126 @@ export interface SlaResponse {
   status: string;
   sla: SlaInfo | null;
 }
+
+// ── Admin (Iteration 8) ──
+
+export interface AdminStats {
+  total_users: number;
+  active_users_today: number;
+  total_agents: number;
+  total_sales: number;
+  total_admins: number;
+  requests_today: number;
+  pending_requests: number;
+  emails_sent_today: number;
+  system_uptime: string;
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  city?: string | null;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string | null;
+}
+
+export interface AdminUserListResponse {
+  items: AdminUserRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminCreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  city?: string | null;
+  company_name?: string | null;
+  credit_limit?: number;
+}
+
+export interface AdminCreateUserResponse {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  city?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminUpdateUserPayload {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  city?: string | null;
+}
+
+export interface AdminUpdateUserResponse {
+  message: string;
+  user: AdminUserRow;
+}
+
+export interface AdminPasswordResetResponse {
+  message: string;
+  email_sent: boolean;
+  temporary_password?: string | null;
+}
+
+export interface AdminAgentItem {
+  id: string;
+  name: string;
+  email: string;
+  city?: string | null;
+  company_name?: string | null;
+  credit_limit: string | number;
+  requests_count: number;
+  is_active: boolean;
+}
+
+export interface AdminAgentListResponse {
+  items: AdminAgentItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminLogActor {
+  id: string | null;
+  name: string;
+  role: string;
+}
+
+export interface AdminLogTarget {
+  type: string;
+  id?: string | null;
+  name?: string | null;
+}
+
+export interface AdminLogRow {
+  id: string;
+  action: string;
+  actor: AdminLogActor;
+  target: AdminLogTarget | null;
+  details: string | null;
+  ip_address: string | null;
+  timestamp: string;
+}
+
+export interface AdminLogListResponse {
+  items: AdminLogRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminConfigItem {
+  key: string;
+  value: string;
+  description?: string | null;
+}

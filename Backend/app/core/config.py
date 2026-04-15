@@ -3,10 +3,14 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/salamair"
+    # Blank = auto (SSL for common Railway/proxy hosts). Set "require", "disable", or omit from URL.
+    DATABASE_SSLMODE: str = ""
     SECRET_KEY: str = "CHANGE-ME-set-a-real-secret-in-env"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    # Optional regex (e.g. https://.*\\.up\\.railway\\.app$) so the SPA and API on the same Railway URL work.
+    CORS_ORIGIN_REGEX: str = ""
     ENVIRONMENT: str = "development"
 
     SMTP_HOST: str = "smtp.gmail.com"
@@ -34,6 +38,9 @@ class Settings(BaseSettings):
     # Analytics (Iteration 7): optional Redis; falls back to in-process TTL cache
     REDIS_URL: str = ""
     ANALYTICS_CACHE_TTL_SECONDS: int = 600
+
+    # Shown on admin dashboard when host-level uptime is not tracked
+    REPORTED_SYSTEM_UPTIME: str = "99.9%"
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -1,15 +1,89 @@
-from datetime import datetime, timezone
+import secrets
+from datetime import date, datetime, time, timezone
+from decimal import Decimal
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, status
+from sqlalchemy import exists, func, or_
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, require_role
+from app.core.config import settings
+from app.core.security import get_password_hash
+from app.models.agent_profile import AgentProfile
+from app.models.email_message import EmailMessage
 from app.models.request import Request
+from app.models.system_config import SystemConfig
+from app.models.system_log import SystemLog
 from app.models.user import User
-from app.schemas.admin_schema import AdminStatsResponse, AdminUserItem, AdminUserListResponse
+from app.schemas.admin_schema import (
+    VALID_ROLES,
+    AdminAgentItem,
+    AdminAgentListResponse,
+    AdminAgentUpdateRequest,
+    AdminConfigItem,
+    AdminConfigListResponse,
+    AdminConfigUpdateRequest,
+    AdminCreateUserRequest,
+    AdminCreateUserResponse,
+    AdminLogItem,
+    AdminLogListResponse,
+    AdminPasswordResetResponse,
+    AdminSimpleMessage,
+    AdminStatsResponse,
+    AdminUpdateUserRequest,
+    AdminUpdateUserResponse,
+    AdminUserItem,
+    AdminUserListResponse,
+    LogActorSummary,
+    LogTargetSummary,
+)
+from app.services.admin_audit import ADMIN_CONFIG_KEYS, ensure_default_system_config, log_admin_action
+from app.services.email_service import send_smtp_email
 
 router = APIRouter()
+
+OPEN_REQUEST_STATUSES = ("submitted", "under_review", "rm_pending", "counter_offered")
+
+
+def _client_ip(http_request: FastAPIRequest) -> str | None:
+    if http_request.client:
+        return http_request.client.host
+    return None
+
+
+def _active_admin_count(db: Session, exclude_user_id: UUID | None = None) -> int:
+    q = db.query(func.count(User.id)).filter(User.role == "admin", User.is_active.is_(True))
+    if exclude_user_id is not None:
+        q = q.filter(User.id != exclude_user_id)
+    return int(q.scalar() or 0)
+
+
+def _ensure_role(role: str) -> str:
+    if role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_ROLE", "message": f"Role must be one of: {', '.join(sorted(VALID_ROLES))}"}},
+        )
+    return role
+
+
+def _get_or_create_agent_profile(db: Session, user: User) -> AgentProfile:
+    if user.agent_profile:
+        return user.agent_profile
+    p = AgentProfile(user_id=user.id, company_name=None, credit_limit=Decimal("0"))
+    db.add(p)
+    db.flush()
+    return p
+
+
+def _target_display_name(db: Session, target_type: str | None, target_id: UUID | None) -> str | None:
+    if not target_type or not target_id:
+        return None
+    if target_type == "user":
+        u = db.query(User).filter(User.id == target_id).first()
+        return u.name if u else None
+    return None
 
 
 @router.get("/stats", response_model=AdminStatsResponse)
@@ -17,27 +91,36 @@ def admin_stats(
     db: Session = Depends(get_db),
     _user: User = Depends(require_role("admin")),
 ):
-    users_total = db.query(func.count(User.id)).scalar() or 0
-    agents_count = db.query(func.count(User.id)).filter(User.role == "agent").scalar() or 0
-    sales_count = db.query(func.count(User.id)).filter(User.role == "sales").scalar() or 0
-    admins_count = db.query(func.count(User.id)).filter(User.role == "admin").scalar() or 0
-    requests_total = db.query(func.count(Request.id)).scalar() or 0
-    open_statuses = ("draft", "submitted", "under_review", "rm_pending", "counter_offered")
-    requests_open = db.query(func.count(Request.id)).filter(Request.status.in_(open_statuses)).scalar() or 0
-
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    requests_today = (
-        db.query(func.count(Request.id)).filter(Request.created_at >= today_start).scalar() or 0
+
+    total_users = int(db.query(func.count(User.id)).scalar() or 0)
+    active_users_today = int(
+        db.query(func.count(User.id)).filter(User.last_login.isnot(None), User.last_login >= today_start).scalar() or 0
+    )
+    total_agents = int(db.query(func.count(User.id)).filter(User.role == "agent").scalar() or 0)
+    total_sales = int(db.query(func.count(User.id)).filter(User.role == "sales").scalar() or 0)
+    total_admins = int(db.query(func.count(User.id)).filter(User.role == "admin").scalar() or 0)
+
+    requests_today = int(db.query(func.count(Request.id)).filter(Request.created_at >= today_start).scalar() or 0)
+    pending_requests = int(db.query(func.count(Request.id)).filter(Request.status.in_(OPEN_REQUEST_STATUSES)).scalar() or 0)
+
+    emails_sent_today = int(
+        db.query(func.count(EmailMessage.id))
+        .filter(EmailMessage.direction == "outgoing", EmailMessage.created_at >= today_start)
+        .scalar()
+        or 0
     )
 
     return AdminStatsResponse(
-        users_total=int(users_total),
-        agents_count=int(agents_count),
-        sales_count=int(sales_count),
-        admins_count=int(admins_count),
-        requests_total=int(requests_total),
-        requests_open=int(requests_open),
-        requests_today=int(requests_today),
+        total_users=total_users,
+        active_users_today=active_users_today,
+        total_agents=total_agents,
+        total_sales=total_sales,
+        total_admins=total_admins,
+        requests_today=requests_today,
+        pending_requests=pending_requests,
+        emails_sent_today=emails_sent_today,
+        system_uptime=settings.REPORTED_SYSTEM_UPTIME,
     )
 
 
@@ -47,12 +130,16 @@ def admin_list_users(
     limit: int = Query(20, ge=1, le=100),
     search: str | None = None,
     role: str | None = Query(None, description="agent | sales | admin"),
+    is_active: bool | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_role("admin")),
 ):
     q = db.query(User)
-    if role and role in ("agent", "sales", "admin"):
+    if role:
+        _ensure_role(role)
         q = q.filter(User.role == role)
+    if is_active is not None:
+        q = q.filter(User.is_active == is_active)
     if search:
         term = f"%{search.strip()}%"
         q = q.filter(or_(User.name.ilike(term), User.email.ilike(term)))
@@ -65,16 +152,419 @@ def admin_list_users(
         .all()
     )
 
-    items = [
-        AdminUserItem(
-            id=u.id,
-            name=u.name,
-            email=u.email,
-            role=u.role,
-            city=u.city,
-            is_active=u.is_active,
-            created_at=u.created_at,
-        )
-        for u in rows
-    ]
+    items = [AdminUserItem.model_validate(u) for u in rows]
     return AdminUserListResponse(items=items, total=total, page=page, limit=limit)
+
+
+@router.post("/users", response_model=AdminCreateUserResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_user(
+    payload: AdminCreateUserRequest,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    role = _ensure_role(payload.role)
+    existing = db.query(User).filter(User.email == payload.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "EMAIL_EXISTS", "message": "A user with this email already exists"}},
+        )
+
+    user = User(
+        name=payload.name,
+        email=str(payload.email),
+        password=get_password_hash(payload.password),
+        role=role,
+        city=payload.city,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    if role == "agent":
+        lim = payload.credit_limit if payload.credit_limit is not None else Decimal("0")
+        db.add(AgentProfile(user_id=user.id, company_name=payload.company_name, credit_limit=lim))
+
+    log_admin_action(
+        db,
+        action="user_created",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+        details=f"Created user {user.email} as {role}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    db.refresh(user)
+    return AdminCreateUserResponse.model_validate(user)
+
+
+@router.put("/users/{user_id}", response_model=AdminUpdateUserResponse)
+def admin_update_user(
+    user_id: UUID,
+    payload: AdminUpdateUserRequest,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "User not found"}})
+
+    old_role = target.role
+    role_changed = False
+    if payload.name is not None:
+        target.name = payload.name
+    if payload.email is not None:
+        other = db.query(User).filter(User.email == str(payload.email), User.id != user_id).first()
+        if other:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": {"code": "EMAIL_EXISTS", "message": "Email already in use"}},
+            )
+        target.email = str(payload.email)
+    if payload.city is not None:
+        target.city = payload.city
+    if payload.role is not None:
+        new_role = _ensure_role(payload.role)
+        if old_role == "admin" and new_role != "admin" and target.is_active:
+            if _active_admin_count(db, exclude_user_id=target.id) < 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": {"code": "LAST_ADMIN", "message": "Cannot change role of the last active administrator"}},
+                )
+        role_changed = new_role != old_role
+        target.role = new_role
+        if old_role != "agent" and new_role == "agent" and not target.agent_profile:
+            db.add(AgentProfile(user_id=target.id, company_name=None, credit_limit=Decimal("0")))
+        if old_role == "agent" and new_role != "agent" and target.agent_profile:
+            db.delete(target.agent_profile)
+
+    log_admin_action(
+        db,
+        action="role_changed" if role_changed else "user_updated",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=target.id,
+        details=f"Updated user {target.email}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    db.refresh(target)
+    return AdminUpdateUserResponse(message="User updated successfully", user=AdminUserItem.model_validate(target))
+
+
+@router.put("/users/{user_id}/deactivate", response_model=AdminSimpleMessage)
+def admin_deactivate_user(
+    user_id: UUID,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    if user_id == actor.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "SELF_DEACTIVATE", "message": "You cannot deactivate your own account"}},
+        )
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "User not found"}})
+    if not target.is_active:
+        return AdminSimpleMessage(message="User is already inactive")
+
+    if target.role == "admin" and _active_admin_count(db, exclude_user_id=target.id) < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "LAST_ADMIN", "message": "Cannot deactivate the last active administrator"}},
+        )
+
+    target.is_active = False
+    log_admin_action(
+        db,
+        action="user_deactivated",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=target.id,
+        details=f"Deactivated {target.email}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    return AdminSimpleMessage(message="User deactivated successfully")
+
+
+@router.put("/users/{user_id}/activate", response_model=AdminSimpleMessage)
+def admin_activate_user(
+    user_id: UUID,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "User not found"}})
+    if target.is_active:
+        return AdminSimpleMessage(message="User is already active")
+
+    target.is_active = True
+    log_admin_action(
+        db,
+        action="user_reactivated",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=target.id,
+        details=f"Reactivated {target.email}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    return AdminSimpleMessage(message="User activated successfully")
+
+
+@router.post("/users/{user_id}/reset-password", response_model=AdminPasswordResetResponse)
+def admin_reset_password(
+    user_id: UUID,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "User not found"}})
+
+    temp_password = secrets.token_urlsafe(12)
+    target.password = get_password_hash(temp_password)
+
+    subject = "Salam Air SmartDeal — password reset"
+    body_text = (
+        f"Hello {target.name},\n\n"
+        "An administrator reset your portal password.\n"
+        f"Your new temporary password is: {temp_password}\n\n"
+        "Sign in at the SmartDeal portal and change your password from your profile when available.\n"
+    )
+    body_html = f"<p>Hello {target.name},</p><p>An administrator reset your portal password.</p><p><strong>Temporary password:</strong> {temp_password}</p>"
+
+    email_sent = False
+    smtp_error: str | None = None
+    if settings.EMAIL_ENABLED:
+        _, smtp_error = send_smtp_email(target.email, subject, body_text, body_html)
+        email_sent = smtp_error is None
+    else:
+        smtp_error = "EMAIL_ENABLED is false"
+
+    log_admin_action(
+        db,
+        action="password_reset",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=target.id,
+        details=f"Password reset for {target.email}; email_sent={email_sent}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+
+    return AdminPasswordResetResponse(
+        message="Password has been reset."
+        + (" Credentials were emailed to the user." if email_sent else f" Email was not sent ({smtp_error})."),
+        email_sent=email_sent,
+        temporary_password=temp_password if not email_sent else None,
+    )
+
+
+@router.get("/agents", response_model=AdminAgentListResponse)
+def admin_list_agents(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role("admin")),
+):
+    q = db.query(User).options(joinedload(User.agent_profile)).filter(User.role == "agent")
+    if search:
+        term = f"%{search.strip()}%"
+        company_match = exists().where(AgentProfile.user_id == User.id, AgentProfile.company_name.ilike(term))
+        q = q.filter(or_(User.name.ilike(term), User.email.ilike(term), company_match))
+    total = q.count()
+    rows = q.order_by(User.name.asc()).offset((page - 1) * limit).limit(limit).all()
+    ids = [u.id for u in rows]
+    counts: dict[UUID, int] = {}
+    if ids:
+        for aid, n in (
+            db.query(Request.agent_id, func.count(Request.id)).filter(Request.agent_id.in_(ids)).group_by(Request.agent_id).all()
+        ):
+            counts[aid] = int(n)
+
+    items: list[AdminAgentItem] = []
+    for u in rows:
+        prof = u.agent_profile
+        items.append(
+            AdminAgentItem(
+                id=u.id,
+                name=u.name,
+                email=u.email,
+                city=u.city,
+                company_name=prof.company_name if prof else None,
+                credit_limit=prof.credit_limit if prof else Decimal("0"),
+                requests_count=counts.get(u.id, 0),
+                is_active=u.is_active,
+            )
+        )
+    return AdminAgentListResponse(items=items, total=total, page=page, limit=limit)
+
+
+@router.put("/agents/{agent_user_id}", response_model=AdminAgentItem)
+def admin_update_agent(
+    agent_user_id: UUID,
+    payload: AdminAgentUpdateRequest,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    user = db.query(User).options(joinedload(User.agent_profile)).filter(User.id == agent_user_id, User.role == "agent").first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "Agent not found"}})
+
+    prof = _get_or_create_agent_profile(db, user)
+    if payload.company_name is not None:
+        prof.company_name = payload.company_name
+    if payload.credit_limit is not None:
+        prof.credit_limit = payload.credit_limit
+
+    log_admin_action(
+        db,
+        action="agent_profile_updated",
+        actor_id=actor.id,
+        target_type="user",
+        target_id=user.id,
+        details=f"Updated agent profile for {user.email}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    db.refresh(user)
+    req_count = int(
+        db.query(func.count(Request.id)).filter(Request.agent_id == user.id).scalar() or 0
+    )
+    return AdminAgentItem(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        city=user.city,
+        company_name=prof.company_name,
+        credit_limit=prof.credit_limit,
+        requests_count=req_count,
+        is_active=user.is_active,
+    )
+
+
+@router.get("/logs", response_model=AdminLogListResponse)
+def admin_list_logs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    action: str | None = None,
+    actor_id: UUID | None = None,
+    from_: date | None = Query(None, alias="from"),
+    to: date | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role("admin")),
+):
+    q = db.query(SystemLog)
+    if action:
+        q = q.filter(SystemLog.action == action)
+    if actor_id:
+        q = q.filter(SystemLog.actor_id == actor_id)
+    if from_:
+        q = q.filter(SystemLog.created_at >= datetime.combine(from_, time.min, tzinfo=timezone.utc))
+    if to:
+        end = datetime.combine(to, time.max, tzinfo=timezone.utc)
+        q = q.filter(SystemLog.created_at <= end)
+
+    total = q.count()
+    rows = (
+        q.order_by(SystemLog.created_at.desc())
+        .options(joinedload(SystemLog.actor))
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+
+    items: list[AdminLogItem] = []
+    for log in rows:
+        if log.actor:
+            actor_summary = LogActorSummary(id=log.actor.id, name=log.actor.name, role=log.actor.role)
+        else:
+            actor_summary = LogActorSummary(id=None, name="System", role="system")
+        tgt: LogTargetSummary | None = None
+        if log.target_type:
+            tgt = LogTargetSummary(
+                type=log.target_type,
+                id=log.target_id,
+                name=_target_display_name(db, log.target_type, log.target_id),
+            )
+        items.append(
+            AdminLogItem(
+                id=log.id,
+                action=log.action,
+                actor=actor_summary,
+                target=tgt,
+                details=log.details,
+                ip_address=log.ip_address,
+                timestamp=log.created_at,
+            )
+        )
+    return AdminLogListResponse(items=items, total=total, page=page, limit=limit)
+
+
+@router.get("/config", response_model=AdminConfigListResponse)
+def admin_get_config(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role("admin")),
+):
+    ensure_default_system_config(db)
+    rows = db.query(SystemConfig).order_by(SystemConfig.key.asc()).all()
+    return AdminConfigListResponse(
+        items=[AdminConfigItem(key=r.key, value=r.value, description=r.description) for r in rows]
+    )
+
+
+@router.put("/config", response_model=AdminConfigListResponse)
+def admin_put_config(
+    payload: AdminConfigUpdateRequest,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    ensure_default_system_config(db)
+    for entry in payload.items:
+        if entry.key not in ADMIN_CONFIG_KEYS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "UNKNOWN_CONFIG_KEY", "message": f"Unknown configuration key: {entry.key}"}},
+            )
+        row = db.query(SystemConfig).filter(SystemConfig.key == entry.key).first()
+        if not row:
+            row = SystemConfig(key=entry.key, value=entry.value, description=None, updated_by=actor.id)
+            db.add(row)
+        else:
+            row.value = entry.value
+            row.updated_by = actor.id
+
+    log_admin_action(
+        db,
+        action="config_updated",
+        actor_id=actor.id,
+        target_type="config",
+        target_id=None,
+        details="Updated system configuration",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    rows = db.query(SystemConfig).order_by(SystemConfig.key.asc()).all()
+    return AdminConfigListResponse(
+        items=[AdminConfigItem(key=r.key, value=r.value, description=r.description) for r in rows]
+    )

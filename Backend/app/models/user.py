@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy import Boolean, Column, DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 
@@ -16,10 +17,18 @@ class User(Base):
     role = Column(String(20), nullable=False)
     city = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    last_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    agent_profile = relationship(
+        "AgentProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
     )

@@ -1,9 +1,13 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
+from app.models.agent_profile import AgentProfile
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserLoginInfo, UserRead
@@ -28,6 +32,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         city=payload.city,
     )
     db.add(user)
+    db.flush()
+    if payload.role.value == "agent":
+        db.add(AgentProfile(user_id=user.id, company_name=None, credit_limit=Decimal("0")))
     db.commit()
     db.refresh(user)
     return user
@@ -37,6 +44,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """Login with JSON body."""
     user = _authenticate(db, payload.email, payload.password)
+    user.last_login = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return _build_token_response(user)
 
 
@@ -48,6 +59,10 @@ def login_form(
     """Login with OAuth2 form data (for Swagger UI "Authorize" button).
     Use email as the username field."""
     user = _authenticate(db, form_data.username, form_data.password)
+    user.last_login = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return _build_token_response(user)
 
 

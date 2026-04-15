@@ -1,5 +1,18 @@
-# Railway: https://docs.railway.com/deploy/config-as-code
-# Add PostgreSQL in the Railway dashboard and set DATABASE_URL, SECRET_KEY, CORS_ORIGINS, and email vars.
+# Railway config-as-code: https://docs.railway.com/deploy/config-as-code
+#
+# === Deploy steps ===
+# 1. New Project → "Deploy from GitHub repo" (this repo) or `railway up` from CLI.
+# 2. Add PostgreSQL: "+ New" → Database → PostgreSQL. Railway injects DATABASE_URL on the web service.
+# 3. On the web service, set variables (Variables tab):
+#    - SECRET_KEY        (long random string, required in production)
+#    - CORS_ORIGINS      (comma list; include your public URL, e.g. https://your-app.up.railway.app)
+#    - CORS_ORIGIN_REGEX (optional; e.g. https://.*\.up\.railway\.app$ if you use the default *.up.railway.app host)
+#    - DATABASE_SSLMODE  (optional; "require" if Postgres SSL errors; auto handles many *.rlwy.net URLs)
+#    - SMTP_* / EMAIL_ENABLED / IMAP_* as needed (see Backend/app/core/config.py)
+# 4. Root directory: repo root (Dockerfile builds frontend + backend; frontend uses `npm install` in Docker for lockfile tolerance).
+# 5. Generate domain: Settings → Networking → Generate domain.
+#
+# Health: GET /api/health (no DB query; app still needs DB at startup for create_all).
 
 [build]
 builder = "DOCKERFILE"

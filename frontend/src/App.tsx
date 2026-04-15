@@ -1,4 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminAgentsPage from './pages/admin/AdminAgentsPage';
+import AdminLogsPage from './pages/admin/AdminLogsPage';
+import AdminConfigPage from './pages/admin/AdminConfigPage';
 import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import AppLayout from './components/Layout/AppLayout';
@@ -128,6 +134,22 @@ export default function App() {
                 </RoleRoute>
               }
             />
+
+            <Route
+              path="/admin"
+              element={
+                <RoleRoute roles={['admin']}>
+                  <AdminLayout />
+                </RoleRoute>
+              }
+            >
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="agents" element={<AdminAgentsPage />} />
+              <Route path="logs" element={<AdminLogsPage />} />
+              <Route path="config" element={<AdminConfigPage />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

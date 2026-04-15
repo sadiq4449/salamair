@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.models.agent_profile import AgentProfile
 from app.models.request import Request
 from app.models.attachment import Attachment
 from app.models.request_history import RequestHistory
@@ -12,11 +13,20 @@ from app.models.message_read_status import MessageReadStatus
 from app.models.notification import Notification
 from app.models.notification_preference import NotificationPreference
 from app.models.analytics_snapshot import AnalyticsSnapshot
+from app.models.system_log import SystemLog
+from app.models.system_config import SystemConfig
 
 __all__ = [
-    "User", "Request", "Attachment", "RequestHistory", "CounterOffer",
+    "User",
+    "AgentProfile",
+    "Request",
+    "Attachment",
+    "RequestHistory",
+    "CounterOffer",
     "EmailThread", "EmailMessage", "EmailAttachment",
     "Message", "MessageAttachment", "MessageReadStatus",
     "Notification", "NotificationPreference",
     "AnalyticsSnapshot",
+    "SystemLog",
+    "SystemConfig",
 ]
