@@ -60,6 +60,27 @@ class EmailThreadRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EmailInboxItem(BaseModel):
+    thread_id: UUID
+    request_id: UUID
+    request_code: str
+    route: str
+    request_status: str
+    agent_name: str | None
+    subject: str
+    rm_email: str
+    message_count: int
+    last_activity_at: datetime
+    preview: str
+
+
+class EmailInboxResponse(BaseModel):
+    items: list[EmailInboxItem]
+    total: int
+    page: int
+    limit: int
+
+
 class SendEmailResponse(BaseModel):
     message: str
     email_id: UUID

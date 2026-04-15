@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Optional: POST /email/poll-inbox with header X-Email-Poll-Secret (for cron without JWT)
     EMAIL_POLL_SECRET: str = ""
 
+    # Analytics (Iteration 7): optional Redis; falls back to in-process TTL cache
+    REDIS_URL: str = ""
+    ANALYTICS_CACHE_TTL_SECONDS: int = 600
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user_optional, get_db, require_role
@@ -14,6 +15,8 @@ from app.models.request_history import RequestHistory
 from app.models.user import User
 from app.schemas.email_schema import (
     EmailAttachmentRead,
+    EmailInboxItem,
+    EmailInboxResponse,
     EmailMessageRead,
     EmailThreadRead,
     PollInboxResponse,
@@ -27,6 +30,73 @@ from app.services.email_service import build_html_body, build_plain_body, build_
 from app.services.imap_inbox_service import poll_inbox_once
 
 router = APIRouter()
+
+
+@router.get("/inbox", response_model=EmailInboxResponse)
+def list_email_inbox(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    search: str | None = Query(None, description="Filter by request code or route"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("sales", "admin")),
+):
+    """All RM email threads (sales / admin)."""
+    q = (
+        db.query(EmailThread)
+        .join(Request, Request.id == EmailThread.request_id)
+        .options(joinedload(EmailThread.request).joinedload(Request.agent))
+    )
+    if search:
+        term = f"%{search.strip()}%"
+        q = q.filter(or_(Request.request_code.ilike(term), Request.route.ilike(term)))
+
+    total = q.count()
+    threads = (
+        q.order_by(EmailThread.updated_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+
+    items: list[EmailInboxItem] = []
+    for t in threads:
+        req = t.request
+        agent = req.agent if req else None
+        msg_count = (
+            db.query(func.count(EmailMessage.id))
+            .filter(EmailMessage.thread_id == t.id)
+            .scalar()
+            or 0
+        )
+        last = (
+            db.query(EmailMessage)
+            .filter(EmailMessage.thread_id == t.id)
+            .order_by(EmailMessage.sent_at.desc())
+            .first()
+        )
+        preview = ""
+        last_at = t.updated_at
+        if last:
+            last_at = last.sent_at or last.created_at
+            body = last.body or ""
+            preview = body if len(body) <= 160 else body[:157] + "..."
+        items.append(
+            EmailInboxItem(
+                thread_id=t.id,
+                request_id=req.id,
+                request_code=req.request_code,
+                route=req.route,
+                request_status=req.status,
+                agent_name=agent.name if agent else None,
+                subject=t.subject,
+                rm_email=t.rm_email,
+                message_count=int(msg_count),
+                last_activity_at=last_at,
+                preview=preview,
+            )
+        )
+
+    return EmailInboxResponse(items=items, total=total, page=page, limit=limit)
 
 
 def _require_poll_access(

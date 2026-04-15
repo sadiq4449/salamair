@@ -10,6 +10,7 @@ import PendingApprovals from './pages/sales/PendingApprovals';
 import SalesRequestDetail from './pages/sales/SalesRequestDetail';
 import NotificationsPage from './pages/NotificationsPage';
 import NotificationSettings from './pages/NotificationSettings';
+import Analytics from './pages/Analytics';
 import { ToastContainer } from './components/ui/Toast';
 import { useToastStore } from './store/toastStore';
 import { useNotificationSocket } from './hooks/useNotificationSocket';
@@ -119,6 +120,14 @@ export default function App() {
             {/* Notification routes (all roles) */}
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/settings" element={<NotificationSettings />} />
+            <Route
+              path="/analytics"
+              element={
+                <RoleRoute roles={['agent', 'sales', 'admin']}>
+                  <Analytics />
+                </RoleRoute>
+              }
+            />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

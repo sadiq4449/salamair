@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus, Bell } from 'lucide-react';
+import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus, Bell, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
@@ -16,15 +16,18 @@ const navByRole: Record<string, NavItem[]> = {
   agent: [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'All Requests', path: '/requests', icon: List },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
   sales: [
     { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
     { label: 'Pending Approvals', path: '/pending', icon: Clock },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
   admin: [
     { label: 'Dashboard', path: '/dashboard', icon: Shield },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
 };
