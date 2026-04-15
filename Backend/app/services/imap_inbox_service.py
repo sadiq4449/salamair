@@ -29,6 +29,8 @@ logger = logging.getLogger("uvicorn.error")
 
 # Matches [REQ-2026-001] style codes from build_subject()
 REQ_CODE_PATTERN = re.compile(r"\[(REQ-\d{4}-\d{3})\]", re.IGNORECASE)
+# Gmail may drop long IMAP sessions; keep each poll small.
+_MAX_UNSEEN_PER_POLL = 30
 
 
 def _decode_subject(subject: str | None) -> str:
@@ -125,7 +127,14 @@ def poll_inbox_once(db: Session) -> dict:
             mail.logout()
             return {"ok": True, "skipped": False, "processed": 0, "stored": 0, "errors": []}
 
-        for num in data[0].split():
+        unseen_ids = data[0].split()
+        if len(unseen_ids) > _MAX_UNSEEN_PER_POLL:
+            errors.append(
+                f"IMAP: processing {_MAX_UNSEEN_PER_POLL} of {len(unseen_ids)} UNSEEN; run Sync again for the rest."
+            )
+            unseen_ids = unseen_ids[:_MAX_UNSEEN_PER_POLL]
+
+        for num in unseen_ids:
             processed += 1
             try:
                 typ, msg_data = mail.fetch(num, "(RFC822)")
@@ -234,14 +243,22 @@ def poll_inbox_once(db: Session) -> dict:
                 mail.store(num, "+FLAGS", "\\Seen")
 
             except Exception as e:
-                logger.exception("IMAP message processing error: %s", e)
-                errors.append(str(e))
+                err_s = str(e)
+                # One line only — full tracebacks per message flood host log limits (e.g. Railway 500/sec).
+                logger.warning("IMAP message %s: %s", num, err_s)
+                errors.append(err_s[:500])
+                if "EOF" in err_s or "reset" in err_s.lower() or "Broken pipe" in err_s:
+                    logger.warning("IMAP connection dropped; stopping poll (process remaining on next sync).")
+                    break
                 try:
                     mail.store(num, "+FLAGS", "\\Seen")
                 except Exception:
                     pass
 
-        mail.logout()
+        try:
+            mail.logout()
+        except Exception:
+            pass
     except Exception as e:
         logger.exception("IMAP poll failed: %s", e)
         return {
