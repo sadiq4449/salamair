@@ -113,3 +113,66 @@ export interface CounterOffer {
   status: string;
   created_at: string;
 }
+
+// ── Email Types (Iteration 4) ──
+
+export type EmailDirection = 'incoming' | 'outgoing';
+export type EmailStatus = 'sent' | 'delivered' | 'bounced' | 'failed' | 'received';
+
+export interface EmailAttachmentItem {
+  id: string;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+}
+
+export interface EmailMessageItem {
+  id: string;
+  direction: EmailDirection;
+  from_email: string;
+  to_email: string;
+  subject: string;
+  body: string;
+  status: EmailStatus;
+  attachments: EmailAttachmentItem[];
+  sent_at: string;
+  received_at: string | null;
+  created_at: string;
+}
+
+export interface EmailThread {
+  request_code: string;
+  thread_id: string;
+  subject: string;
+  rm_email: string;
+  status: string;
+  emails: EmailMessageItem[];
+}
+
+export interface SendEmailPayload {
+  request_id: string;
+  to?: string;
+  message: string;
+  include_attachments?: boolean;
+}
+
+export interface ReplyEmailPayload {
+  request_id: string;
+  thread_id: string;
+  message: string;
+}
+
+export interface SendEmailResponse {
+  message: string;
+  email_id: string;
+  request_code: string;
+  status: string;
+  sent_at: string;
+}
+
+export interface ReplyEmailResponse {
+  message: string;
+  email_id: string;
+  sent_at: string;
+}

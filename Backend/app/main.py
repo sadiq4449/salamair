@@ -8,12 +8,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.email import router as email_router
 from app.api.routes.requests import router as requests_router
 from app.api.routes.sales import router as sales_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import User, Request, Attachment, RequestHistory, CounterOffer  # noqa: F401
+from app.models import User, Request, Attachment, RequestHistory, CounterOffer, EmailThread, EmailMessage, EmailAttachment  # noqa: F401
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -81,6 +82,7 @@ async def generic_exception_handler(_request: FastAPIRequest, exc: Exception):
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(requests_router, prefix="/api/v1/requests", tags=["Requests"])
 app.include_router(sales_router, prefix="/api/v1/sales", tags=["Sales"])
+app.include_router(email_router, prefix="/api/v1/email", tags=["Email"])
 
 
 @app.get("/api/health", tags=["Health"])

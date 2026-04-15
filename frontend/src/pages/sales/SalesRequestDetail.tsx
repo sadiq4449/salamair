@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Paperclip, Send, Loader2, CheckCircle, DollarSign, Mail, XCircle } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
+import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import Button from '../../components/ui/Button';
 import CounterOfferModal from '../../components/CounterOfferModal';
+import EmailPreviewModal from '../../components/EmailPreviewModal';
+import EmailThreadView from '../../components/EmailThreadView';
+
 interface Message {
   id: string;
   author: string;
@@ -20,26 +24,23 @@ const mockAgentSalesMessages: Message[] = [
   { id: '2', author: 'Sales Team', initials: 'ST', color: 'bg-blue-500', time: '2 hours ago', text: 'Reviewing the request now. The pricing looks competitive for this route.' },
 ];
 
-const mockSalesRMMessages: Message[] = [
-  { id: '1', author: 'Sales Team', initials: 'ST', color: 'bg-blue-500', time: '1 hour ago', text: 'Requesting RM approval for special group rate on MCT-DXB route.' },
-  { id: '2', author: 'RM Team', initials: 'RM', color: 'bg-purple-500', time: '30 min ago', text: 'Checking fare class availability. Will confirm shortly.' },
-];
-
 export default function SalesRequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentRequest, isDetailLoading, isLoading, fetchRequest, fetchHistory, updateStatus, sendToRM, clearCurrent } = useRequestStore();
+  const { currentRequest, isDetailLoading, isLoading, fetchRequest, fetchHistory, updateStatus, clearCurrent } = useRequestStore();
+  const { clearThread } = useEmailStore();
   const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
   const [newMessage, setNewMessage] = useState('');
   const [showCounter, setShowCounter] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchRequest(id);
       fetchHistory(id);
     }
-    return () => clearCurrent();
-  }, [id, fetchRequest, fetchHistory, clearCurrent]);
+    return () => { clearCurrent(); clearThread(); };
+  }, [id, fetchRequest, fetchHistory, clearCurrent, clearThread]);
 
   if (isDetailLoading) {
     return (
@@ -58,7 +59,6 @@ export default function SalesRequestDetail() {
   }
 
   const req = currentRequest;
-  const messages = activeTab === 'agent-sales' ? mockAgentSalesMessages : mockSalesRMMessages;
   const isTerminal = ['approved', 'rejected'].includes(req.status);
 
   async function handleApprove() {
@@ -69,13 +69,12 @@ export default function SalesRequestDetail() {
     if (id) await updateStatus(id, { status: 'rejected' });
   }
 
-  async function handleSendToRM() {
-    if (id) await sendToRM(id);
+  function handleEmailSent() {
+    if (id) fetchRequest(id);
   }
 
   return (
     <div className="space-y-5">
-      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
@@ -102,7 +101,6 @@ export default function SalesRequestDetail() {
                 <InfoItem label="Proposed Price" value={`${Number(req.price).toFixed(2)} OMR`} highlight />
                 <InfoItem label="Agent" value={req.agent.name} />
               </div>
-
               <StatusFlow status={req.status} />
             </div>
           </div>
@@ -111,73 +109,76 @@ export default function SalesRequestDetail() {
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
-              <div className="flex gap-1">
+              <div className="flex border-b-2 border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setActiveTab('agent-sales')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
                     activeTab === 'agent-sales'
-                      ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
                   Agent ↔ Sales
                 </button>
                 <button
                   onClick={() => setActiveTab('sales-rm')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-2 ${
                     activeTab === 'sales-rm'
-                      ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
+                  <Mail size={14} />
                   Sales ↔ RM (Email)
                 </button>
               </div>
             </div>
             <div className="p-6">
-              {/* Message Timeline */}
-              <div className="space-y-4 mb-5">
-                {messages.map((msg) => (
-                  <div key={msg.id} className="flex gap-3">
-                    <div className={`w-9 h-9 rounded-full ${msg.color} flex items-center justify-center text-white text-xs font-semibold shrink-0`}>
-                      {msg.initials}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{msg.author}</span>
-                        <span className="text-xs text-gray-400">{msg.time}</span>
+              {activeTab === 'agent-sales' ? (
+                <>
+                  <div className="space-y-4 mb-5">
+                    {mockAgentSalesMessages.map((msg) => (
+                      <div key={msg.id} className="flex gap-3">
+                        <div className={`w-9 h-9 rounded-full ${msg.color} flex items-center justify-center text-white text-xs font-semibold shrink-0`}>
+                          {msg.initials}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">{msg.author}</span>
+                            <span className="text-xs text-gray-400">{msg.time}</span>
+                          </div>
+                          <div className="bg-gray-50 dark:bg-gray-800 border-l-3 border-teal-400 rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            {msg.text}
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-800 border-l-3 border-teal-400 rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {msg.text}
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              {/* Input area */}
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
-                <input
-                  type="text"
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
-                />
-                <button className="p-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                  <Paperclip size={18} />
-                </button>
-                <button className="p-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
-                  <Send size={18} />
-                </button>
-              </div>
+                  <div className="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <input
+                      type="text"
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="flex-1 px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
+                    />
+                    <button className="p-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <Paperclip size={18} />
+                    </button>
+                    <button className="p-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
+                      <Send size={18} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <EmailThreadView requestId={id!} canReply canSimulate />
+              )}
             </div>
           </div>
         </div>
 
         {/* Right Column */}
         <div className="space-y-5">
-          {/* Actions Card */}
           {!isTerminal && (
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -192,7 +193,7 @@ export default function SalesRequestDetail() {
                   <DollarSign size={16} />
                   Counter Offer
                 </Button>
-                <Button variant="purple" fullWidth onClick={handleSendToRM} isLoading={isLoading}>
+                <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)}>
                   <Mail size={16} />
                   Send to RM
                 </Button>
@@ -200,6 +201,30 @@ export default function SalesRequestDetail() {
                   <XCircle size={16} />
                   Reject
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {req.attachments && req.attachments.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Attachments</h3>
+              </div>
+              <div className="p-4 space-y-2">
+                {req.attachments.map((att) => (
+                  <a
+                    key={att.id}
+                    href={att.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <Paperclip size={14} className="text-gray-400" />
+                    <span className="text-sm text-teal-600 dark:text-teal-400 truncate">{att.filename}</span>
+                    <span className="text-xs text-gray-400 ml-auto">{(att.file_size / 1024).toFixed(0)} KB</span>
+                  </a>
+                ))}
               </div>
             </div>
           )}
@@ -226,6 +251,15 @@ export default function SalesRequestDetail() {
           onClose={() => setShowCounter(false)}
           requestId={id}
           currentPrice={req.price}
+        />
+      )}
+
+      {currentRequest && (
+        <EmailPreviewModal
+          isOpen={showEmailPreview}
+          onClose={() => setShowEmailPreview(false)}
+          request={currentRequest}
+          onSent={handleEmailSent}
         />
       )}
     </div>
