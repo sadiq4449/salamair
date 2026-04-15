@@ -176,3 +176,50 @@ export interface ReplyEmailResponse {
   email_id: string;
   sent_at: string;
 }
+
+// ── Message / Chat Types (Iteration 5) ──
+
+export type MessageType = 'chat' | 'email' | 'system';
+
+export interface MessageSender {
+  id: string | null;
+  name: string;
+  role: 'agent' | 'sales' | 'rm' | 'system';
+}
+
+export interface MessageAttachmentItem {
+  id: string;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  request_id: string;
+  type: MessageType;
+  sender: MessageSender | null;
+  content: string;
+  attachments: MessageAttachmentItem[];
+  is_read: boolean;
+  timestamp: string;
+}
+
+export interface MessageListResponse {
+  items: ChatMessage[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface WsEvent {
+  event: string;
+  data: Record<string, unknown>;
+}
+
+export interface TypingUser {
+  user_id: string;
+  name: string;
+  is_typing: boolean;
+}
