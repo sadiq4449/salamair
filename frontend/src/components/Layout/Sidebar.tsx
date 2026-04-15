@@ -17,10 +17,6 @@ import {
   Settings2,
   Timer,
   Upload,
-  MapPin,
-  Inbox,
-  Users,
-  ListOrdered,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';

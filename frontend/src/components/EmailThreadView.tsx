@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw, Bell } from 'lucide-react';
+import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
-import type { EmailMessageItem, RequestStatus } from '../types';
+import type { EmailMessageItem } from '../types';
 
 interface Props {
   requestId: string;
   canReply?: boolean;
   canSimulate?: boolean;
-  /** When set, shows “Nudge RM” for rm_pending (demo parity). */
-  requestStatus?: RequestStatus;
 }
+
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -101,7 +100,6 @@ export default function EmailThreadView({
   requestId,
   canReply = false,
   canSimulate = false,
-  requestStatus,
 }: Props) {
   const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
@@ -237,17 +235,7 @@ export default function EmailThreadView({
                 Simulate RM Reply
               </button>
             )}
-            {canReply && canSimulate && requestStatus === 'rm_pending' && hasThread && (
-              <button
-                type="button"
-                onClick={handleNudgeRm}
-                disabled={isSending}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium bg-violet-50 text-violet-800 dark:bg-violet-900/25 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors disabled:opacity-50"
-              >
-                <Bell size={14} />
-                Nudge RM
-              </button>
-            )}
+
           </div>
         </div>
       )}
