@@ -14,5 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY Backend/ ./
 COPY --from=frontend-build /app/frontend/dist ./static
 
-EXPOSE ${PORT:-8000}
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Railway and other hosts set PORT at runtime
+EXPOSE 8000
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"

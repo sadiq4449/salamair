@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_db, require_role
+from app.api.deps import get_current_user_optional, get_db, require_role
 from app.core.config import settings
 from app.models.email_attachment import EmailAttachment
 from app.models.email_message import EmailMessage
@@ -16,15 +16,37 @@ from app.schemas.email_schema import (
     EmailAttachmentRead,
     EmailMessageRead,
     EmailThreadRead,
+    PollInboxResponse,
     ReplyEmailRequest,
     ReplyEmailResponse,
     SendEmailRequest,
     SendEmailResponse,
     SimulateReplyRequest,
 )
-from app.services.email_service import build_html_body, build_subject, send_smtp_email
+from app.services.email_service import build_html_body, build_plain_body, build_subject, send_smtp_email
+from app.services.imap_inbox_service import poll_inbox_once
 
 router = APIRouter()
+
+
+def _require_poll_access(
+    x_email_poll_secret: str | None = Header(None, alias="X-Email-Poll-Secret"),
+    user: User | None = Depends(get_current_user_optional),
+) -> None:
+    """Allow sales/admin JWT, or X-Email-Poll-Secret when EMAIL_POLL_SECRET is set."""
+    if settings.EMAIL_POLL_SECRET and x_email_poll_secret == settings.EMAIL_POLL_SECRET:
+        return
+    if user and user.role in ("sales", "admin"):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Login as sales/admin or send X-Email-Poll-Secret matching EMAIL_POLL_SECRET",
+            }
+        },
+    )
 
 
 def _get_request_or_404(db: Session, request_id: uuid.UUID) -> Request:
@@ -66,9 +88,15 @@ def send_email_to_rm(
     html_body = build_html_body(
         req.request_code, req.route, req.pax, float(req.price),
         travel_date_str, payload.message, current_user.name,
+        current_user.email, current_user.id,
+    )
+    plain_body = build_plain_body(
+        req.request_code, req.route, req.pax, float(req.price),
+        travel_date_str, payload.message, current_user.name,
+        current_user.email, current_user.id,
     )
 
-    message_id = send_smtp_email(rm_email, subject, payload.message, html_body)
+    message_id = send_smtp_email(rm_email, subject, plain_body, html_body)
 
     thread = db.query(EmailThread).filter(EmailThread.request_id == req.id).first()
     if not thread:
@@ -87,13 +115,14 @@ def send_email_to_rm(
         from_email=settings.SMTP_FROM_EMAIL,
         to_email=rm_email,
         subject=subject,
-        body=payload.message,
+        body=plain_body,
         html_body=html_body,
         message_id=message_id,
         status="sent" if message_id else "failed",
         sent_at=now,
     )
     db.add(email_msg)
+    db.flush()
 
     if payload.include_attachments and req.attachments:
         for att in req.attachments:
@@ -198,10 +227,16 @@ def reply_to_rm(
         )
 
     subject = f"Re: {thread.subject}"
+    travel_date_str = str(req.travel_date) if req.travel_date else None
     html_body = build_html_body(
         req.request_code, req.route, req.pax, float(req.price),
-        str(req.travel_date) if req.travel_date else None,
-        payload.message, current_user.name,
+        travel_date_str, payload.message, current_user.name,
+        current_user.email, current_user.id,
+    )
+    plain_body = build_plain_body(
+        req.request_code, req.route, req.pax, float(req.price),
+        travel_date_str, payload.message, current_user.name,
+        current_user.email, current_user.id,
     )
 
     last_msg = (
@@ -212,7 +247,7 @@ def reply_to_rm(
     )
     in_reply_to = last_msg.message_id if last_msg else None
 
-    message_id = send_smtp_email(thread.rm_email, subject, payload.message, html_body)
+    message_id = send_smtp_email(thread.rm_email, subject, plain_body, html_body)
 
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
@@ -221,7 +256,7 @@ def reply_to_rm(
         from_email=settings.SMTP_FROM_EMAIL,
         to_email=thread.rm_email,
         subject=subject,
-        body=payload.message,
+        body=plain_body,
         html_body=html_body,
         message_id=message_id,
         in_reply_to=in_reply_to,
@@ -240,6 +275,26 @@ def reply_to_rm(
         message="Reply sent successfully",
         email_id=email_msg.id,
         sent_at=email_msg.sent_at,
+    )
+
+
+@router.post("/poll-inbox", response_model=PollInboxResponse)
+def poll_inbox(
+    db: Session = Depends(get_db),
+    _auth: None = Depends(_require_poll_access),
+):
+    """
+    Fetch UNSEEN emails from IMAP, match subjects containing [REQ-YYYY-NNN], store as incoming messages.
+    Configure IMAP_* env vars. Call from UI (sales) or cron with X-Email-Poll-Secret.
+    """
+    result = poll_inbox_once(db)
+    return PollInboxResponse(
+        ok=result.get("ok", False),
+        skipped=result.get("skipped", False),
+        reason=result.get("reason"),
+        processed=result.get("processed", 0),
+        stored=result.get("stored", 0),
+        errors=result.get("errors") or [],
     )
 
 

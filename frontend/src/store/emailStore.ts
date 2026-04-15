@@ -12,6 +12,7 @@ interface EmailState {
   sendEmail: (payload: SendEmailPayload) => Promise<void>;
   reply: (payload: ReplyEmailPayload) => Promise<void>;
   simulateReply: (requestId: string, message?: string) => Promise<void>;
+  pollInbox: (requestId?: string) => Promise<{ stored: number; skipped?: boolean } | null>;
   clearThread: () => void;
 }
 
@@ -63,6 +64,21 @@ export const useEmailStore = create<EmailState>((set, get) => ({
       set({ isSending: false });
     } catch {
       set({ error: 'Failed to simulate reply', isSending: false });
+    }
+  },
+
+  pollInbox: async (requestId) => {
+    set({ isSending: true, error: null });
+    try {
+      const r = await emailService.pollInbox();
+      if (requestId) {
+        await get().fetchThread(requestId);
+      }
+      set({ isSending: false });
+      return { stored: r.stored, skipped: r.skipped };
+    } catch {
+      set({ error: 'Failed to sync inbox', isSending: false });
+      return null;
     }
   },
 

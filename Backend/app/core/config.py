@@ -16,8 +16,20 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "sales@salamair.com"
     SMTP_FROM_NAME: str = "Salam Air Sales"
     SMTP_USE_TLS: bool = True
+    # When True, send_mail uses real SMTP. When False, sends are skipped (no fake "sent").
     EMAIL_ENABLED: bool = False
     RM_DEFAULT_EMAIL: str = "rm@salamair.com"
+
+    # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup)
+    IMAP_ENABLED: bool = False
+    IMAP_HOST: str = "imap.gmail.com"
+    IMAP_PORT: int = 993
+    IMAP_USE_SSL: bool = True
+    IMAP_USER: str = ""
+    IMAP_PASSWORD: str = ""
+    IMAP_MAILBOX: str = "INBOX"
+    # Optional: POST /email/poll-inbox with header X-Email-Poll-Secret (for cron without JWT)
+    EMAIL_POLL_SECRET: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

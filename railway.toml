@@ -1,0 +1,12 @@
+# Railway: https://docs.railway.com/deploy/config-as-code
+# Add PostgreSQL in the Railway dashboard and set DATABASE_URL, SECRET_KEY, CORS_ORIGINS, and email vars.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

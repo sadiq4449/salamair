@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class SendEmailRequest(BaseModel):
@@ -72,3 +72,12 @@ class ReplyEmailResponse(BaseModel):
     message: str
     email_id: UUID
     sent_at: datetime
+
+
+class PollInboxResponse(BaseModel):
+    ok: bool
+    skipped: bool = False
+    reason: str | None = None
+    processed: int = 0
+    stored: int = 0
+    errors: list[str] = Field(default_factory=list)

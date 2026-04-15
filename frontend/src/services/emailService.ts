@@ -5,6 +5,7 @@ import type {
   SendEmailResponse,
   ReplyEmailPayload,
   ReplyEmailResponse,
+  PollInboxResponse,
 } from '../types';
 
 export const emailService = {
@@ -28,5 +29,14 @@ export const emailService = {
       request_id: requestId,
       message: message || 'Approved with fare as requested. Valid for 7 days.',
     });
+  },
+
+  async pollInbox(secret?: string): Promise<PollInboxResponse> {
+    const headers: Record<string, string> = {};
+    if (secret) {
+      headers['X-Email-Poll-Secret'] = secret;
+    }
+    const { data } = await api.post<PollInboxResponse>('/email/poll-inbox', {}, { headers });
+    return data;
   },
 };

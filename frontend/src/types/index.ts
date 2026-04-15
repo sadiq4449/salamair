@@ -171,6 +171,15 @@ export interface SendEmailResponse {
   sent_at: string;
 }
 
+export interface PollInboxResponse {
+  ok: boolean;
+  skipped?: boolean;
+  reason?: string | null;
+  processed: number;
+  stored: number;
+  errors: string[];
+}
+
 export interface ReplyEmailResponse {
   message: string;
   email_id: string;

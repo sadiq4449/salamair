@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
+import { useToastStore } from '../store/toastStore';
 import type { EmailMessageItem } from '../types';
 
 interface Props {
@@ -79,7 +80,8 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
 }
 
 export default function EmailThreadView({ requestId, canReply = false, canSimulate = false }: Props) {
-  const { thread, isLoading, isSending, fetchThread, reply, simulateReply } = useEmailStore();
+  const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
+  const { addToast } = useToastStore();
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
@@ -109,6 +111,18 @@ export default function EmailThreadView({ requestId, canReply = false, canSimula
     await simulateReply(requestId);
   }
 
+  async function handlePollInbox() {
+    const r = await pollInbox(requestId);
+    if (r === null) return;
+    if (r.skipped) {
+      addToast('info', 'IMAP sync is disabled on the server. Set IMAP_ENABLED and credentials.');
+    } else if (r.stored > 0) {
+      addToast('success', `Imported ${r.stored} new email(s) from inbox.`);
+    } else {
+      addToast('info', 'No new emails in inbox (or none matched a request REQ code).');
+    }
+  }
+
   return (
     <div>
       {/* Email Header */}
@@ -120,9 +134,23 @@ export default function EmailThreadView({ requestId, canReply = false, canSimula
           <p className="text-sm font-semibold text-gray-900 dark:text-white">RM Email Thread</p>
           <p className="text-xs text-gray-400">{thread?.rm_email ?? 'rm@salamair.com'}</p>
         </div>
-        {hasThread && (
-          <span className="ml-auto text-xs text-gray-400">{emails.length} email{emails.length > 1 ? 's' : ''}</span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {hasThread && (
+            <span className="text-xs text-gray-400">{emails.length} email{emails.length > 1 ? 's' : ''}</span>
+          )}
+          {canReply && (
+            <button
+              type="button"
+              onClick={handlePollInbox}
+              disabled={isSending}
+              title="Fetch new replies from the mailbox (IMAP)"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/40 disabled:opacity-50"
+            >
+              {isSending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              Sync inbox
+            </button>
+          )}
+        </div>
       </div>
 
       {!hasThread ? (

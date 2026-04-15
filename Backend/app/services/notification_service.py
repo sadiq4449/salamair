@@ -283,6 +283,25 @@ def notify_counter_offered(db: Session, req: Request, counter_price: float) -> l
     return [n] if n else []
 
 
+def notify_email_received(db: Session, req: Request) -> list[Notification]:
+    """Notify all sales users when an RM reply is captured (e.g. via IMAP)."""
+    sales_users = db.query(User).filter(User.role == "sales", User.is_active.is_(True)).all()
+    notifications = []
+    for user in sales_users:
+        n = create_notification(
+            db, user.id,
+            "EMAIL_RECEIVED",
+            "Email from RM",
+            f"New email activity on {req.request_code} ({req.route})",
+            request_id=req.id,
+            request_code=req.request_code,
+        )
+        if n:
+            notifications.append(n)
+    db.commit()
+    return notifications
+
+
 def notify_sent_to_rm(db: Session, req: Request) -> list[Notification]:
     sales_users = db.query(User).filter(User.role == "sales", User.is_active.is_(True)).all()
     notifications = []
