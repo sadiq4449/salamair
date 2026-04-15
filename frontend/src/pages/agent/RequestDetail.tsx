@@ -9,6 +9,7 @@ import SlaIndicator from '../../components/SlaIndicator';
 import RequestTagsEditor from '../../components/RequestTagsEditor';
 import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
+import AiPricingAssistant from '../../components/AiPricingAssistant';
 
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -125,8 +126,10 @@ export default function RequestDetail() {
           </div>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column (demo: AI assistant + notes) */}
         <div className="space-y-5">
+          <AiPricingAssistant price={Number(req.price)} priority={req.priority} status={req.status} />
+
           {/* Notes Card */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">

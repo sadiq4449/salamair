@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
+import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw, Bell } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
-import type { EmailMessageItem } from '../types';
+import type { EmailMessageItem, RequestStatus } from '../types';
 
 interface Props {
   requestId: string;
   canReply?: boolean;
   canSimulate?: boolean;
+  /** When set, shows “Nudge RM” for rm_pending (demo parity). */
+  requestStatus?: RequestStatus;
 }
 
 function formatTime(iso: string) {
@@ -95,7 +97,12 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
   );
 }
 
-export default function EmailThreadView({ requestId, canReply = false, canSimulate = false }: Props) {
+export default function EmailThreadView({
+  requestId,
+  canReply = false,
+  canSimulate = false,
+  requestStatus,
+}: Props) {
   const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
   const [replyText, setReplyText] = useState('');
@@ -218,16 +225,30 @@ export default function EmailThreadView({ requestId, canReply = false, canSimula
               {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </div>
-          {canSimulate && (
-            <button
-              onClick={handleSimulate}
-              disabled={isSending}
-              className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors disabled:opacity-50"
-            >
-              <Reply size={14} />
-              Simulate RM Reply
-            </button>
-          )}
+          <div className="mt-2 flex flex-col gap-2">
+            {canSimulate && (
+              <button
+                type="button"
+                onClick={handleSimulate}
+                disabled={isSending}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors disabled:opacity-50"
+              >
+                <Reply size={14} />
+                Simulate RM Reply
+              </button>
+            )}
+            {canReply && canSimulate && requestStatus === 'rm_pending' && hasThread && (
+              <button
+                type="button"
+                onClick={handleNudgeRm}
+                disabled={isSending}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium bg-violet-50 text-violet-800 dark:bg-violet-900/25 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors disabled:opacity-50"
+              >
+                <Bell size={14} />
+                Nudge RM
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

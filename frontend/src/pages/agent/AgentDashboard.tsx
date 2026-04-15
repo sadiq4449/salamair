@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Clock, CheckCircle, XCircle, Plus, List, Eye } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, Plus, List, Eye, Plane } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
@@ -54,10 +54,14 @@ export default function AgentDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => setShowCreate(true)}>
           <Plus size={16} />
           Create New Request
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/flights')}>
+          <Plane size={16} />
+          Check Flights
         </Button>
         <Button variant="outline" onClick={() => navigate('/requests')}>
           <List size={16} />

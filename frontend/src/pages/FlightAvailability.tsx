@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Plane, Search } from 'lucide-react';
 import { MOCK_FLIGHTS, ROUTE_OPTIONS, type FlightRow } from '../data/flightMock';
 
+const DATE_OPTIONS = ['', ...Array.from(new Set(MOCK_FLIGHTS.map((f) => f.date))).sort()];
+
 function seatBand(seats: number) {
   if (seats <= 10) return { label: 'Low', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' };
   if (seats <= 25) return { label: 'Medium', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' };
@@ -11,10 +13,12 @@ function seatBand(seats: number) {
 export default function FlightAvailability() {
   const [q, setQ] = useState('');
   const [route, setRoute] = useState<string>('');
+  const [date, setDate] = useState<string>('');
 
   const filtered = useMemo(() => {
     return MOCK_FLIGHTS.filter((f) => {
       if (route && f.route !== route) return false;
+      if (date && f.date !== date) return false;
       if (!q.trim()) return true;
       const s = q.toLowerCase();
       return (
@@ -24,7 +28,7 @@ export default function FlightAvailability() {
         f.toCity.toLowerCase().includes(s)
       );
     });
-  }, [q, route]);
+  }, [q, route, date]);
 
   return (
     <div className="space-y-6">
@@ -38,8 +42,8 @@ export default function FlightAvailability() {
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between flex-wrap">
+        <div className="relative flex-1 max-w-md min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="search"
@@ -49,17 +53,30 @@ export default function FlightAvailability() {
             className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white"
           />
         </div>
-        <select
-          value={route}
-          onChange={(e) => setRoute(e.target.value)}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white w-full sm:w-44"
-        >
-          {ROUTE_OPTIONS.map((r) => (
-            <option key={r || 'all'} value={r}>
-              {r ? r : 'All routes'}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={route}
+            onChange={(e) => setRoute(e.target.value)}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white w-full sm:w-44"
+          >
+            {ROUTE_OPTIONS.map((r) => (
+              <option key={r || 'all'} value={r}>
+                {r ? r : 'All routes'}
+              </option>
+            ))}
+          </select>
+          <select
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white w-full sm:w-44"
+          >
+            {DATE_OPTIONS.map((d) => (
+              <option key={d || 'all-dates'} value={d}>
+                {d ? d : 'All dates'}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[18px]">

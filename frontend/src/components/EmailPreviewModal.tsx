@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Mail, Paperclip, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import type { RequestDetail } from '../types';
+import { DEMO_SMART_REPLIES } from '../utils/demoAiHelpers';
 
 interface Props {
   isOpen: boolean;
@@ -110,6 +111,23 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
             <div>
               <p className="text-[0.65rem] text-gray-400 uppercase font-semibold">Price</p>
               <p className="text-sm font-semibold text-teal-600 dark:text-teal-400">{Number(request.price).toFixed(2)} OMR</p>
+            </div>
+          </div>
+
+          {/* Smart replies (UI.demo_design sales — chips for RM message) */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Smart replies</p>
+            <div className="flex flex-wrap gap-2">
+              {DEMO_SMART_REPLIES(Number(request.price), request.route, request.pax).map((line, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setMessage((prev) => (prev ? `${prev}\n\n${line}` : line))}
+                  className="text-left text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors max-w-full"
+                >
+                  {line}
+                </button>
+              ))}
             </div>
           </div>
 

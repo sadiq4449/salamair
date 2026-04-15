@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Eye, FileText, RotateCcw } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -18,12 +18,20 @@ const AIRPORTS = ['MCT', 'DXB', 'KHI', 'BKK', 'COK', 'MLE'];
 
 export default function PendingApprovals() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { requests, fetchSalesQueue, isLoading, filters, setFilters, resetFilters } = useRequestStore();
   const [searchLocal, setSearchLocal] = useState(filters.search || '');
 
   useEffect(() => {
-    fetchSalesQueue();
-  }, [fetchSalesQueue]);
+    const q = searchParams.get('search');
+    if (q) {
+      setSearchLocal(q);
+      setFilters({ search: q });
+      fetchSalesQueue({ search: q });
+    } else {
+      fetchSalesQueue();
+    }
+  }, [fetchSalesQueue, searchParams, setFilters]);
 
   function handleSearch() {
     setFilters({ search: searchLocal });

@@ -7,7 +7,13 @@ import AdminLogsPage from './pages/admin/AdminLogsPage';
 import AdminConfigPage from './pages/admin/AdminConfigPage';
 import AdminRemindersPage from './pages/admin/AdminRemindersPage';
 import AdminTagsPage from './pages/admin/AdminTagsPage';
+import AdminAllRequestsPage from './pages/admin/AdminAllRequestsPage';
 import SlaDashboardPage from './pages/SlaDashboardPage';
+import BulkUploadPage from './pages/BulkUploadPage';
+import FlightAvailability from './pages/FlightAvailability';
+import EmailInbox from './pages/sales/EmailInbox';
+import CityWiseView from './pages/sales/CityWiseView';
+import AgentHistoryPage from './pages/sales/AgentHistoryPage';
 import SearchPage from './pages/SearchPage';
 import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
@@ -122,10 +128,52 @@ export default function App() {
             {/* Agent routes */}
             <Route path="/requests" element={<RoleRoute roles={['agent']}><RequestList /></RoleRoute>} />
             <Route path="/requests/:id" element={<RoleRoute roles={['agent']}><RequestDetail /></RoleRoute>} />
+            <Route
+              path="/bulk-upload"
+              element={
+                <RoleRoute roles={['agent']}>
+                  <BulkUploadPage />
+                </RoleRoute>
+              }
+            />
+
+            {/* Shared reference data (demo: flight grid) */}
+            <Route
+              path="/flights"
+              element={
+                <RoleRoute roles={['agent', 'sales', 'admin']}>
+                  <FlightAvailability />
+                </RoleRoute>
+              }
+            />
 
             {/* Sales routes */}
             <Route path="/pending" element={<RoleRoute roles={['sales', 'admin']}><PendingApprovals /></RoleRoute>} />
             <Route path="/pending/:id" element={<RoleRoute roles={['sales', 'admin']}><SalesRequestDetail /></RoleRoute>} />
+            <Route
+              path="/inbox"
+              element={
+                <RoleRoute roles={['sales', 'admin']}>
+                  <EmailInbox />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/city-view"
+              element={
+                <RoleRoute roles={['sales', 'admin']}>
+                  <CityWiseView />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/agent-history"
+              element={
+                <RoleRoute roles={['sales', 'admin']}>
+                  <AgentHistoryPage />
+                </RoleRoute>
+              }
+            />
             <Route
               path="/sla-dashboard"
               element={
@@ -164,6 +212,7 @@ export default function App() {
               <Route path="config" element={<AdminConfigPage />} />
               <Route path="reminders" element={<AdminRemindersPage />} />
               <Route path="tags" element={<AdminTagsPage />} />
+              <Route path="requests" element={<AdminAllRequestsPage />} />
             </Route>
           </Route>
 

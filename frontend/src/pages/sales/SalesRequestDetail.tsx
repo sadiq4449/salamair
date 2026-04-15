@@ -12,6 +12,8 @@ import CounterOfferModal from '../../components/CounterOfferModal';
 import EmailPreviewModal from '../../components/EmailPreviewModal';
 import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
+import AiPricingAssistant from '../../components/AiPricingAssistant';
+import EmailThreadSummaryCard from '../../components/EmailThreadSummaryCard';
 
 export default function SalesRequestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -137,14 +139,22 @@ export default function SalesRequestDetail() {
               {activeTab === 'agent-sales' ? (
                 <UnifiedTimeline requestId={id!} />
               ) : (
-                <EmailThreadView requestId={id!} canReply canSimulate />
+                <EmailThreadView
+                  requestId={id!}
+                  requestStatus={req.status}
+                  canReply
+                  canSimulate
+                />
               )}
             </div>
           </div>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column — order matches UI.demo_design/sales.html (AI, summary, actions, notes) */}
         <div className="space-y-5">
+          <AiPricingAssistant price={Number(req.price)} priority={req.priority} status={req.status} />
+          <EmailThreadSummaryCard request={req} />
+
           {!isTerminal && (
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">

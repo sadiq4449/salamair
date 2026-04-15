@@ -1,6 +1,27 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus, Bell, BarChart3, Settings2, Timer, Upload } from 'lucide-react';
+import {
+  Home,
+  List,
+  TrendingUp,
+  Clock,
+  Shield,
+  Plane,
+  Moon,
+  Sun,
+  LogOut,
+  X,
+  Plus,
+  Bell,
+  BarChart3,
+  Settings2,
+  Timer,
+  Upload,
+  MapPin,
+  Inbox,
+  Users,
+  ListOrdered,
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
@@ -39,6 +60,16 @@ const navByRole: Record<string, NavItem[]> = {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+function isNavItemActive(itemPath: string, pathname: string): boolean {
+  if (itemPath === '/admin/dashboard') {
+    return pathname === '/admin' || pathname === '/admin/dashboard';
+  }
+  if (itemPath.startsWith('/admin/')) {
+    return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+  }
+  return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -110,10 +141,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             Main
           </div>
           {items.map((item) => {
-            const active =
-              location.pathname === item.path ||
-              location.pathname.startsWith(item.path + '/') ||
-              (item.path.startsWith('/admin') && location.pathname.startsWith('/admin'));
+            const active = isNavItemActive(item.path, location.pathname);
             return (
               <div
                 key={item.path}
