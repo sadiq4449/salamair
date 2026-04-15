@@ -1,7 +1,7 @@
 import type { Priority, RequestStatus } from '../types';
 
 /** Heuristic “AI” pricing aligned with UI.demo_design/sales.js updateAI */
-export function demoSuggestedPriceOmR(price: number, priority: Priority): number {
+export function demoSuggestedPriceOmR(price: number): number {
   const p = Number(price);
   if (Number.isNaN(p) || p <= 0) return 0;
   return p > 100 ? Math.round(p * 0.9) : Math.round(p * 0.95);
