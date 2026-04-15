@@ -18,6 +18,7 @@ from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
 from app.core.config import settings
 from app.db.base import Base
+from app.db.schema_sync import apply_runtime_schema_fixes
 from app.db.session import engine
 from app.models import (  # noqa: F401
     User,
@@ -46,6 +47,7 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    apply_runtime_schema_fixes(engine)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     yield
 
