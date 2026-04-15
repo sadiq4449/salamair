@@ -34,6 +34,7 @@ export interface CreateRequestData {
 export interface StatusUpdateData {
   status: string;
   notes?: string;
+  reason?: string;
 }
 
 export interface CounterOfferData {

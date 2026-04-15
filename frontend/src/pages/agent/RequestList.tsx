@@ -33,6 +33,11 @@ export default function RequestList() {
   const { requests, fetchRequests, isLoading, filters, setFilters, resetFilters } = useRequestStore();
   const [showCreate, setShowCreate] = useState(false);
   const [searchLocal, setSearchLocal] = useState(filters.search || '');
+  const [tagOptions, setTagOptions] = useState<TagDto[]>([]);
+
+  useEffect(() => {
+    listTags().then(setTagOptions).catch(() => setTagOptions([]));
+  }, []);
 
   useEffect(() => {
     fetchRequests();
@@ -108,7 +113,7 @@ export default function RequestList() {
           className={selectClass}
         >
           <option value="">Any tag</option>
-          {tagOptions.map((t) => (
+          {tagOptions.map((t: TagDto) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>

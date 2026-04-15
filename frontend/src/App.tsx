@@ -8,7 +8,6 @@ import AdminConfigPage from './pages/admin/AdminConfigPage';
 import AdminRemindersPage from './pages/admin/AdminRemindersPage';
 import AdminTagsPage from './pages/admin/AdminTagsPage';
 import SlaDashboardPage from './pages/SlaDashboardPage';
-import BulkUploadPage from './pages/BulkUploadPage';
 import SearchPage from './pages/SearchPage';
 import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
