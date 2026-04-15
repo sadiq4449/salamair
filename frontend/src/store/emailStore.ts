@@ -1,6 +1,28 @@
+import axios from 'axios';
 import { create } from 'zustand';
 import { emailService } from '../services/emailService';
-import type { EmailThread, SendEmailPayload, ReplyEmailPayload } from '../types';
+import type {
+  EmailThread,
+  SendEmailPayload,
+  ReplyEmailPayload,
+  SendEmailResponse,
+  ReplyEmailResponse,
+} from '../types';
+
+function apiErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response?.data) {
+    const d = err.response.data as {
+      error?: { message?: string };
+      detail?: unknown;
+    };
+    if (d.error?.message) return String(d.error.message);
+    const det = d.detail as { error?: { message?: string } } | string | undefined;
+    if (typeof det === 'object' && det?.error?.message) return String(det.error.message);
+    if (typeof det === 'string') return det;
+  }
+  if (err instanceof Error) return err.message;
+  return 'Request failed';
+}
 
 interface EmailState {
   thread: EmailThread | null;
@@ -9,8 +31,9 @@ interface EmailState {
   error: string | null;
 
   fetchThread: (requestId: string) => Promise<void>;
-  sendEmail: (payload: SendEmailPayload) => Promise<void>;
-  reply: (payload: ReplyEmailPayload) => Promise<void>;
+  clearError: () => void;
+  sendEmail: (payload: SendEmailPayload) => Promise<SendEmailResponse>;
+  reply: (payload: ReplyEmailPayload) => Promise<ReplyEmailResponse>;
   simulateReply: (requestId: string, message?: string) => Promise<void>;
   pollInbox: (requestId?: string) => Promise<{ stored: number; skipped?: boolean } | null>;
   clearThread: () => void;
@@ -32,27 +55,31 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     }
   },
 
+  clearError: () => set({ error: null }),
+
   sendEmail: async (payload) => {
     set({ isSending: true, error: null });
     try {
-      await emailService.sendEmail(payload);
+      const data = await emailService.sendEmail(payload);
       await get().fetchThread(payload.request_id);
       set({ isSending: false });
-    } catch {
-      set({ error: 'Failed to send email', isSending: false });
-      throw new Error('Failed to send email');
+      return data;
+    } catch (e) {
+      set({ error: apiErrorMessage(e), isSending: false });
+      throw e;
     }
   },
 
   reply: async (payload) => {
     set({ isSending: true, error: null });
     try {
-      await emailService.reply(payload);
+      const data = await emailService.reply(payload);
       await get().fetchThread(payload.request_id);
       set({ isSending: false });
-    } catch {
-      set({ error: 'Failed to send reply', isSending: false });
-      throw new Error('Failed to send reply');
+      return data;
+    } catch (e) {
+      set({ error: apiErrorMessage(e), isSending: false });
+      throw e;
     }
   },
 
