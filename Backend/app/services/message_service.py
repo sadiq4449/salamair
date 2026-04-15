@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.message import Message
 from app.models.message_read_status import MessageReadStatus
@@ -25,8 +25,14 @@ def create_chat_message(
     )
     db.add(msg)
     db.commit()
-    db.refresh(msg)
-    return msg
+
+    loaded_msg = (
+        db.query(Message)
+        .options(joinedload(Message.sender), joinedload(Message.attachments))
+        .filter(Message.id == msg.id)
+        .first()
+    )
+    return loaded_msg or msg
 
 
 def create_system_message(
@@ -45,8 +51,14 @@ def create_system_message(
     )
     db.add(msg)
     db.commit()
-    db.refresh(msg)
-    return msg
+
+    loaded_msg = (
+        db.query(Message)
+        .options(joinedload(Message.attachments))
+        .filter(Message.id == msg.id)
+        .first()
+    )
+    return loaded_msg or msg
 
 
 def get_timeline(

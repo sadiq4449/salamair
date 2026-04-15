@@ -62,7 +62,7 @@ export default function UnifiedTimeline({ requestId }: Props) {
     [setOnlineUsers],
   );
 
-  const { isConnected, sendTyping, sendMessage: wsSendMessage } = useWebSocket({
+  const { isConnected, sendTyping } = useWebSocket({
     requestId,
     onNewMessage: handleNewMessage,
     onTyping: handleTyping,
@@ -96,16 +96,16 @@ export default function UnifiedTimeline({ requestId }: Props) {
   const handleSend = useCallback(
     async (content: string) => {
       setIsSending(true);
-      if (isConnected) {
-        wsSendMessage(content);
-      } else {
+      try {
         const { sendMessage } = useMessageStore.getState();
         await sendMessage(requestId, content);
+      } catch {
+        // error is set in the store
       }
       setIsSending(false);
       setTimeout(scrollToBottom, 100);
     },
-    [isConnected, wsSendMessage, requestId],
+    [requestId],
   );
 
   const handleTypingInput = useCallback(
