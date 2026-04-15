@@ -18,7 +18,7 @@ export function useWebSocket({
   onRoomState,
 }: UseWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectDelay = useRef(1000);
   const [isConnected, setIsConnected] = useState(false);
 

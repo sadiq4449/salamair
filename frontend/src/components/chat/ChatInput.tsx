@@ -21,7 +21,7 @@ export default function ChatInput({
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const typingTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleTextChange = useCallback(
     (value: string) => {
