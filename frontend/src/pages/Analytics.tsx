@@ -237,8 +237,6 @@ export default function Analytics() {
     setTablePage(0);
   }, []);
 
-  const params = useMemo(() => ({ from, to }), [from, to]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setKpis(null);
@@ -549,8 +547,11 @@ export default function Analytics() {
                           />
                           <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
                           <Tooltip
-                            formatter={(v: number) => [`${Math.round(v).toLocaleString('en-US')} OMR`, 'Revenue']}
-                            labelFormatter={formatPeriodTick}
+                            formatter={(value) => {
+                              const n = Number(value ?? 0);
+                              return [`${Math.round(n).toLocaleString('en-US')} OMR`, 'Revenue'];
+                            }}
+                            labelFormatter={(label) => formatPeriodTick(String(label ?? ''))}
                           />
                           <Area
                             type="monotone"
@@ -671,7 +672,7 @@ export default function Analytics() {
                             stroke="#9ca3af"
                           />
                           <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" allowDecimals={false} />
-                          <Tooltip labelFormatter={formatPeriodTick} />
+                          <Tooltip labelFormatter={(label) => formatPeriodTick(String(label ?? ''))} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
                           <Bar dataKey="approved" name="Approved" fill="#10b981" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="rejected" name="Rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -701,7 +702,11 @@ export default function Analytics() {
                               <Cell key={i} fill={ROUTE_CHART_COLORS[i % ROUTE_CHART_COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(v: number) => `${Math.round(v).toLocaleString('en-US')} OMR`} />
+                          <Tooltip
+                            formatter={(value) =>
+                              `${Math.round(Number(value ?? 0)).toLocaleString('en-US')} OMR`
+                            }
+                          />
                           <Legend verticalAlign="bottom" height={40} wrapperStyle={{ fontSize: 11 }} />
                         </PieChart>
                       </ResponsiveContainer>
