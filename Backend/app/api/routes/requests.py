@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -19,6 +20,14 @@ from app.schemas.request import (
     RequestRead,
     RequestUpdate,
 )
+from app.services.notification_service import (
+    compute_sla,
+    notify_request_created,
+    format_notification,
+)
+from app.services.websocket_manager import manager
+
+logger = logging.getLogger("uvicorn.error")
 
 router = APIRouter()
 
@@ -92,6 +101,19 @@ def create_request(
 
     db.commit()
     db.refresh(req)
+
+    if new_status == "submitted":
+        try:
+            notifications = notify_request_created(db, req)
+            import asyncio
+            for n in notifications:
+                asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+                    "event": "notification",
+                    "data": format_notification(n),
+                }))
+        except Exception as e:
+            logger.warning("Failed to send request-created notifications: %s", e)
+
     return req
 
 
@@ -252,6 +274,22 @@ def upload_attachment(
     db.commit()
     db.refresh(attachment)
     return attachment
+
+
+@router.get("/{request_id}/sla")
+def get_request_sla(
+    request_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    req = db.query(Request).filter(Request.id == request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    sla = compute_sla(req)
+    return {"request_id": str(req.id), "request_code": req.request_code, "status": req.status, "sla": sla}
 
 
 @router.get("/{request_id}/attachments", response_model=list[AttachmentRead])

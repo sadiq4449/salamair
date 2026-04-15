@@ -10,13 +10,14 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes.auth import router as auth_router
 from app.api.routes.email import router as email_router
 from app.api.routes.messages import router as messages_router
+from app.api.routes.notifications import router as notifications_router
 from app.api.routes.requests import router as requests_router
 from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import User, Request, Attachment, RequestHistory, CounterOffer, EmailThread, EmailMessage, EmailAttachment, Message, MessageAttachment, MessageReadStatus  # noqa: F401
+from app.models import User, Request, Attachment, RequestHistory, CounterOffer, EmailThread, EmailMessage, EmailAttachment, Message, MessageAttachment, MessageReadStatus, Notification, NotificationPreference  # noqa: F401
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -86,6 +87,7 @@ app.include_router(requests_router, prefix="/api/v1/requests", tags=["Requests"]
 app.include_router(sales_router, prefix="/api/v1/sales", tags=["Sales"])
 app.include_router(email_router, prefix="/api/v1/email", tags=["Email"])
 app.include_router(messages_router, prefix="/api/v1/messages", tags=["Messages"])
+app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["Notifications"])
 app.include_router(ws_router, prefix="/api/v1", tags=["WebSocket"])
 
 

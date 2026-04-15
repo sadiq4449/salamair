@@ -1,5 +1,6 @@
-import { Bell, Menu, ChevronRight } from 'lucide-react';
+import { Menu, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import NotificationBell from '../notifications/NotificationBell';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -9,6 +10,8 @@ const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/requests': 'All Requests',
   '/pending': 'Pending Approvals',
+  '/notifications': 'Notifications',
+  '/notifications/settings': 'Notification Settings',
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {
@@ -44,10 +47,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
-        </button>
+        <NotificationBell />
       </div>
     </header>
   );

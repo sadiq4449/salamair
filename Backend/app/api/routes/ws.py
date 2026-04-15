@@ -43,6 +43,32 @@ def _authenticate_ws(token: str) -> dict | None:
         db.close()
 
 
+@router.websocket("/ws/notifications")
+async def notification_websocket(websocket: WebSocket):
+    """Global user-level WebSocket for real-time notification push."""
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        return
+
+    user_info = _authenticate_ws(token)
+    if not user_info:
+        await websocket.close(code=4003, reason="Invalid token")
+        return
+
+    user_id = user_info["id"]
+    await manager.connect_user(websocket, user_id)
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await manager.disconnect_user(websocket, user_id)
+    except Exception as e:
+        logger.exception("Notification WS error: %s", e)
+        await manager.disconnect_user(websocket, user_id)
+
+
 @router.websocket("/ws/{request_id}")
 async def websocket_endpoint(websocket: WebSocket, request_id: str):
     token = websocket.query_params.get("token")

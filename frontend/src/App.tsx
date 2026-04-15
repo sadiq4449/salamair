@@ -8,8 +8,11 @@ import RequestList from './pages/agent/RequestList';
 import RequestDetail from './pages/agent/RequestDetail';
 import PendingApprovals from './pages/sales/PendingApprovals';
 import SalesRequestDetail from './pages/sales/SalesRequestDetail';
+import NotificationsPage from './pages/NotificationsPage';
+import NotificationSettings from './pages/NotificationSettings';
 import { ToastContainer } from './components/ui/Toast';
 import { useToastStore } from './store/toastStore';
+import { useNotificationSocket } from './hooks/useNotificationSocket';
 import { Loader2 } from 'lucide-react';
 import type { UserRole } from './types';
 
@@ -57,6 +60,19 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function NotificationSocketProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return <NotificationSocketInner>{children}</NotificationSocketInner>;
+  }
+  return <>{children}</>;
+}
+
+function NotificationSocketInner({ children }: { children: React.ReactNode }) {
+  useNotificationSocket();
+  return <>{children}</>;
+}
+
 function AppInit({ children }: { children: React.ReactNode }) {
   const { loadUser } = useAuth();
 
@@ -64,7 +80,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
     loadUser();
   }, [loadUser]);
 
-  return <>{children}</>;
+  return <NotificationSocketProvider>{children}</NotificationSocketProvider>;
 }
 
 export default function App() {
@@ -99,6 +115,10 @@ export default function App() {
             {/* Sales routes */}
             <Route path="/pending" element={<RoleRoute roles={['sales', 'admin']}><PendingApprovals /></RoleRoute>} />
             <Route path="/pending/:id" element={<RoleRoute roles={['sales', 'admin']}><SalesRequestDetail /></RoleRoute>} />
+
+            {/* Notification routes (all roles) */}
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/notifications/settings" element={<NotificationSettings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

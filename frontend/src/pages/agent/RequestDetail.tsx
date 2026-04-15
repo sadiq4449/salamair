@@ -5,6 +5,7 @@ import { useRequestStore } from '../../store/requestStore';
 import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
+import SlaIndicator from '../../components/SlaIndicator';
 import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 
@@ -70,6 +71,11 @@ export default function RequestDetail() {
                 <InfoItem label="Agent" value={req.agent.name} />
               </div>
               <StatusFlow status={req.status} />
+              {!['approved', 'rejected', 'draft'].includes(req.status) && id && (
+                <div className="mt-4">
+                  <SlaIndicator requestId={id} />
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +17,17 @@ from app.schemas.request import (
     StatusUpdate,
 )
 from app.schemas.request_history_schema import HistoryRead
+from app.services.notification_service import (
+    format_notification,
+    notify_counter_offered,
+    notify_request_approved,
+    notify_request_assigned,
+    notify_request_rejected,
+    notify_sent_to_rm,
+)
+from app.services.websocket_manager import manager
+
+logger = logging.getLogger("uvicorn.error")
 
 router = APIRouter()
 
@@ -139,13 +151,30 @@ def update_request_status(
     _log_history(
         db,
         req.id,
-        f"status_changed",
+        "status_changed",
         current_user.id,
         from_status=old_status,
         to_status=payload.status,
         details=payload.reason,
     )
     db.commit()
+
+    try:
+        import asyncio
+        notifications = []
+        if payload.status == "approved":
+            notifications = notify_request_approved(db, req)
+        elif payload.status == "rejected":
+            notifications = notify_request_rejected(db, req, payload.reason)
+        elif payload.status == "under_review" and req.assigned_to:
+            notifications = notify_request_assigned(db, req, req.assigned_to)
+        for n in notifications:
+            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+                "event": "notification",
+                "data": format_notification(n),
+            }))
+    except Exception as e:
+        logger.warning("Failed to send status-change notifications: %s", e)
 
     return {"message": f"Status updated from '{old_status}' to '{payload.status}'", "request_id": str(req.id)}
 
@@ -193,6 +222,17 @@ def create_counter_offer(
     db.commit()
     db.refresh(offer)
 
+    try:
+        import asyncio
+        notifications = notify_counter_offered(db, req, float(payload.counter_price))
+        for n in notifications:
+            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+                "event": "notification",
+                "data": format_notification(n),
+            }))
+    except Exception as e:
+        logger.warning("Failed to send counter-offer notifications: %s", e)
+
     return CounterOfferRead(
         id=offer.id,
         request_id=offer.request_id,
@@ -237,6 +277,17 @@ def send_to_rm(
         details="Request forwarded to Revenue Management for approval",
     )
     db.commit()
+
+    try:
+        import asyncio
+        notifications = notify_sent_to_rm(db, req)
+        for n in notifications:
+            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+                "event": "notification",
+                "data": format_notification(n),
+            }))
+    except Exception as e:
+        logger.warning("Failed to send sent-to-rm notifications: %s", e)
 
     return {"message": "Request sent to Revenue Management", "request_id": str(req.id)}
 

@@ -15,6 +15,7 @@ class ConnectionManager:
     def __init__(self):
         self.rooms: dict[str, dict[str, WebSocket]] = defaultdict(dict)
         self.user_info: dict[str, dict] = {}
+        self.user_connections: dict[str, list[WebSocket]] = defaultdict(list)
 
     async def connect(self, websocket: WebSocket, room_id: str, user_id: str, user_info: dict):
         await websocket.accept()
@@ -64,6 +65,40 @@ class ConnectionManager:
             info = self.user_info.get(uid, {})
             users.append({"user_id": uid, "name": info.get("name", ""), "online": True})
         return users
+
+    # ── Global user-level connections (for notifications) ──
+
+    async def connect_user(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        self.user_connections[user_id].append(websocket)
+        logger.info("Notification WS connected: user=%s", user_id)
+
+    async def disconnect_user(self, websocket: WebSocket, user_id: str):
+        conns = self.user_connections.get(user_id, [])
+        if websocket in conns:
+            conns.remove(websocket)
+        if not conns:
+            self.user_connections.pop(user_id, None)
+        logger.info("Notification WS disconnected: user=%s", user_id)
+
+    async def push_to_user(self, user_id: str, message: dict):
+        """Send a notification payload to all active connections of a user."""
+        payload = json.dumps(message)
+        dead: list[WebSocket] = []
+        for ws in self.user_connections.get(user_id, []):
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            conns = self.user_connections.get(user_id, [])
+            if ws in conns:
+                conns.remove(ws)
+
+    async def push_to_users(self, user_ids: list[str], message: dict):
+        """Push notification to multiple users."""
+        for uid in user_ids:
+            await self.push_to_user(uid, message)
 
 
 manager = ConnectionManager()

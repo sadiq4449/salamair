@@ -223,3 +223,61 @@ export interface TypingUser {
   name: string;
   is_typing: boolean;
 }
+
+// ── Notification Types (Iteration 6) ──
+
+export type NotificationType =
+  | 'REQUEST_CREATED'
+  | 'REQUEST_APPROVED'
+  | 'REQUEST_REJECTED'
+  | 'COUNTER_OFFERED'
+  | 'SENT_TO_RM'
+  | 'EMAIL_RECEIVED'
+  | 'NEW_MESSAGE'
+  | 'SLA_WARNING'
+  | 'SLA_BREACHED'
+  | 'REQUEST_ASSIGNED';
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  request_id: string | null;
+  request_code: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  unread_count: number;
+  page: number;
+  limit: number;
+}
+
+export interface NotificationPreferences {
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  sound_enabled: boolean;
+  types_disabled: string[];
+}
+
+export type SlaColor = 'green' | 'yellow' | 'orange' | 'red';
+
+export interface SlaInfo {
+  deadline: string;
+  remaining_seconds: number;
+  total_seconds: number;
+  percentage: number;
+  color: SlaColor;
+  label: string;
+}
+
+export interface SlaResponse {
+  request_id: string;
+  request_code: string;
+  status: string;
+  sla: SlaInfo | null;
+}
