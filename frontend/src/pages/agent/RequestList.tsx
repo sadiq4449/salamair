@@ -6,6 +6,8 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
 import Button from '../../components/ui/Button';
 import CreateRequestModal from '../../components/CreateRequestModal';
+import SlaIndicator from '../../components/SlaIndicator';
+import { listTags, type TagDto } from '../../services/advancedService';
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
   { value: 'draft', label: 'Draft' },
@@ -49,7 +51,17 @@ export default function RequestList() {
   function handleReset() {
     setSearchLocal('');
     resetFilters();
-    fetchRequests({ page: 1, limit: 20, search: '', status: '', origin: '', destination: '', date_from: '', date_to: '' });
+    fetchRequests({
+      page: 1,
+      limit: 20,
+      search: '',
+      status: '',
+      origin: '',
+      destination: '',
+      date_from: '',
+      date_to: '',
+      tag_ids: '',
+    });
   }
 
   const selectClass = 'px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10';
@@ -89,6 +101,18 @@ export default function RequestList() {
         <select value={filters.destination || ''} onChange={(e) => handleFilterChange('destination', e.target.value)} className={selectClass}>
           <option value="">Destination</option>
           {AIRPORTS.slice(1).map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+        </select>
+        <select
+          value={filters.tag_ids || ''}
+          onChange={(e) => handleFilterChange('tag_ids', e.target.value)}
+          className={selectClass}
+        >
+          <option value="">Any tag</option>
+          {tagOptions.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
         </select>
         <input
           type="date"
@@ -136,6 +160,8 @@ export default function RequestList() {
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pax</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tags</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SLA</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -150,6 +176,28 @@ export default function RequestList() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
                     <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
+                    <td className="px-6 py-3.5">
+                      <div className="flex flex-wrap gap-1">
+                        {(req.tags ?? []).map((t) => (
+                          <span
+                            key={t.id}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[0.65rem] font-medium text-white max-w-[7rem] truncate"
+                            style={{ backgroundColor: t.color }}
+                            title={t.name}
+                          >
+                            {t.name}
+                          </span>
+                        ))}
+                        {(req.tags ?? []).length === 0 && <span className="text-gray-400">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      {['submitted', 'under_review', 'rm_pending', 'counter_offered'].includes(req.status) ? (
+                        <SlaIndicator requestId={req.id} compact />
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
                     <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400">
                       {new Date(req.created_at).toLocaleDateString()}

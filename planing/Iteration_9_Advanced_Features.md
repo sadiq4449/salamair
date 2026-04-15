@@ -20,40 +20,40 @@ Implement advanced features that enhance platform efficiency: SLA tracking with 
 
 | # | Task | Details | Status |
 |---|------|---------|--------|
-| 9.1 | Enhanced SLA Service | Full SLA tracking with configurable deadlines per status | Pending |
-| 9.2 | SLA Dashboard API | `GET /api/v1/sla/dashboard` - SLA compliance overview | Pending |
-| 9.3 | SLA History API | `GET /api/v1/sla/requests/{id}` - SLA timeline per request | Pending |
-| 9.4 | Auto Reminder Service | Celery task to send reminders for stale requests | Pending |
-| 9.5 | Reminder Config API | `GET/PUT /api/v1/admin/reminders` - Configure reminder rules | Pending |
-| 9.6 | Bulk Upload API | `POST /api/v1/requests/bulk-upload` - Upload Excel to create multiple requests | Pending |
-| 9.7 | Excel Parser Service | Parse Excel file, validate rows, return preview | Pending |
-| 9.8 | Bulk Upload Preview API | `POST /api/v1/requests/bulk-preview` - Preview before confirming | Pending |
-| 9.9 | Tags Model | Create `tags` and `request_tags` tables | Pending |
-| 9.10 | Create Tag API | `POST /api/v1/tags` - Create reusable tags | Pending |
-| 9.11 | Tag Request API | `POST /api/v1/requests/{id}/tags` - Add tags to request | Pending |
-| 9.12 | List Tags API | `GET /api/v1/tags` - All available tags | Pending |
-| 9.13 | Smart Search API | `GET /api/v1/search` - Global search across requests, agents, messages | Pending |
-| 9.14 | Search Indexing | Build search indexes for fast lookups | Pending |
-| 9.15 | Reminder Email Templates | HTML templates for different reminder types | Pending |
-| 9.16 | Bulk Upload Validation | Validate route codes, date formats, price ranges | Pending |
+| 9.1 | Enhanced SLA Service | Full SLA tracking with configurable deadlines per status | Done (DB `sla_tracking` + sync on transitions; `counter_offered` SLA window) |
+| 9.2 | SLA Dashboard API | `GET /api/v1/sla/dashboard` - SLA compliance overview | Done |
+| 9.3 | SLA History API | `GET /api/v1/sla/requests/{id}` - SLA timeline per request | Done |
+| 9.4 | Auto Reminder Service | Celery task to send reminders for stale requests | Done (scan via `POST /api/v1/admin/reminders/run`; no Celery in repo) |
+| 9.5 | Reminder Config API | `GET/PUT /api/v1/admin/reminders` - Configure reminder rules | Done |
+| 9.6 | Bulk Upload API | `POST /api/v1/requests/bulk-upload` - Upload Excel to create multiple requests | Done |
+| 9.7 | Excel Parser Service | Parse Excel file, validate rows, return preview | Done |
+| 9.8 | Bulk Upload Preview API | `POST /api/v1/requests/bulk-preview` - Preview before confirming | Done |
+| 9.9 | Tags Model | Create `tags` and `request_tags` tables | Done |
+| 9.10 | Create Tag API | `POST /api/v1/tags` - Create reusable tags | Done |
+| 9.11 | Tag Request API | `POST /api/v1/requests/{id}/tags` - Add tags to request | Done |
+| 9.12 | List Tags API | `GET /api/v1/tags` - All available tags | Done |
+| 9.13 | Smart Search API | `GET /api/v1/search` - Global search across requests, agents, messages | Done |
+| 9.14 | Search Indexing | Build search indexes for fast lookups | Partial (DB `ilike` + indexes on existing columns; no Elasticsearch) |
+| 9.15 | Reminder Email Templates | HTML templates for different reminder types | Partial (inline HTML in SMTP body; no separate template files) |
+| 9.16 | Bulk Upload Validation | Validate route codes, date formats, price ranges | Done |
 
 ### Frontend Tasks
 
 | # | Task | Details | Status |
 |---|------|---------|--------|
-| 9.17 | SLA Timer Component | Countdown timer on request cards with color coding | Pending |
-| 9.18 | SLA Dashboard Page | Compliance metrics, overdue requests, SLA trends | Pending |
-| 9.19 | Bulk Upload Page | Excel upload zone, preview table, confirm button | Pending |
-| 9.20 | Excel Template Download | Downloadable template with correct column headers | Pending |
-| 9.21 | Bulk Upload Preview Table | Show parsed rows with validation status per row | Pending |
-| 9.22 | Bulk Upload Progress | Progress bar during bulk creation | Pending |
-| 9.23 | Tag Management UI | Create, edit, delete tags with color picker | Pending |
-| 9.24 | Tag Input Component | Autocomplete tag input on request forms/detail | Pending |
-| 9.25 | Tag Filter | Filter requests by tags in list view | Pending |
-| 9.26 | Global Search Bar | Search input in header with instant results dropdown | Pending |
-| 9.27 | Search Results Page | Full search results grouped by type (requests, agents) | Pending |
-| 9.28 | Recent Searches | Show recent search history | Pending |
-| 9.29 | Reminder Settings UI | Configure reminder intervals in admin panel | Pending |
+| 9.17 | SLA Timer Component | Countdown timer on request cards with color coding | Done (list + detail; existing `SlaIndicator`) |
+| 9.18 | SLA Dashboard Page | Compliance metrics, overdue requests, SLA trends | Done (`/sla-dashboard`) |
+| 9.19 | Bulk Upload Page | Excel upload zone, preview table, confirm button | Done (`/bulk-upload`) |
+| 9.20 | Excel Template Download | Downloadable template with correct column headers | Done (`GET /requests/bulk-template`) |
+| 9.21 | Bulk Upload Preview Table | Show parsed rows with validation status per row | Done |
+| 9.22 | Bulk Upload Progress | Progress bar during bulk creation | Partial (button loading state; no multi-step bar) |
+| 9.23 | Tag Management UI | Create, edit, delete tags with color picker | Partial (create/delete + color; no edit name) |
+| 9.24 | Tag Input Component | Autocomplete tag input on request forms/detail | Partial (`RequestTagsEditor` checkboxes) |
+| 9.25 | Tag Filter | Filter requests by tags in list view | Done (agent list; `tag_ids` query) |
+| 9.26 | Global Search Bar | Search input in header with instant results dropdown | Done |
+| 9.27 | Search Results Page | Full search results grouped by type (requests, agents) | Done (`/search`) |
+| 9.28 | Recent Searches | Show recent search history | Done (localStorage in `GlobalSearchBar`) |
+| 9.29 | Reminder Settings UI | Configure reminder intervals in admin panel | Done (`/admin/reminders`) |
 
 ---
 

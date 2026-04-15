@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.schemas.advanced_schema import TagBrief
+
 
 class RequestCreate(BaseModel):
     route: str = Field(..., min_length=1, max_length=100)
@@ -48,6 +50,7 @@ class RequestRead(BaseModel):
     status: str
     priority: str
     assigned_to: UUID | None = None
+    tags: list[TagBrief] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -65,6 +68,7 @@ class RequestListItem(BaseModel):
     status: str
     priority: str
     travel_date: date | None = None
+    tags: list[TagBrief] = Field(default_factory=list)
     created_at: datetime
 
     model_config = {"from_attributes": True}

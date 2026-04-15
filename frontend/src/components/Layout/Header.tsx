@@ -1,6 +1,7 @@
 import { Menu, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import NotificationBell from '../notifications/NotificationBell';
+import GlobalSearchBar from '../GlobalSearchBar';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -12,6 +13,9 @@ const titleMap: Record<string, string> = {
   '/pending': 'Pending Approvals',
   '/notifications': 'Notifications',
   '/notifications/settings': 'Notification Settings',
+  '/search': 'Search',
+  '/sla-dashboard': 'SLA dashboard',
+  '/bulk-upload': 'Bulk upload',
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {
@@ -20,6 +24,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
     if (titleMap[pathname]) return titleMap[pathname];
     if (pathname.startsWith('/requests/')) return 'Request Detail';
     if (pathname.startsWith('/pending/')) return 'Request Review';
+    if (pathname.startsWith('/admin/reminders')) return 'Reminder settings';
+    if (pathname.startsWith('/admin/tags')) return 'Tags';
     return 'Dashboard';
   };
   const pageTitle = resolveTitle();
@@ -46,7 +52,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="hidden md:flex flex-1 justify-center px-4 max-w-xl mx-auto">
+        <GlobalSearchBar />
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
         <NotificationBell />
       </div>
     </header>

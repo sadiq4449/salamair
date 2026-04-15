@@ -28,6 +28,7 @@ from app.schemas.email_schema import (
 )
 from app.services.email_service import build_html_body, build_plain_body, build_subject, send_smtp_email
 from app.services.imap_inbox_service import poll_inbox_once
+from app.services.sla_service import sync_sla_for_request
 
 router = APIRouter()
 
@@ -235,6 +236,7 @@ def send_email_to_rm(
         ),
     )
 
+    sync_sla_for_request(db, req)
     db.commit()
     db.refresh(email_msg)
 

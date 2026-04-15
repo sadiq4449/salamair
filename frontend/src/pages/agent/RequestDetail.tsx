@@ -6,6 +6,7 @@ import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
+import RequestTagsEditor from '../../components/RequestTagsEditor';
 import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 
@@ -75,6 +76,13 @@ export default function RequestDetail() {
                 <div className="mt-4">
                   <SlaIndicator requestId={id} />
                 </div>
+              )}
+              {id && (
+                <RequestTagsEditor
+                  requestId={id}
+                  initialTags={req.tags ?? []}
+                  onUpdated={() => id && fetchRequest(id)}
+                />
               )}
             </div>
           </div>

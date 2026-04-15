@@ -6,6 +6,7 @@ import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
+import RequestTagsEditor from '../../components/RequestTagsEditor';
 import Button from '../../components/ui/Button';
 import CounterOfferModal from '../../components/CounterOfferModal';
 import EmailPreviewModal from '../../components/EmailPreviewModal';
@@ -93,6 +94,13 @@ export default function SalesRequestDetail() {
                 <div className="mt-4">
                   <SlaIndicator requestId={id} />
                 </div>
+              )}
+              {id && (
+                <RequestTagsEditor
+                  requestId={id}
+                  initialTags={req.tags ?? []}
+                  onUpdated={() => id && fetchRequest(id)}
+                />
               )}
             </div>
           </div>

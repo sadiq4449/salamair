@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus, Bell, BarChart3, Settings2 } from 'lucide-react';
+import { Home, List, TrendingUp, Clock, Shield, Plane, Moon, Sun, LogOut, X, Plus, Bell, BarChart3, Settings2, Timer, Upload } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
@@ -16,18 +16,21 @@ const navByRole: Record<string, NavItem[]> = {
   agent: [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'All Requests', path: '/requests', icon: List },
+    { label: 'Bulk upload', path: '/bulk-upload', icon: Upload },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
   sales: [
     { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
     { label: 'Pending Approvals', path: '/pending', icon: Clock },
+    { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
   admin: [
     { label: 'Dashboard', path: '/dashboard', icon: Shield },
     { label: 'Admin panel', path: '/admin/dashboard', icon: Settings2 },
+    { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy import extract, func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -11,7 +12,9 @@ from app.api.deps import get_current_user, get_db, require_role
 from app.models.attachment import Attachment
 from app.models.request import Request
 from app.models.request_history import RequestHistory
+from app.models.tag import Tag
 from app.models.user import User
+from app.schemas.advanced_schema import RequestTagsBody, TagBrief
 from app.schemas.attachment import AttachmentRead
 from app.schemas.request import (
     RequestCreate,
@@ -20,11 +23,13 @@ from app.schemas.request import (
     RequestRead,
     RequestUpdate,
 )
+from app.services.bulk_request_excel import build_template_workbook, commit_bulk_upload, preview_bulk
 from app.services.notification_service import (
     compute_sla,
     notify_request_created,
     format_notification,
 )
+from app.services.sla_service import sync_sla_for_request
 from app.services.websocket_manager import manager
 
 logger = logging.getLogger("uvicorn.error")
@@ -99,6 +104,12 @@ def create_request(
     action = "created_draft" if payload.is_draft else "submitted"
     _log_history(db, req.id, action, current_user.id, to_status=new_status)
 
+    if new_status == "submitted":
+        try:
+            sync_sla_for_request(db, req)
+        except Exception as e:
+            logger.warning("SLA sync on create failed: %s", e)
+
     db.commit()
     db.refresh(req)
 
@@ -122,12 +133,13 @@ def list_requests(
     status_filter: str | None = Query(None, alias="status"),
     route: str | None = None,
     search: str | None = None,
+    tag_ids: str | None = Query(None, description="Comma-separated tag UUIDs (match any)"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Request).options(joinedload(Request.agent))
+    query = db.query(Request).options(joinedload(Request.agent), joinedload(Request.tags))
 
     if current_user.role == "agent":
         query = query.filter(Request.agent_id == current_user.id)
@@ -136,6 +148,18 @@ def list_requests(
         query = query.filter(Request.status == status_filter)
     if route:
         query = query.filter(Request.route.ilike(f"%{route}%"))
+    if tag_ids:
+        parts: list[uuid.UUID] = []
+        for chunk in tag_ids.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                parts.append(uuid.UUID(chunk))
+            except ValueError:
+                continue
+        if parts:
+            query = query.filter(Request.tags.any(Tag.id.in_(parts)))
     if search:
         term = f"%{search}%"
         query = query.filter(
@@ -168,11 +192,49 @@ def list_requests(
                 status=r.status,
                 priority=r.priority,
                 travel_date=r.travel_date,
+                tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
                 created_at=r.created_at,
             )
         )
 
     return RequestListResponse(items=items, total=total, page=page, limit=limit)
+
+
+@router.get("/bulk-template")
+def download_bulk_template(
+    _user: User = Depends(require_role("agent")),
+):
+    data = build_template_workbook()
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="bulk_requests_template.xlsx"'},
+    )
+
+
+@router.post("/bulk-preview")
+def bulk_preview_endpoint(
+    file: UploadFile = File(...),
+    _user: User = Depends(require_role("agent")),
+):
+    raw = file.file.read()
+    return preview_bulk(raw)
+
+
+@router.post("/bulk-upload")
+def bulk_upload_endpoint(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent")),
+):
+    raw = file.file.read()
+    try:
+        return commit_bulk_upload(db, current_user, raw)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "BULK_UPLOAD_ERROR", "message": str(e)}},
+        )
 
 
 @router.get("/{request_id}", response_model=RequestRead)
@@ -183,7 +245,7 @@ def get_request(
 ):
     req = (
         db.query(Request)
-        .options(joinedload(Request.agent), joinedload(Request.attachments))
+        .options(joinedload(Request.agent), joinedload(Request.attachments), joinedload(Request.tags))
         .filter(Request.id == request_id)
         .first()
     )
@@ -288,8 +350,41 @@ def get_request_sla(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
         )
-    sla = compute_sla(req)
+    if current_user.role == "agent" and req.agent_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own request SLA"}},
+        )
+    sla = compute_sla(req, db)
     return {"request_id": str(req.id), "request_code": req.request_code, "status": req.status, "sla": sla}
+
+
+@router.post("/{request_id}/tags")
+def update_request_tags(
+    request_id: uuid.UUID,
+    payload: RequestTagsBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent", "sales", "admin")),
+):
+    req = db.query(Request).filter(Request.id == request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if current_user.role == "agent" and req.agent_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "You can only tag your own requests"}},
+        )
+    tags = db.query(Tag).filter(Tag.id.in_(payload.tag_ids)).all() if payload.tag_ids else []
+    req.tags = tags
+    db.commit()
+    db.refresh(req)
+    return {
+        "message": "Tags updated",
+        "tags": [{"id": str(t.id), "name": t.name, "color": t.color} for t in req.tags],
+    }
 
 
 @router.get("/{request_id}/attachments", response_model=list[AttachmentRead])

@@ -5,6 +5,11 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAgentsPage from './pages/admin/AdminAgentsPage';
 import AdminLogsPage from './pages/admin/AdminLogsPage';
 import AdminConfigPage from './pages/admin/AdminConfigPage';
+import AdminRemindersPage from './pages/admin/AdminRemindersPage';
+import AdminTagsPage from './pages/admin/AdminTagsPage';
+import SlaDashboardPage from './pages/SlaDashboardPage';
+import BulkUploadPage from './pages/BulkUploadPage';
+import SearchPage from './pages/SearchPage';
 import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import AppLayout from './components/Layout/AppLayout';
@@ -122,10 +127,19 @@ export default function App() {
             {/* Sales routes */}
             <Route path="/pending" element={<RoleRoute roles={['sales', 'admin']}><PendingApprovals /></RoleRoute>} />
             <Route path="/pending/:id" element={<RoleRoute roles={['sales', 'admin']}><SalesRequestDetail /></RoleRoute>} />
+            <Route
+              path="/sla-dashboard"
+              element={
+                <RoleRoute roles={['sales', 'admin']}>
+                  <SlaDashboardPage />
+                </RoleRoute>
+              }
+            />
 
             {/* Notification routes (all roles) */}
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/settings" element={<NotificationSettings />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route
               path="/analytics"
               element={
@@ -149,6 +163,8 @@ export default function App() {
               <Route path="agents" element={<AdminAgentsPage />} />
               <Route path="logs" element={<AdminLogsPage />} />
               <Route path="config" element={<AdminConfigPage />} />
+              <Route path="reminders" element={<AdminRemindersPage />} />
+              <Route path="tags" element={<AdminTagsPage />} />
             </Route>
           </Route>
 

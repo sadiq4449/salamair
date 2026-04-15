@@ -17,6 +17,7 @@ export interface RequestFilters {
   date_from?: string;
   date_to?: string;
   agent?: string;
+  tag_ids?: string;
 }
 
 export interface CreateRequestData {
@@ -85,26 +86,29 @@ export const requestService = {
   },
 
   async updateStatus(id: string, payload: StatusUpdateData): Promise<RequestDetail> {
-    const { data } = await api.put<RequestDetail>(`/requests/${id}/status`, payload);
-    return data;
+    await api.put(`/sales/requests/${id}/status`, {
+      status: payload.status,
+      reason: payload.reason ?? payload.notes,
+    });
+    return requestService.getRequest(id);
   },
 
   async createCounterOffer(id: string, payload: CounterOfferData): Promise<CounterOffer> {
-    const { data } = await api.post<CounterOffer>(`/requests/${id}/counter`, payload);
+    const { data } = await api.post<CounterOffer>(`/sales/requests/${id}/counter`, payload);
     return data;
   },
 
   async sendToRM(id: string): Promise<RequestDetail> {
-    const { data } = await api.post<RequestDetail>(`/requests/${id}/send-to-rm`);
-    return data;
+    await api.post(`/sales/requests/${id}/send-to-rm`);
+    return requestService.getRequest(id);
   },
 
   async getHistory(id: string): Promise<HistoryEvent[]> {
-    const { data } = await api.get<HistoryEvent[]>(`/requests/${id}/history`);
+    const { data } = await api.get<HistoryEvent[]>(`/sales/requests/${id}/history`);
     return data;
   },
 
   async addNote(id: string, payload: NoteData): Promise<void> {
-    await api.post(`/requests/${id}/notes`, payload);
+    await api.post(`/sales/requests/${id}/notes`, { note: payload.content });
   },
 };

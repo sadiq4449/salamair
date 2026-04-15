@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
+from app.models.tag import request_tags  # noqa: F401 — registers association table
 
 
 class Request(Base):
@@ -46,3 +47,5 @@ class Request(Base):
     attachments = relationship("Attachment", back_populates="request", cascade="all, delete-orphan")
     history = relationship("RequestHistory", back_populates="request", cascade="all, delete-orphan", order_by="RequestHistory.created_at")
     counter_offers = relationship("CounterOffer", back_populates="request", cascade="all, delete-orphan")
+    tags = relationship("Tag", secondary=request_tags, back_populates="requests")
+    sla_segments = relationship("SlaTracking", back_populates="request", cascade="all, delete-orphan")

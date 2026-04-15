@@ -13,9 +13,11 @@ from app.core.security import get_password_hash
 from app.models.agent_profile import AgentProfile
 from app.models.email_message import EmailMessage
 from app.models.request import Request
+from app.models.reminder_config import ReminderConfig
 from app.models.system_config import SystemConfig
 from app.models.system_log import SystemLog
 from app.models.user import User
+from app.schemas.advanced_schema import ReminderRuleOut, RemindersListResponse, RemindersPutBody
 from app.schemas.admin_schema import (
     VALID_ROLES,
     AdminAgentItem,
@@ -40,6 +42,7 @@ from app.schemas.admin_schema import (
 )
 from app.services.admin_audit import ADMIN_CONFIG_KEYS, ensure_default_system_config, log_admin_action
 from app.services.email_service import send_smtp_email
+from app.services.reminder_runner import ensure_default_reminder_rules, run_reminder_scan
 
 router = APIRouter()
 
@@ -568,3 +571,65 @@ def admin_put_config(
     return AdminConfigListResponse(
         items=[AdminConfigItem(key=r.key, value=r.value, description=r.description) for r in rows]
     )
+
+
+@router.get("/reminders", response_model=RemindersListResponse)
+def admin_get_reminders(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role("admin")),
+):
+    ensure_default_reminder_rules(db)
+    rules = (
+        db.query(ReminderConfig)
+        .order_by(ReminderConfig.trigger_status.asc(), ReminderConfig.delay_hours.asc())
+        .all()
+    )
+    return RemindersListResponse(rules=[ReminderRuleOut.model_validate(r) for r in rules])
+
+
+@router.put("/reminders", response_model=RemindersListResponse)
+def admin_put_reminders(
+    payload: RemindersPutBody,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    ensure_default_reminder_rules(db)
+    for item in payload.rules:
+        row = db.query(ReminderConfig).filter(ReminderConfig.id == item.id).first()
+        if not row:
+            continue
+        if item.delay_hours is not None:
+            row.delay_hours = item.delay_hours
+        if item.reminder_type is not None:
+            row.reminder_type = item.reminder_type
+        if item.message_template is not None:
+            row.message_template = item.message_template
+        if item.is_active is not None:
+            row.is_active = item.is_active
+    log_admin_action(
+        db,
+        action="reminders_updated",
+        actor_id=actor.id,
+        target_type="reminder_config",
+        target_id=None,
+        details="Updated reminder rules",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    rules = (
+        db.query(ReminderConfig)
+        .order_by(ReminderConfig.trigger_status.asc(), ReminderConfig.delay_hours.asc())
+        .all()
+    )
+    return RemindersListResponse(rules=[ReminderRuleOut.model_validate(r) for r in rules])
+
+
+@router.post("/reminders/run", response_model=dict)
+def admin_run_reminders(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_role("admin")),
+):
+    """Process reminder rules once (for ops / testing). Prefer an external scheduler in production."""
+    return run_reminder_scan(db)

@@ -15,6 +15,9 @@ from app.models.notification_preference import NotificationPreference
 from app.models.analytics_snapshot import AnalyticsSnapshot
 from app.models.system_log import SystemLog
 from app.models.system_config import SystemConfig
+from app.models.tag import Tag, request_tags
+from app.models.sla_tracking import SlaTracking
+from app.models.reminder_config import ReminderConfig
 
 __all__ = [
     "User",
@@ -29,4 +32,8 @@ __all__ = [
     "AnalyticsSnapshot",
     "SystemLog",
     "SystemConfig",
+    "Tag",
+    "request_tags",
+    "SlaTracking",
+    "ReminderConfig",
 ]

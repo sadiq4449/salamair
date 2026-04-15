@@ -24,6 +24,7 @@ NOTIFICATION_TYPES = {
     "SLA_WARNING",
     "SLA_BREACHED",
     "REQUEST_ASSIGNED",
+    "REMINDER",
 }
 
 EMAIL_WORTHY_TYPES = {
@@ -36,6 +37,7 @@ SLA_DEADLINES: dict[str, int] = {
     "submitted": 4,       # hours to start review
     "under_review": 8,    # hours to take action
     "rm_pending": 24,     # hours for expected RM response
+    "counter_offered": 24,  # hours for agent response
 }
 
 SLA_WARNING_THRESHOLD = 2  # hours before deadline
@@ -190,8 +192,13 @@ def update_preferences(
     return pref
 
 
-def compute_sla(req: Request) -> dict | None:
-    """Compute SLA info for a request. Returns dict with deadline, remaining, color, label."""
+def compute_sla(req: Request, db: Session | None = None) -> dict | None:
+    """Compute SLA info for a request. Uses sla_tracking when db is provided."""
+    if db is not None:
+        from app.services.sla_service import compute_sla_with_db
+
+        return compute_sla_with_db(db, req)
+
     hours = SLA_DEADLINES.get(req.status)
     if hours is None:
         return None

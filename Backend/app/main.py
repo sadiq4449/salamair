@@ -14,6 +14,9 @@ from app.api.routes.notifications import router as notifications_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.requests import router as requests_router
+from app.api.routes.search import router as search_router
+from app.api.routes.sla import router as sla_router
+from app.api.routes.tags import router as tags_router
 from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
 from app.core.config import settings
@@ -38,6 +41,9 @@ from app.models import (  # noqa: F401
     AnalyticsSnapshot,
     SystemLog,
     SystemConfig,
+    Tag,
+    SlaTracking,
+    ReminderConfig,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -113,6 +119,9 @@ app.include_router(messages_router, prefix="/api/v1/messages", tags=["Messages"]
 app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["Notifications"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(sla_router, prefix="/api/v1/sla", tags=["SLA"])
+app.include_router(search_router, prefix="/api/v1/search", tags=["Search"])
+app.include_router(tags_router, prefix="/api/v1/tags", tags=["Tags"])
 app.include_router(ws_router, prefix="/api/v1", tags=["WebSocket"])
 
 

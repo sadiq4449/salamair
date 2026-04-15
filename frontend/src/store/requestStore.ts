@@ -39,6 +39,7 @@ const defaultFilters: RequestFilters = {
   destination: '',
   date_from: '',
   date_to: '',
+  tag_ids: '',
 };
 
 export const useRequestStore = create<RequestState>((set, get) => ({

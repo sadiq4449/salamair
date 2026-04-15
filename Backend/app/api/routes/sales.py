@@ -25,6 +25,7 @@ from app.services.notification_service import (
     notify_request_rejected,
     notify_sent_to_rm,
 )
+from app.services.sla_service import sync_sla_for_request
 from app.services.websocket_manager import manager
 
 logger = logging.getLogger("uvicorn.error")
@@ -72,7 +73,7 @@ def sales_queue(
 ):
     queue_statuses = {"submitted", "under_review", "rm_pending"}
 
-    query = db.query(Request).options(joinedload(Request.agent))
+    query = db.query(Request).options(joinedload(Request.agent), joinedload(Request.tags))
 
     if status_filter:
         if status_filter not in queue_statuses:
@@ -109,6 +110,7 @@ def sales_queue(
             status=r.status,
             priority=r.priority,
             travel_date=r.travel_date,
+            tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
             created_at=r.created_at,
         )
         for r in requests
@@ -157,6 +159,7 @@ def update_request_status(
         to_status=payload.status,
         details=payload.reason,
     )
+    sync_sla_for_request(db, req)
     db.commit()
 
     try:
@@ -219,6 +222,7 @@ def create_counter_offer(
         to_status="counter_offered",
         details=f"Counter price: {payload.counter_price}" + (f" — {payload.message}" if payload.message else ""),
     )
+    sync_sla_for_request(db, req)
     db.commit()
     db.refresh(offer)
 
@@ -276,6 +280,7 @@ def send_to_rm(
         to_status="rm_pending",
         details="Request forwarded to Revenue Management for approval",
     )
+    sync_sla_for_request(db, req)
     db.commit()
 
     try:

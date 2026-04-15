@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, ScrollText, Sliders } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ScrollText, Sliders, Bell, Tag } from 'lucide-react';
 
 const links = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -7,6 +7,8 @@ const links = [
   { to: '/admin/agents', label: 'Agents', icon: Building2 },
   { to: '/admin/logs', label: 'Logs', icon: ScrollText },
   { to: '/admin/config', label: 'Config', icon: Sliders },
+  { to: '/admin/reminders', label: 'Reminders', icon: Bell },
+  { to: '/admin/tags', label: 'Tags', icon: Tag },
 ];
 
 export default function AdminLayout() {

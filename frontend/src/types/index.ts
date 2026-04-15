@@ -46,6 +46,12 @@ export interface AgentInfo {
   city?: string | null;
 }
 
+export interface TagBrief {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface RequestItem {
   id: string;
   request_code: string;
@@ -57,6 +63,7 @@ export interface RequestItem {
   travel_date: string | null;
   status: RequestStatus;
   priority: Priority;
+  tags?: TagBrief[];
   created_at: string;
 }
 
@@ -74,6 +81,7 @@ export interface RequestDetail {
   status: RequestStatus;
   priority: Priority;
   assigned_to: string | null;
+  tags?: TagBrief[];
   created_at: string;
   updated_at: string;
   attachments: Attachment[];
@@ -286,6 +294,7 @@ export interface SlaInfo {
   percentage: number;
   color: SlaColor;
   label: string;
+  segment_status?: string;
 }
 
 export interface SlaResponse {
