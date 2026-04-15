@@ -10,7 +10,7 @@ interface Props {
 
 /** Demo-style “AI Assistant” card (heuristic pricing — matches UI.demo_design). */
 export default function AiPricingAssistant({ price, priority, status }: Props) {
-  const suggested = demoSuggestedPriceOmR(price);
+  const suggested = demoSuggestedPriceOmR(price, priority);
   const conf = demoConfidencePercent(priority);
   const rec = demoRecommendationLabel(status, price, suggested);
 
