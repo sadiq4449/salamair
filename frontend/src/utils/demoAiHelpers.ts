@@ -4,7 +4,9 @@ import type { Priority, RequestStatus } from '../types';
 export function demoSuggestedPriceOmR(price: number): number {
   const p = Number(price);
   if (Number.isNaN(p) || p <= 0) return 0;
-  return p > 100 ? Math.round(p * 0.9) : Math.round(p * 0.95);
+  const base = p > 100 ? p * 0.9 : p * 0.95;
+  const urgentAdj = priority === 'urgent' ? 0.98 : 1;
+  return Math.round(base * urgentAdj);
 }
 
 export function demoConfidencePercent(priority: Priority): number {

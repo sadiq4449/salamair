@@ -33,6 +33,7 @@ const navByRole: Record<string, NavItem[]> = {
   agent: [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'All Requests', path: '/requests', icon: List },
+    { label: 'Flight availability', path: '/flights', icon: Plane },
     { label: 'Bulk upload', path: '/bulk-upload', icon: Upload },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
@@ -40,6 +41,10 @@ const navByRole: Record<string, NavItem[]> = {
   sales: [
     { label: 'Sales Dashboard', path: '/dashboard', icon: TrendingUp },
     { label: 'Pending Approvals', path: '/pending', icon: Clock },
+    { label: 'Email aggregation', path: '/inbox', icon: Inbox },
+    { label: 'City-wise view', path: '/city-view', icon: MapPin },
+    { label: 'Agent history', path: '/agent-history', icon: Users },
+    { label: 'Flight availability', path: '/flights', icon: Plane },
     { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
@@ -47,7 +52,9 @@ const navByRole: Record<string, NavItem[]> = {
   admin: [
     { label: 'Dashboard', path: '/dashboard', icon: Shield },
     { label: 'Admin panel', path: '/admin/dashboard', icon: Settings2 },
+    { label: 'All requests', path: '/admin/requests', icon: ListOrdered },
     { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
+    { label: 'Flight availability', path: '/flights', icon: Plane },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],

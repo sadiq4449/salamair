@@ -133,6 +133,18 @@ export default function EmailThreadView({
     await simulateReply(requestId);
   }
 
+  async function handleNudgeRm() {
+    if (!thread || thread.status === 'empty') return;
+    const text =
+      'Reminder: Pending fare approval for this request. Please respond at your earliest convenience.';
+    try {
+      await reply({ request_id: requestId, thread_id: thread.thread_id, message: text });
+      addToast('success', 'Reminder sent on the RM email thread.');
+    } catch {
+      /* store shows error */
+    }
+  }
+
   async function handlePollInbox() {
     const r = await pollInbox(requestId);
     if (r === null) return;
