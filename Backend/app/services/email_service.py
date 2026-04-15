@@ -1,6 +1,7 @@
 import html
 import logging
 import smtplib
+import socket
 import uuid
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,6 +11,39 @@ from uuid import UUID
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
+
+
+class SMTPIPv4(smtplib.SMTP):
+    """SMTP client that connects over IPv4 only.
+
+    Many PaaS containers (e.g. Railway) have no working IPv6 egress; Python may try IPv6
+    first for smtp.gmail.com and fail with [Errno 101] Network is unreachable.
+    """
+
+    def connect(self, host="localhost", port=0, source_address=None):
+        self.host = host
+        self.port = port
+        self.sock = None
+        self.source_address = source_address
+        last_exc: OSError | None = None
+        for res in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            af, socktype, proto, _canon, sa = res
+            try:
+                self.sock = socket.socket(af, socktype, proto)
+                if self.timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                    self.sock.settimeout(self.timeout)
+                if source_address:
+                    self.sock.bind(source_address)
+                self.sock.connect(sa)
+                break
+            except OSError as e:
+                last_exc = e
+                if self.sock:
+                    self.sock.close()
+                    self.sock = None
+        if self.sock is None:
+            raise last_exc or OSError(f"Could not reach {host}:{port} over IPv4")
+        return self.getreply()
 
 
 def build_subject(request_code: str, route: str) -> str:
@@ -119,7 +153,7 @@ def send_smtp_email(
         msg.attach(MIMEText(body_text, "plain"))
         msg.attach(MIMEText(body_html, "html"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+        with SMTPIPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
             if settings.SMTP_USE_TLS:
                 server.starttls()
             if settings.SMTP_USER and settings.SMTP_PASSWORD:
