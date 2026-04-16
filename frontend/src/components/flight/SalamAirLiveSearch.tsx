@@ -37,10 +37,65 @@ function defaultOutbound(): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Matches SalamAir `api/flights` market payload (first flight used for schedule). */
+interface SalamAirFlightOffer {
+  departureDate?: string;
+  arrivalDate?: string;
+  segments?: Array<{
+    flightNumber?: string;
+    operatingFlightNumber?: string;
+    departureDate?: string;
+    arrivalDate?: string;
+    legs?: Array<{
+      departureDate?: string;
+      arrivalDate?: string;
+      flightNumber?: string;
+      operatingFlightNumber?: string;
+      carrierCode?: string;
+    }>;
+  }>;
+}
+
 interface MarketRow {
   date: string;
   lowestFare: number;
-  flights: unknown;
+  flights: SalamAirFlightOffer[] | null;
+}
+
+function formatClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/** First segment / leg times (local as returned by API). */
+function extractScheduleFromMarket(m: MarketRow): {
+  dep: string;
+  arr: string;
+  flightLabel?: string;
+} | null {
+  const flights = m.flights;
+  if (!Array.isArray(flights) || flights.length === 0) return null;
+  const top = flights[0];
+  const seg = Array.isArray(top.segments) && top.segments.length > 0 ? top.segments[0] : null;
+  const leg = seg?.legs && seg.legs.length > 0 ? seg.legs[0] : null;
+
+  const depIso = leg?.departureDate ?? seg?.departureDate ?? top.departureDate;
+  const arrIso = leg?.arrivalDate ?? seg?.arrivalDate ?? top.arrivalDate;
+  if (!depIso || !arrIso) return null;
+
+  const fn =
+    leg?.flightNumber ??
+    leg?.operatingFlightNumber ??
+    seg?.flightNumber ??
+    seg?.operatingFlightNumber;
+  const carrier = leg?.carrierCode ?? 'OV';
+
+  return {
+    dep: formatClock(depIso),
+    arr: formatClock(arrIso),
+    flightLabel: fn ? `${carrier} ${fn}` : undefined,
+  };
 }
 
 interface TripBlock {
@@ -133,6 +188,17 @@ function DepartingFlightBlock({
 
   const headlineDateIso = departureAnchorIso ?? markets[0]?.date;
 
+  const anchorMarket = useMemo(() => {
+    if (!markets.length) return undefined;
+    if (departureAnchorIso) {
+      const hit = markets.find((m) => m.date && sameCalendarDay(m.date, departureAnchorIso));
+      if (hit) return hit;
+    }
+    return markets.find((m) => typeof m.lowestFare === 'number' && m.lowestFare > 0) ?? markets[0];
+  }, [markets, departureAnchorIso]);
+
+  const anchorSchedule = anchorMarket ? extractScheduleFromMarket(anchorMarket) : null;
+
   function scrollCarousel(dir: -1 | 1) {
     const el = scrollRef.current;
     if (!el) return;
@@ -161,6 +227,26 @@ function DepartingFlightBlock({
                 {formatRouteDateLine(headlineDateIso)}
               </p>
             )}
+            {anchorSchedule && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-teal-200/60 pt-3 text-xs text-gray-800 dark:border-teal-800/40 dark:text-gray-200">
+                <span className="font-semibold tabular-nums">
+                  <span className="text-gray-500 dark:text-gray-400">Dep </span>
+                  {anchorSchedule.dep}
+                </span>
+                <span className="text-gray-300 dark:text-gray-600" aria-hidden>
+                  →
+                </span>
+                <span className="font-semibold tabular-nums">
+                  <span className="text-gray-500 dark:text-gray-400">Arr </span>
+                  {anchorSchedule.arr}
+                </span>
+                {anchorSchedule.flightLabel && (
+                  <span className="rounded-md bg-white/80 px-2 py-0.5 font-mono text-[11px] text-teal-800 shadow-sm dark:bg-gray-800/80 dark:text-teal-300">
+                    {anchorSchedule.flightLabel}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <a
             href={BOOKING_SALAMAIR}
@@ -187,7 +273,7 @@ function DepartingFlightBlock({
 
           <div
             ref={scrollRef}
-            className="flex min-h-[6.5rem] flex-1 gap-2 overflow-x-auto scroll-smooth pb-1 pt-0.5 snap-x snap-mandatory scrollbar-thin [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600"
+            className="flex min-h-[7.5rem] flex-1 gap-2 overflow-x-auto scroll-smooth pb-1 pt-0.5 snap-x snap-mandatory scrollbar-thin [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600"
           >
             {markets.map((m, mi) => {
               const hasPrice = typeof m.lowestFare === 'number' && m.lowestFare > 0;
@@ -196,11 +282,12 @@ function DepartingFlightBlock({
               const isAnchor =
                 departureAnchorIso && m.date ? sameCalendarDay(m.date, departureAnchorIso) : false;
               const { dow, dayMon } = m.date ? formatDayShort(m.date) : { dow: '—', dayMon: '' };
+              const sched = extractScheduleFromMarket(m);
 
               return (
                 <div
                   key={mi}
-                  className={`flex min-w-[5.75rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2.5 text-center transition-shadow sm:min-w-[6.75rem] ${
+                  className={`flex min-w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-shadow sm:min-w-[7rem] ${
                     isAnchor
                       ? 'border-teal-500 ring-2 ring-teal-500/30 dark:border-teal-400 dark:ring-teal-400/25'
                       : isCheapest && hasPrice
@@ -217,17 +304,24 @@ function DepartingFlightBlock({
                       No flights
                     </span>
                   ) : (
-                    <span
-                      className={`mt-1.5 text-sm font-bold tabular-nums ${
-                        isCheapest
-                          ? 'text-emerald-700 dark:text-emerald-300'
-                          : isAnchor
-                            ? 'text-teal-700 dark:text-teal-300'
-                            : 'text-gray-900 dark:text-gray-100'
-                      }`}
-                    >
-                      {formatFareDisplay(m.lowestFare, currency)}
-                    </span>
+                    <>
+                      <span
+                        className={`mt-1.5 text-sm font-bold tabular-nums ${
+                          isCheapest
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : isAnchor
+                              ? 'text-teal-700 dark:text-teal-300'
+                              : 'text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {formatFareDisplay(m.lowestFare, currency)}
+                      </span>
+                      {sched && (
+                        <span className="mt-1 text-[9px] font-medium leading-tight tabular-nums text-gray-600 dark:text-gray-400">
+                          {sched.dep}–{sched.arr}
+                        </span>
+                      )}
+                    </>
                   )}
                   {isCheapest && hasPrice && (
                     <span className="mt-1 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white dark:bg-emerald-600">
