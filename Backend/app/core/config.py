@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "sales@salamair.com"
     SMTP_FROM_NAME: str = "Salam Air Sales"
     SMTP_USE_TLS: bool = True
+    # Connection timeout (seconds). Increase if you see "timed out" on slow or distant SMTP.
+    SMTP_TIMEOUT_SECONDS: int = 75
+    # Use implicit TLS on port 465 (SMTP_SSL) instead of STARTTLS on 587. Try True if 587 times out
+    # (some networks block STARTTLS; Gmail: smtp.gmail.com:465 + SMTP_IMPLICIT_SSL=true).
+    SMTP_IMPLICIT_SSL: bool = False
     # When False: never send. When True: send (if credentials fail, SMTP errors). When None: send
     # only if SMTP_USER and SMTP_PASSWORD are both set (so Railway can omit this when creds exist).
     EMAIL_ENABLED: Optional[bool] = None

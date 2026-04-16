@@ -178,8 +178,9 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
               <dt className="text-gray-500">Outbound</dt>
               <dd className="text-right font-mono text-gray-800 dark:text-gray-200 break-all">
-                {emailStatus.smtp_host}:{emailStatus.smtp_port} TLS={emailStatus.smtp_use_tls ? 'on' : 'off'} · from{' '}
-                {emailStatus.smtp_from_email}
+                {emailStatus.smtp_host}:{emailStatus.smtp_port}{' '}
+                {emailStatus.smtp_implicit_ssl ? 'SSL' : `STARTTLS=${emailStatus.smtp_use_tls ? 'on' : 'off'}`} · timeout{' '}
+                {emailStatus.smtp_timeout_seconds}s · from {emailStatus.smtp_from_email}
               </dd>
             </div>
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">

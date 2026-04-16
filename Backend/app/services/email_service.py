@@ -2,6 +2,7 @@ import html
 import logging
 import smtplib
 import socket
+import ssl
 import uuid
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -44,6 +45,42 @@ class SMTPIPv4(smtplib.SMTP):
         if self.sock is None:
             raise last_exc or OSError(f"Could not reach {host}:{port} over IPv4")
         return self.getreply()
+
+
+class SMTPIPv4_SSL(smtplib.SMTP_SSL):
+    """SMTP over implicit TLS (port 465), IPv4 only."""
+
+    def _get_socket(self, host, port, timeout):
+        if self.debuglevel > 0:
+            self._print_debug("connect:", (host, port))
+        last_exc: OSError | None = None
+        for res in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            af, socktype, proto, _canon, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                if timeout is not None and timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                sock.connect(sa)
+                return self.context.wrap_socket(sock, server_hostname=host)
+            except OSError as e:
+                last_exc = e
+                if sock:
+                    sock.close()
+        raise last_exc or OSError(f"Could not reach {host}:{port} over IPv4 (SSL)")
+
+
+def _enhance_smtp_error(err: str) -> str:
+    """Add short hints for common failures (shown in API/UI)."""
+    low = err.lower()
+    if "timed out" in low or "timeout" in low:
+        return (
+            f"{err}\n\n"
+            "Timeout hints: try SMTP_IMPLICIT_SSL=true with SMTP_PORT=465 (Gmail); "
+            "raise SMTP_TIMEOUT_SECONDS; confirm the host allows outbound SMTP from your server "
+            "(Railway region); disable VPN/firewall blocking 587/465."
+        )
+    return err
 
 
 def build_subject(request_code: str, route: str) -> str:
@@ -170,16 +207,30 @@ def send_smtp_email(
         msg.attach(MIMEText(body_text, "plain"))
         msg.attach(MIMEText(body_html, "html"))
 
-        with SMTPIPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
-            if settings.SMTP_USE_TLS:
-                server.starttls()
-            if settings.SMTP_USER and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(msg)
+        timeout = max(15, int(settings.SMTP_TIMEOUT_SECONDS))
+
+        if settings.SMTP_IMPLICIT_SSL:
+            context = ssl.create_default_context()
+            with SMTPIPv4_SSL(
+                settings.SMTP_HOST,
+                settings.SMTP_PORT,
+                timeout=timeout,
+                context=context,
+            ) as server:
+                if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with SMTPIPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=timeout) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls(context=ssl.create_default_context())
+                if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.send_message(msg)
 
         logger.info("Email sent to %s: %s", to_email, subject)
         return message_id, None
     except Exception as e:
-        err = str(e)[:800]
+        err = _enhance_smtp_error(str(e))[:1200]
         logger.exception("Failed to send email to %s", to_email)
         return None, err
