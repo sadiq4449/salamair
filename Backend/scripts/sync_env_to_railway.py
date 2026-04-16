@@ -1,0 +1,91 @@
+"""
+Sync email-related vars from Backend/.env to the linked Railway service.
+Skips DATABASE_URL, SECRET_KEY, CORS_ORIGINS, ENVIRONMENT (keep Railway's own).
+Run: python Backend/scripts/sync_env_to_railway.py
+"""
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[1]
+REPO = BACKEND.parent
+ENV_PATH = BACKEND / ".env"
+
+SYNC_KEYS = frozenset(
+    {
+        "RESEND_API_KEY",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USER",
+        "SMTP_PASSWORD",
+        "SMTP_FROM_EMAIL",
+        "SMTP_FROM_NAME",
+        "SMTP_USE_TLS",
+        "SMTP_IMPLICIT_SSL",
+        "SMTP_TIMEOUT_SECONDS",
+        "EMAIL_ENABLED",
+        "RM_DEFAULT_EMAIL",
+        "IMAP_ENABLED",
+        "IMAP_HOST",
+        "IMAP_PORT",
+        "IMAP_USE_SSL",
+        "IMAP_USER",
+        "IMAP_PASSWORD",
+        "IMAP_MAILBOX",
+        "EMAIL_POLL_SECRET",
+    }
+)
+
+SKIP_VALUES = frozenset({"", '""', "''"})
+
+
+def parse_env(text: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip()
+        v = v.strip().strip('"').strip("'")
+        out[k] = v
+    return out
+
+
+def main() -> int:
+    if not ENV_PATH.is_file():
+        print("Missing Backend/.env", file=sys.stderr)
+        return 1
+    data = parse_env(ENV_PATH.read_text(encoding="utf-8"))
+    to_set = [(k, data[k]) for k in SYNC_KEYS if k in data and data[k] not in SKIP_VALUES]
+    if not to_set:
+        print("Nothing to sync (no matching keys with values).", file=sys.stderr)
+        return 1
+    railway = shutil.which("railway")
+    if not railway:
+        print("railway CLI not in PATH", file=sys.stderr)
+        return 1
+    for key, val in to_set:
+        arg = f"{key}={val}"
+        r = subprocess.run(
+            [railway, "variable", "set", "--skip-deploys", arg],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            shell=False,
+        )
+        if r.returncode != 0:
+            print(r.stderr or r.stdout, file=sys.stderr)
+            return r.returncode
+        print(f"OK {key}")
+    print(f"Done: {len(to_set)} variable(s) set on Railway (--skip-deploys). Redeploy once from Railway dashboard.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
