@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Search } from 'lucide-react';
 import axios from 'axios';
 import Button from '../ui/Button';
@@ -6,6 +6,16 @@ import { AIRPORT_OPTIONS } from '../../data/flightMock';
 import { salamairCreateSession, salamairSearchFlights } from '../../services/salamairApi';
 
 type TripKind = 'oneway' | 'round';
+
+/** "MCT — Muscat" → show city first so Origin vs Destination reads clearly. */
+function formatAirportOption(opt: { code: string; label: string }): string {
+  const sep = ' — ';
+  if (opt.label.includes(sep)) {
+    const city = opt.label.split(sep)[1]?.trim() ?? opt.code;
+    return `${city} (${opt.code})`;
+  }
+  return opt.label;
+}
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + 'T12:00:00');
@@ -51,7 +61,20 @@ export default function SalamAirLiveSearch() {
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<FlightsPayload | null>(null);
 
-  const airportCodes = useMemo(() => AIRPORT_OPTIONS.map((a) => a.code), []);
+  const fromOptions = useMemo(
+    () => AIRPORT_OPTIONS.filter((a) => a.code !== to),
+    [to]
+  );
+  const toOptions = useMemo(
+    () => AIRPORT_OPTIONS.filter((a) => a.code !== from),
+    [from]
+  );
+
+  useEffect(() => {
+    if (from !== to || AIRPORT_OPTIONS.length < 2) return;
+    const next = AIRPORT_OPTIONS.find((a) => a.code !== from);
+    if (next) setTo(next.code);
+  }, [from, to]);
 
   const datesStr =
     tripKind === 'round' ? `${depart}|${returnDate}` : depart;
@@ -104,37 +127,45 @@ export default function SalamAirLiveSearch() {
       </p>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 p-4 shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-          <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            From
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+            <span>Origin</span>
+            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-500 leading-tight">
+              Airport you depart from
+            </span>
             <select
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+              aria-label="Origin airport"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 mt-0.5"
             >
-              {airportCodes.map((code) => (
-                <option key={code} value={code}>
-                  {AIRPORT_OPTIONS.find((a) => a.code === code)?.label ?? code}
+              {fromOptions.map((opt) => (
+                <option key={opt.code} value={opt.code}>
+                  {formatAirportOption(opt)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            To
+          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+            <span>Destination</span>
+            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-500 leading-tight">
+              Airport you fly to
+            </span>
             <select
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+              aria-label="Destination airport"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 mt-0.5"
             >
-              {airportCodes.map((code) => (
-                <option key={code} value={code}>
-                  {AIRPORT_OPTIONS.find((a) => a.code === code)?.label ?? code}
+              {toOptions.map((opt) => (
+                <option key={opt.code} value={opt.code}>
+                  {formatAirportOption(opt)}
                 </option>
               ))}
             </select>
           </label>
 
-          <div className="lg:col-span-2 flex flex-col gap-1">
+          <div className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Trip</span>
             <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5">
               <button
@@ -162,7 +193,7 @@ export default function SalamAirLiveSearch() {
             </div>
           </div>
 
-          <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
             Depart
             <input
               type="date"
@@ -173,7 +204,7 @@ export default function SalamAirLiveSearch() {
           </label>
 
           {tripKind === 'round' && (
-            <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
               Return
               <input
                 type="date"
@@ -185,7 +216,7 @@ export default function SalamAirLiveSearch() {
             </label>
           )}
 
-          <label className="lg:col-span-1 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
             Adults
             <input
               type="number"
@@ -196,20 +227,21 @@ export default function SalamAirLiveSearch() {
               className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             />
           </label>
+        </div>
 
-          <div className="lg:col-span-1 flex items-end">
-            <Button
-              type="button"
-              variant="primary"
-              className="w-full"
-              onClick={() => void runSearch()}
-              disabled={loading}
-              isLoading={loading}
-            >
-              <Search className="h-4 w-4" />
-              Search flights
-            </Button>
-          </div>
+        <div className="mt-3 flex justify-stretch sm:justify-end">
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="w-full sm:w-auto sm:min-w-[12.5rem] px-5 justify-center"
+            onClick={() => void runSearch()}
+            disabled={loading}
+            isLoading={loading}
+          >
+            <Search className="h-4 w-4 shrink-0" aria-hidden />
+            Search flights
+          </Button>
         </div>
       </div>
 
