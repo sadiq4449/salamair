@@ -45,7 +45,7 @@ from app.schemas.admin_schema import (
 )
 from app.schemas.email_schema import PollInboxResponse
 from app.services.admin_audit import ADMIN_CONFIG_KEYS, ensure_default_system_config, log_admin_action
-from app.services.email_service import send_smtp_email
+from app.services.email_service import resend_outbound_summary, send_smtp_email
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.reminder_runner import ensure_default_reminder_rules, run_reminder_scan
 
@@ -396,6 +396,7 @@ def admin_email_status(_user: User = Depends(require_role("admin"))):
         smtp_implicit_ssl=settings.SMTP_IMPLICIT_SSL,
         smtp_timeout_seconds=max(15, int(settings.SMTP_TIMEOUT_SECONDS)),
         resend_configured=bool((settings.RESEND_API_KEY or "").strip()),
+        resend_outbound_summary=resend_outbound_summary(),
         smtp_user_configured=bool((settings.SMTP_USER or "").strip()),
         smtp_password_configured=bool((settings.SMTP_PASSWORD or "").strip()),
         email_enabled_env=settings.EMAIL_ENABLED,

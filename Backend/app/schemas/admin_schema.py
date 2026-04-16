@@ -169,6 +169,10 @@ class AdminEmailStatusResponse(BaseModel):
     smtp_implicit_ssl: bool
     smtp_timeout_seconds: int
     resend_configured: bool
+    resend_outbound_summary: str | None = Field(
+        None,
+        description="Actual Resend From / Reply-To (SMTP_FROM_EMAIL alone is not the envelope when using Gmail+Resend).",
+    )
     smtp_user_configured: bool
     smtp_password_configured: bool
     email_enabled_env: bool | None = Field(None, description="Raw EMAIL_ENABLED from env, if set")

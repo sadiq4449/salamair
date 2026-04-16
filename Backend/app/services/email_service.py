@@ -119,6 +119,17 @@ def _resend_from_and_reply_to() -> tuple[str, list[str] | None]:
     return contact, None
 
 
+def resend_outbound_summary() -> str | None:
+    """Human-readable Resend envelope for admin status (matches actual API sends)."""
+    if not (settings.RESEND_API_KEY or "").strip():
+        return None
+    from_addr, reply_to = _resend_from_and_reply_to()
+    disp = (settings.SMTP_FROM_NAME or "Salam Air").strip()
+    if reply_to:
+        return f"Envelope From: {disp} <{from_addr}> | Reply-To: {reply_to[0]}"
+    return f"Envelope From: {disp} <{from_addr}>"
+
+
 def _send_via_resend(
     to_email: str,
     subject: str,

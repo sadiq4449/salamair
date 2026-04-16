@@ -188,9 +188,16 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
               <dt className="text-gray-500">Outbound</dt>
-              <dd className="text-right font-mono text-gray-800 dark:text-gray-200 break-all">
+              <dd className="text-right text-gray-800 dark:text-gray-200 break-all text-[0.7rem] leading-snug">
                 {emailStatus.resend_configured ? (
-                  <>Resend API (HTTPS) · from {emailStatus.smtp_from_email}</>
+                  <>
+                    <span className="font-mono block">HTTPS api.resend.com</span>
+                    {emailStatus.resend_outbound_summary ? (
+                      <span className="block mt-1 text-gray-600 dark:text-gray-300">{emailStatus.resend_outbound_summary}</span>
+                    ) : (
+                      <span className="block mt-1 font-mono">contact in env: {emailStatus.smtp_from_email}</span>
+                    )}
+                  </>
                 ) : (
                   <>
                     {emailStatus.smtp_host}:{emailStatus.smtp_port}{' '}
