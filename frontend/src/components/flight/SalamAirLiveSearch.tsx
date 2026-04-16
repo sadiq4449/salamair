@@ -41,17 +41,31 @@ function defaultOutbound(): string {
 interface SalamAirFlightOffer {
   departureDate?: string;
   arrivalDate?: string;
+  fares?: Array<{
+    fareTypeName?: string;
+    fareInfos?: Array<{
+      fareWithTaxes?: number;
+      seatsAvailable?: number;
+    }>;
+  }>;
   segments?: Array<{
     flightNumber?: string;
     operatingFlightNumber?: string;
     departureDate?: string;
     arrivalDate?: string;
+    flightTime?: number;
+    stops?: number;
+    originCode?: string;
+    destinationCode?: string;
     legs?: Array<{
       departureDate?: string;
       arrivalDate?: string;
       flightNumber?: string;
       operatingFlightNumber?: string;
       carrierCode?: string;
+      origin?: string;
+      destination?: string;
+      flightTime?: number;
     }>;
   }>;
 }
@@ -69,6 +83,76 @@ function formatClock(iso: string): string {
 }
 
 /** First segment / leg times (local as returned by API). */
+function formatDurationMinutes(totalMin: number): string {
+  if (!totalMin || totalMin < 1) return '—';
+  const h = Math.floor(totalMin / 60);
+  const m = Math.round(totalMin % 60);
+  if (h <= 0) return `${m}min`;
+  if (m === 0) return `${h}hr`;
+  return `${h}hr ${m}min`;
+}
+
+/** Full first-leg detail for “original SalamAir” style row. */
+function extractLegDetail(m: MarketRow): {
+  dep: string;
+  arr: string;
+  origin: string;
+  dest: string;
+  durationLabel: string;
+  metaLine: string;
+} | null {
+  const flights = m.flights;
+  if (!Array.isArray(flights) || flights.length === 0) return null;
+  const top = flights[0];
+  const seg = Array.isArray(top.segments) && top.segments.length > 0 ? top.segments[0] : null;
+  const leg = seg?.legs && seg.legs.length > 0 ? seg.legs[0] : null;
+
+  const depIso = leg?.departureDate ?? seg?.departureDate ?? top.departureDate;
+  const arrIso = leg?.arrivalDate ?? seg?.arrivalDate ?? top.arrivalDate;
+  if (!depIso || !arrIso) return null;
+
+  const origin = (leg?.origin ?? seg?.originCode ?? '?').toString();
+  const dest = (leg?.destination ?? seg?.destinationCode ?? '?').toString();
+  const fn =
+    leg?.flightNumber ??
+    leg?.operatingFlightNumber ??
+    seg?.flightNumber ??
+    seg?.operatingFlightNumber;
+  const carrier = leg?.carrierCode ?? 'OV';
+  const stops = typeof seg?.stops === 'number' ? seg.stops : 0;
+  const durMin = seg?.flightTime ?? leg?.flightTime ?? 0;
+
+  const metaLine = [
+    fn ? `${carrier}${fn}` : carrier,
+    stops <= 0 ? 'Direct' : `${stops} stop(s)`,
+    durMin ? `Total duration ${formatDurationMinutes(durMin)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+
+  return {
+    dep: formatClock(depIso),
+    arr: formatClock(arrIso),
+    origin,
+    dest,
+    durationLabel: formatDurationMinutes(durMin),
+    metaLine,
+  };
+}
+
+function extractFareColumns(m: MarketRow): { name: string; price: number }[] {
+  const top = m.flights?.[0];
+  const fares = top?.fares;
+  if (!Array.isArray(fares)) return [];
+  const out: { name: string; price: number }[] = [];
+  for (const f of fares) {
+    const name = (f.fareTypeName ?? 'Fare').toUpperCase();
+    const price = f.fareInfos?.[0]?.fareWithTaxes ?? 0;
+    if (typeof price === 'number' && price > 0) out.push({ name, price });
+  }
+  return out;
+}
+
 function extractScheduleFromMarket(m: MarketRow): {
   dep: string;
   arr: string;
@@ -188,16 +272,25 @@ function DepartingFlightBlock({
 
   const headlineDateIso = departureAnchorIso ?? markets[0]?.date;
 
-  const anchorMarket = useMemo(() => {
-    if (!markets.length) return undefined;
+  const defaultMarketIndex = useMemo(() => {
+    if (!markets.length) return 0;
     if (departureAnchorIso) {
-      const hit = markets.find((m) => m.date && sameCalendarDay(m.date, departureAnchorIso));
-      if (hit) return hit;
+      const idx = markets.findIndex((m) => m.date && sameCalendarDay(m.date, departureAnchorIso));
+      if (idx >= 0) return idx;
     }
-    return markets.find((m) => typeof m.lowestFare === 'number' && m.lowestFare > 0) ?? markets[0];
+    const firstPrice = markets.findIndex((m) => typeof m.lowestFare === 'number' && m.lowestFare > 0);
+    return firstPrice >= 0 ? firstPrice : 0;
   }, [markets, departureAnchorIso]);
 
-  const anchorSchedule = anchorMarket ? extractScheduleFromMarket(anchorMarket) : null;
+  const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedMarketIndex(defaultMarketIndex);
+  }, [defaultMarketIndex]);
+
+  const selectedMarket = markets[selectedMarketIndex];
+  const legDetail = selectedMarket ? extractLegDetail(selectedMarket) : null;
+  const fareColumns = selectedMarket ? extractFareColumns(selectedMarket) : [];
 
   function scrollCarousel(dir: -1 | 1) {
     const el = scrollRef.current;
@@ -210,53 +303,46 @@ function DepartingFlightBlock({
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5">
       <div className="h-1 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
       <div className="border-b border-teal-700/15 bg-gradient-to-b from-teal-50/90 to-white px-4 py-4 dark:border-teal-900/30 dark:from-teal-950/40 dark:to-gray-900 sm:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-800 dark:text-teal-300">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-800 dark:text-teal-300">
               Departing flight
             </h3>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
-              <Plane className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+              <Plane className="h-4 w-4 shrink-0 text-lime-600 dark:text-lime-400" aria-hidden />
               <span className="font-bold tracking-wide">
                 {originLabel}{' '}
-                <span className="mx-0.5 font-normal text-teal-600/80 dark:text-teal-400/90">→</span> {destLabel}
+                <span className="mx-0.5 font-normal text-lime-700/90 dark:text-lime-400/90">TO</span> {destLabel}
               </span>
             </div>
             {headlineDateIso && (
-              <p className="mt-1.5 text-sm font-medium text-teal-700 dark:text-teal-400">
+              <p className="mt-1.5 text-sm font-semibold uppercase tracking-wide text-lime-600 dark:text-lime-400">
                 {formatRouteDateLine(headlineDateIso)}
               </p>
             )}
-            {anchorSchedule && (
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-teal-200/60 pt-3 text-xs text-gray-800 dark:border-teal-800/40 dark:text-gray-200">
-                <span className="font-semibold tabular-nums">
-                  <span className="text-gray-500 dark:text-gray-400">Dep </span>
-                  {anchorSchedule.dep}
-                </span>
-                <span className="text-gray-300 dark:text-gray-600" aria-hidden>
-                  →
-                </span>
-                <span className="font-semibold tabular-nums">
-                  <span className="text-gray-500 dark:text-gray-400">Arr </span>
-                  {anchorSchedule.arr}
-                </span>
-                {anchorSchedule.flightLabel && (
-                  <span className="rounded-md bg-white/80 px-2 py-0.5 font-mono text-[11px] text-teal-800 shadow-sm dark:bg-gray-800/80 dark:text-teal-300">
-                    {anchorSchedule.flightLabel}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
-          <a
-            href={BOOKING_SALAMAIR}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-teal-800 shadow-sm transition-colors hover:bg-teal-50 dark:border-teal-700 dark:bg-teal-950/50 dark:text-teal-200 dark:hover:bg-teal-900/40"
-          >
-            Book
-            <ExternalLink className="h-3.5 w-3.5 opacity-80" />
-          </a>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {currency && (
+              <span className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                {currency}
+              </span>
+            )}
+            <a
+              href="#find-flights"
+              className="text-xs font-bold uppercase tracking-wide text-sky-600 hover:underline dark:text-sky-400"
+            >
+              Modify search
+            </a>
+            <a
+              href={BOOKING_SALAMAIR}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-teal-800 shadow-sm transition-colors hover:bg-teal-50 dark:border-teal-700 dark:bg-teal-950/50 dark:text-teal-200 dark:hover:bg-teal-900/40"
+            >
+              Book on SalamAir
+              <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+            </a>
+          </div>
         </div>
       </div>
 
@@ -265,7 +351,7 @@ function DepartingFlightBlock({
           <button
             type="button"
             onClick={() => scrollCarousel(-1)}
-            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-teal-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-teal-400 dark:hover:bg-gray-700"
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-200/80 bg-amber-50 text-teal-800 shadow-sm hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-teal-300 dark:hover:bg-amber-900/30"
             aria-label="Scroll dates left"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -279,17 +365,23 @@ function DepartingFlightBlock({
               const hasPrice = typeof m.lowestFare === 'number' && m.lowestFare > 0;
               const isNoFlights = !hasPrice;
               const isCheapest = hasPrice && cheapestFare !== null && m.lowestFare === cheapestFare;
-              const isAnchor =
-                departureAnchorIso && m.date ? sameCalendarDay(m.date, departureAnchorIso) : false;
+              const isSelected = mi === selectedMarketIndex;
               const { dow, dayMon } = m.date ? formatDayShort(m.date) : { dow: '—', dayMon: '' };
               const sched = extractScheduleFromMarket(m);
 
               return (
-                <div
+                <button
                   key={mi}
-                  className={`flex min-w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-shadow sm:min-w-[7rem] ${
-                    isAnchor
-                      ? 'border-teal-500 ring-2 ring-teal-500/30 dark:border-teal-400 dark:ring-teal-400/25'
+                  type="button"
+                  onClick={() => hasPrice && setSelectedMarketIndex(mi)}
+                  disabled={!hasPrice}
+                  className={`flex min-w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-all sm:min-w-[7rem] ${
+                    !hasPrice
+                      ? 'cursor-not-allowed opacity-70'
+                      : 'cursor-pointer hover:border-lime-400/80'
+                  } ${
+                    isSelected && hasPrice
+                      ? 'border-lime-500 bg-white ring-2 ring-lime-400/40 dark:border-lime-400 dark:ring-lime-500/30'
                       : isCheapest && hasPrice
                         ? 'border-emerald-400 bg-emerald-50/90 dark:border-emerald-500/60 dark:bg-emerald-950/40'
                         : 'border-gray-200 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-800/40'
@@ -309,8 +401,8 @@ function DepartingFlightBlock({
                         className={`mt-1.5 text-sm font-bold tabular-nums ${
                           isCheapest
                             ? 'text-emerald-700 dark:text-emerald-300'
-                            : isAnchor
-                              ? 'text-teal-700 dark:text-teal-300'
+                            : isSelected
+                              ? 'text-lime-700 dark:text-lime-300'
                               : 'text-gray-900 dark:text-gray-100'
                         }`}
                       >
@@ -328,7 +420,7 @@ function DepartingFlightBlock({
                       Lowest
                     </span>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -336,12 +428,84 @@ function DepartingFlightBlock({
           <button
             type="button"
             onClick={() => scrollCarousel(1)}
-            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-teal-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-teal-400 dark:hover:bg-gray-700"
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-200/80 bg-amber-50 text-teal-800 shadow-sm hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-teal-300 dark:hover:bg-amber-900/30"
             aria-label="Scroll dates right"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
+
+        {selectedMarket && legDetail && selectedMarket.lowestFare > 0 && (
+          <div className="mt-6 space-y-3 border-t border-gray-100 pt-5 dark:border-gray-800">
+            <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+              {selectedMarket.date ? formatRouteDateLine(selectedMarket.date) : ''}
+            </p>
+            <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-800/40 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 sm:flex-row sm:gap-8">
+                <div className="text-center sm:text-right">
+                  <div className="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">{legDetail.dep}</div>
+                  <div className="mt-0.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {legDetail.origin} — Departure
+                  </div>
+                </div>
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-lime-100 text-lime-700 shadow-inner dark:bg-lime-900/40 dark:text-lime-300"
+                  aria-hidden
+                >
+                  <Plane className="h-6 w-6" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <div className="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">{legDetail.arr}</div>
+                  <div className="mt-0.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {legDetail.dest} — Arrival
+                  </div>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-col justify-center rounded-xl bg-gradient-to-br from-lime-500 to-emerald-600 px-5 py-4 text-center text-white shadow-md lg:min-w-[11rem]">
+                <span className="text-xs font-semibold uppercase tracking-wide opacity-95">From</span>
+                <span className="text-2xl font-bold tabular-nums">
+                  {formatFareDisplay(selectedMarket.lowestFare, currency)}
+                </span>
+              </div>
+            </div>
+            {legDetail.metaLine && (
+              <p className="text-center text-xs text-gray-600 dark:text-gray-400">{legDetail.metaLine}</p>
+            )}
+            {fareColumns.length > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="w-full min-w-[520px] border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      {fareColumns.map((col) => (
+                        <th
+                          key={col.name}
+                          className="border-b border-gray-200 bg-gradient-to-b from-lime-500 to-emerald-600 px-2 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:border-gray-600"
+                        >
+                          {col.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {fareColumns.map((col) => (
+                        <td
+                          key={col.name}
+                          className="border border-gray-100 bg-gray-50/80 px-2 py-3 text-center text-base font-bold tabular-nums text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100"
+                        >
+                          {formatFareDisplay(col.price, currency)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="border-t border-gray-100 bg-gray-50/50 px-3 py-2 text-[10px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+                  Baggage and fare rules are shown on SalamAir when you continue to book.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-500">
           Indicative lowest fares in this date window. Confirm times and book on{' '}
@@ -431,7 +595,10 @@ export default function SalamAirLiveSearch() {
   return (
     <div className="flex flex-col gap-6 pb-8 min-h-[min(85vh,900px)]">
       {/* Search card — airline-style strip + compact form */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5">
+      <div
+        id="find-flights"
+        className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5 scroll-mt-4"
+      >
         <div className="h-1.5 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
         <div className="border-b border-gray-100 px-4 py-3.5 dark:border-gray-800 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
