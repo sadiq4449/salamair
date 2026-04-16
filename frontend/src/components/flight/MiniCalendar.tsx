@@ -21,10 +21,14 @@ function parseISODate(iso: string): { y: number; m0: number; d: number } | null 
   return { y, m0: mo, d };
 }
 
+function isToday(y: number, m0: number, d: number) {
+  const now = new Date();
+  return y === now.getFullYear() && m0 === now.getMonth() && d === now.getDate();
+}
+
 type Props = {
   value: string;
   onChange: (iso: string) => void;
-  /** Month shown when user has not picked a date matching a month yet */
   defaultMonth?: { year: number; month0: number };
   minDate?: string;
   maxDate?: string;
@@ -41,12 +45,8 @@ export default function MiniCalendar({
 }: Props) {
   const selected = value ? parseISODate(value) : null;
 
-  const [viewYear, setViewYear] = useState(() =>
-    selected ? selected.y : defaultMonth.year
-  );
-  const [viewMonth0, setViewMonth0] = useState(() =>
-    selected ? selected.m0 : defaultMonth.month0
-  );
+  const [viewYear, setViewYear] = useState(() => (selected ? selected.y : defaultMonth.year));
+  const [viewMonth0, setViewMonth0] = useState(() => (selected ? selected.m0 : defaultMonth.month0));
 
   useEffect(() => {
     if (selected) {
@@ -55,12 +55,13 @@ export default function MiniCalendar({
     }
   }, [value]);
 
-  const monthLabel = useMemo(() => {
-    return new Date(viewYear, viewMonth0, 1).toLocaleString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    });
-  }, [viewYear, viewMonth0]);
+  const monthLabel = useMemo(
+    () =>
+      new Date(viewYear, viewMonth0, 1)
+        .toLocaleString('en-US', { month: 'long', year: 'numeric' })
+        .toUpperCase(),
+    [viewYear, viewMonth0]
+  );
 
   const cells = useMemo(() => {
     const first = new Date(viewYear, viewMonth0, 1);
@@ -85,80 +86,91 @@ export default function MiniCalendar({
     setViewMonth0(n.getMonth());
   }
 
-  const maxMonth = maxDate ? parseISODate(maxDate) : null;
-  const minMonth = minDate ? parseISODate(minDate) : null;
-  const nextDisabled =
-    maxMonth &&
-    (viewYear > maxMonth.y || (viewYear === maxMonth.y && viewMonth0 >= maxMonth.m0));
-  const prevDisabled =
-    minMonth &&
-    (viewYear < minMonth.y || (viewYear === minMonth.y && viewMonth0 <= minMonth.m0));
-
   function goPrev() {
     const n = new Date(viewYear, viewMonth0 - 1, 1);
     setViewYear(n.getFullYear());
     setViewMonth0(n.getMonth());
   }
 
+  const maxMonth = maxDate ? parseISODate(maxDate) : null;
+  const minMonth = minDate ? parseISODate(minDate) : null;
+  const nextDisabled =
+    maxMonth && (viewYear > maxMonth.y || (viewYear === maxMonth.y && viewMonth0 >= maxMonth.m0));
+  const prevDisabled =
+    minMonth && (viewYear < minMonth.y || (viewYear === minMonth.y && viewMonth0 <= minMonth.m0));
+
   return (
-    <div
-      className={`rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 p-3 shadow-sm ${className}`}
-    >
-      <div className="flex items-center justify-between mb-2 gap-1">
+    <div className={`rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 overflow-hidden ${className}`}>
+      {/* Month header — green bar like SalamAir */}
+      <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-3 py-2">
         <button
           type="button"
           onClick={goPrev}
           disabled={!!prevDisabled}
-          className="p-1 rounded-md text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+          className="p-1 rounded text-gray-500 dark:text-gray-400 hover:text-[#7ab929] disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Previous month"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex-1 text-center">
+        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-wider">
           {monthLabel}
         </span>
         <button
           type="button"
           onClick={goNext}
           disabled={!!nextDisabled}
-          className="p-1 rounded-md text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+          className="p-1.5 rounded-md bg-[#7ab929] text-white hover:bg-[#6aa823] disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Next month"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[0.65rem] font-medium text-gray-500 dark:text-gray-400 mb-1">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="py-1">
-            {w}
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-0.5">
-        {cells.map((cell, i) => {
-          if (!cell) return <div key={`e-${i}`} className="aspect-square min-h-[28px]" />;
-          const d = cell.day;
-          const iso = toISODate(viewYear, viewMonth0, d);
-          const disabled = isDisabled(viewYear, viewMonth0, d);
-          const isSel = selected && selected.y === viewYear && selected.m0 === viewMonth0 && selected.d === d;
-          return (
-            <button
-              key={iso}
-              type="button"
-              disabled={disabled}
-              onClick={() => !disabled && onChange(iso)}
-              className={[
-                'aspect-square min-h-[28px] text-xs rounded transition-colors',
-                disabled
-                  ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                  : 'text-gray-800 dark:text-gray-100 hover:bg-sky-100 dark:hover:bg-sky-900/40',
-                isSel ? 'bg-sky-200 dark:bg-sky-800 font-semibold' : '',
-              ].join(' ')}
-            >
-              {d}
-            </button>
-          );
-        })}
+
+      <div className="p-2.5">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+          {WEEKDAYS.map((w) => (
+            <div key={w} className="py-1">
+              {w}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div className="grid grid-cols-7 gap-px">
+          {cells.map((cell, i) => {
+            if (!cell) return <div key={`e-${i}`} className="aspect-square min-h-[30px]" />;
+            const d = cell.day;
+            const iso = toISODate(viewYear, viewMonth0, d);
+            const disabled = isDisabled(viewYear, viewMonth0, d);
+            const isSel =
+              selected && selected.y === viewYear && selected.m0 === viewMonth0 && selected.d === d;
+            const today = isToday(viewYear, viewMonth0, d);
+
+            return (
+              <button
+                key={iso}
+                type="button"
+                disabled={disabled}
+                onClick={() => !disabled && onChange(iso)}
+                className={[
+                  'aspect-square min-h-[30px] text-xs flex items-center justify-center transition-colors rounded-sm',
+                  disabled
+                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-[#7ab929]/10',
+                  isSel
+                    ? 'bg-[#5b9bd5] text-white font-bold hover:bg-[#5b9bd5]'
+                    : '',
+                  today && !isSel
+                    ? 'bg-[#7ab929]/15 font-bold text-[#7ab929]'
+                    : '',
+                ].join(' ')}
+              >
+                {d}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
