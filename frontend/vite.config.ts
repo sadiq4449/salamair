@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // All /api/* calls go to FastAPI (including /proxy/salamair HTML + /proxy/salamair-api)
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
