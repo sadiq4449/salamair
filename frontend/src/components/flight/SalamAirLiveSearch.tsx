@@ -41,13 +41,6 @@ function defaultOutbound(): string {
 interface SalamAirFlightOffer {
   departureDate?: string;
   arrivalDate?: string;
-  fares?: Array<{
-    fareTypeName?: string;
-    fareInfos?: Array<{
-      fareWithTaxes?: number;
-      seatsAvailable?: number;
-    }>;
-  }>;
   segments?: Array<{
     flightNumber?: string;
     operatingFlightNumber?: string;
@@ -138,19 +131,6 @@ function extractLegDetail(m: MarketRow): {
     durationLabel: formatDurationMinutes(durMin),
     metaLine,
   };
-}
-
-function extractFareColumns(m: MarketRow): { name: string; price: number }[] {
-  const top = m.flights?.[0];
-  const fares = top?.fares;
-  if (!Array.isArray(fares)) return [];
-  const out: { name: string; price: number }[] = [];
-  for (const f of fares) {
-    const name = (f.fareTypeName ?? 'Fare').toUpperCase();
-    const price = f.fareInfos?.[0]?.fareWithTaxes ?? 0;
-    if (typeof price === 'number' && price > 0) out.push({ name, price });
-  }
-  return out;
 }
 
 function extractScheduleFromMarket(m: MarketRow): {
@@ -290,7 +270,6 @@ function DepartingFlightBlock({
 
   const selectedMarket = markets[selectedMarketIndex];
   const legDetail = selectedMarket ? extractLegDetail(selectedMarket) : null;
-  const fareColumns = selectedMarket ? extractFareColumns(selectedMarket) : [];
 
   function scrollCarousel(dir: -1 | 1) {
     const el = scrollRef.current;
@@ -471,54 +450,8 @@ function DepartingFlightBlock({
             {legDetail.metaLine && (
               <p className="text-center text-xs text-gray-600 dark:text-gray-400">{legDetail.metaLine}</p>
             )}
-            {fareColumns.length > 0 && (
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table className="w-full min-w-[520px] border-collapse text-sm">
-                  <thead>
-                    <tr>
-                      {fareColumns.map((col) => (
-                        <th
-                          key={col.name}
-                          className="border-b border-gray-200 bg-gradient-to-b from-lime-500 to-emerald-600 px-2 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-white dark:border-gray-600"
-                        >
-                          {col.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {fareColumns.map((col) => (
-                        <td
-                          key={col.name}
-                          className="border border-gray-100 bg-gray-50/80 px-2 py-3 text-center text-base font-bold tabular-nums text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100"
-                        >
-                          {formatFareDisplay(col.price, currency)}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-                <p className="border-t border-gray-100 bg-gray-50/50 px-3 py-2 text-[10px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-                  Baggage and fare rules are shown on SalamAir when you continue to book.
-                </p>
-              </div>
-            )}
           </div>
         )}
-
-        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-500">
-          Indicative lowest fares in this date window. Confirm times and book on{' '}
-          <a
-            href={BOOKING_SALAMAIR}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-teal-600 hover:underline dark:text-teal-400"
-          >
-            SalamAir
-          </a>
-          .
-        </p>
       </div>
     </div>
   );
