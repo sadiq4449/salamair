@@ -4,7 +4,7 @@ This document describes how the React app aligns with the static HTML demos unde
 
 ## Summary
 
-The app mirrors the demo navigation structure, request-detail side panels (AI assistant, AI summary, RM actions), email smart replies, a **mock** flight schedule with filters, admin “all requests,” and supporting queues. The agent bulk-upload sidebar link is registered in `App.tsx`.
+The app mirrors the demo navigation structure, request-detail side panels (AI assistant, AI summary, RM actions), email smart replies, **live-style flight search** on `/flights`, admin “all requests,” and supporting queues. The agent bulk-upload sidebar link is registered in `App.tsx`.
 
 ---
 
@@ -37,7 +37,7 @@ The app mirrors the demo navigation structure, request-detail side panels (AI as
 - **Agent request detail** — AI Assistant card above Notes (matches demo).
 - **Send to RM modal** — “Smart replies” chips **replace** the RM message body with the chosen template (same strings as `sales.js` `SMART_REPLIES`; `insertSmartReply` behaviour in the demo).
 - **Email thread (Sales ↔ RM)** — “Nudge RM” sends a short reminder via the reply API when status is `rm_pending`, a thread exists, and the user can reply (`canReply`). It does **not** require simulate/dev mode.
-- **Flight availability** — Implemented by `FlightDemoSchedule.tsx`: trip type, from/to, date filters, text search, and mock `MOCK_FLIGHTS` rows. Copy links to `booking.salamair.com` for real booking; **not** live inventory on this route.
+- **Flight availability** — Default `/flights` uses `SalamAirLiveSearch` (SalamAir session + search API). A separate **offline mock** page exists as `FlightDemoSchedule.tsx` (uses `MOCK_FLIGHTS` from `flightMock.ts`) for reference or future routing, but it is **not** the default for `/flights`.
 - **Agent dashboard** — “Check Flights” quick action navigates to `/flights`.
 - **Sidebar** — Role-based labels and order; **admin** includes “All requests,” “Email aggregation,” and “Flight availability.” Active-state helper keeps `/admin/*` highlighting correct.
 - **Admin sub-nav** — “All requests” entry points to `/admin/requests`.
@@ -48,7 +48,7 @@ The app mirrors the demo navigation structure, request-detail side panels (AI as
 ## Notes
 
 - AI panels use **deterministic heuristics** (no external LLM). They are intended to match the demo UX, not to provide production pricing advice.
-- `/flights` uses **mock-only** schedule data in-app (`flightMock.ts`). A separate live-search component (`SalamAirLiveSearch.tsx`) exists in the repo but is **not** mounted on `/flights` by default.
+- `/flights` mounts **`SalamAirLiveSearch`** by default. **`FlightDemoSchedule`** remains in the repo as an optional mock schedule (not routed unless you add a route).
 - City-wise filtering uses **substring match** on the request `route` field for the selected IATA code (same idea as the demo’s `route.includes(curCity)`).
 
 ---
@@ -64,6 +64,6 @@ The app mirrors the demo navigation structure, request-detail side panels (AI as
 | AI / demo text | `frontend/src/components/AiPricingAssistant.tsx`, `EmailThreadSummaryCard.tsx`, `utils/demoAiHelpers.ts` |
 | Request detail | `frontend/src/pages/sales/SalesRequestDetail.tsx`, `frontend/src/pages/agent/RequestDetail.tsx` |
 | RM email UX | `frontend/src/components/EmailPreviewModal.tsx`, `EmailThreadView.tsx` |
-| Flights mock | `frontend/src/pages/FlightAvailability.tsx`, `frontend/src/pages/FlightDemoSchedule.tsx`, `frontend/src/data/flightMock.ts` |
+| Flights | `frontend/src/pages/FlightAvailability.tsx`, `frontend/src/components/flight/SalamAirLiveSearch.tsx`, `frontend/src/services/salamairApi.ts`, `frontend/src/data/flightMock.ts` (airports); optional mock: `FlightDemoSchedule.tsx` |
 | Agent home | `frontend/src/pages/agent/AgentDashboard.tsx` |
 | Pending queue | `frontend/src/pages/sales/PendingApprovals.tsx` |
