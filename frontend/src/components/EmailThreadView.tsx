@@ -249,7 +249,7 @@ export default function EmailThreadView({
                 Simulate RM Reply
               </button>
             )}
-            {canReply && canSimulate && requestStatus === 'rm_pending' && hasThread && (
+            {canReply && requestStatus === 'rm_pending' && hasThread && (
               <button
                 type="button"
                 onClick={handleNudgeRm}

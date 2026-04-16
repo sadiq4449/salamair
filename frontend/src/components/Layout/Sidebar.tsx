@@ -57,6 +57,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Dashboard', path: '/dashboard', icon: Shield },
     { label: 'Admin panel', path: '/admin/dashboard', icon: Settings2 },
     { label: 'All requests', path: '/admin/requests', icon: ListOrdered },
+    { label: 'Email aggregation', path: '/inbox', icon: Inbox },
     { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Flight availability', path: '/flights', icon: Plane },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },

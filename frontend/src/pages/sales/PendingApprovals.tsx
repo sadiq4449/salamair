@@ -4,6 +4,7 @@ import { Search, Eye, FileText, RotateCcw } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
+import SlaIndicator from '../../components/SlaIndicator';
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
   { value: 'submitted', label: 'Submitted' },
@@ -121,6 +122,7 @@ export default function PendingApprovals() {
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SLA</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -135,6 +137,13 @@ export default function PendingApprovals() {
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
                     <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
                     <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
+                    <td className="px-6 py-3.5 min-w-[140px]">
+                      {['approved', 'rejected', 'draft'].includes(req.status) ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <SlaIndicator requestId={req.id} compact />
+                      )}
+                    </td>
                     <td className="px-6 py-3.5">
                       <button
                         onClick={() => navigate(`/pending/${req.id}`)}

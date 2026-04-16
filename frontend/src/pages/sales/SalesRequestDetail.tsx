@@ -153,7 +153,7 @@ export default function SalesRequestDetail() {
         {/* Right Column — order matches UI.demo_design/sales.html (AI, summary, actions, notes) */}
         <div className="space-y-5">
           <AiPricingAssistant price={Number(req.price)} priority={req.priority} status={req.status} />
-          <EmailThreadSummaryCard request={req} />
+          <EmailThreadSummaryCard key={req.id} request={req} />
 
           {!isTerminal && (
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">

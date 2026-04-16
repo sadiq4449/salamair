@@ -1,12 +1,11 @@
 import type { Priority, RequestStatus } from '../types';
 
-/** Heuristic “AI” pricing aligned with UI.demo_design/sales.js updateAI */
+/** Heuristic “AI” pricing aligned with UI.demo_design/sales.js `updateAI` (no urgent multiplier). */
 export function demoSuggestedPriceOmR(price: number, priority: Priority): number {
+  void priority;
   const p = Number(price);
   if (Number.isNaN(p) || p <= 0) return 0;
-  const base = p > 100 ? p * 0.9 : p * 0.95;
-  const urgentAdj = priority === 'urgent' ? 0.98 : 1;
-  return Math.round(base * urgentAdj);
+  return p > 100 ? Math.round(p * 0.9) : Math.round(p * 0.95);
 }
 
 export function demoConfidencePercent(priority: Priority): number {
@@ -80,10 +79,15 @@ export function buildDemoEmailSummaryPoints(req: SummaryInput): string[] {
   return points.length > 0 ? points : ['No strong signals — standard fare request.'];
 }
 
-export const DEMO_SMART_REPLIES = (price: number, route: string, pax: number) => [
-  `Please approve ${price.toFixed(2)} OMR — high value agent, urgent group`,
-  `Requesting approval for ${route}, ${pax} passengers`,
-  'VIP client — need urgent response',
-  'Can we negotiate on this rate?',
-  'RM approval needed — fare below threshold',
-];
+/** Same strings as UI.demo_design/sales.js `SMART_REPLIES` with `{price}` / `{route}` / `{pax}` substituted. */
+export const DEMO_SMART_REPLIES = (price: number, route: string, pax: number) => {
+  const p = Number(price);
+  const priceStr = Number.isFinite(p) ? String(p) : '';
+  return [
+    `Please approve ${priceStr} OMR, high value agent, urgent group`,
+    `Requesting approval for ${route}, ${pax} passengers`,
+    'VIP client - need urgent response',
+    'Can we negotiate on this rate?',
+    'RM approval needed - fare below threshold',
+  ];
+};

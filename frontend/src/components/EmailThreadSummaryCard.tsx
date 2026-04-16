@@ -1,21 +1,71 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Inbox } from 'lucide-react';
 import type { RequestDetail } from '../types';
 import { buildDemoEmailSummaryPoints } from '../utils/demoAiHelpers';
+import { messageService } from '../services/messageService';
+import { emailService } from '../services/emailService';
 
 interface Props {
   request: RequestDetail;
 }
 
-/** Demo-style “AI Summary” for Sales ↔ RM context (local heuristics, short delay like the HTML demo). */
+/** Demo-style “AI Summary” — message counts from API (stable when Agent ↔ Sales tab is hidden). */
 export default function EmailThreadSummaryCard({ request }: Props) {
-  const [ready, setReady] = useState(false);
+  const requestId = request.id;
+  const [loading, setLoading] = useState(true);
+  const [chatTotal, setChatTotal] = useState(0);
+  const [emailCount, setEmailCount] = useState(0);
+  const [showPoints, setShowPoints] = useState(false);
 
   useEffect(() => {
-    setReady(false);
-    const t = window.setTimeout(() => setReady(true), 600);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return;
+        setLoading(true);
+        setChatTotal(0);
+        setEmailCount(0);
+      })
+      .then(() =>
+        Promise.all([
+          messageService.getMessages(requestId, 'all', 1, 50),
+          emailService.getThread(requestId),
+        ])
+      )
+      .then(([msgRes, thread]) => {
+        if (cancelled) return;
+        setChatTotal(msgRes.total);
+        setEmailCount(thread.emails?.length ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChatTotal(0);
+          setEmailCount(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
+  const totalMsgs = chatTotal + emailCount;
+
+  useEffect(() => {
+    if (loading || totalMsgs === 0) {
+      queueMicrotask(() => setShowPoints(false));
+      return;
+    }
+    const t = window.setTimeout(() => setShowPoints(true), 600);
+    return () => {
+      window.clearTimeout(t);
+      queueMicrotask(() => setShowPoints(false));
+    };
   }, [
+    loading,
+    totalMsgs,
     request.id,
     request.status,
     request.priority,
@@ -47,14 +97,29 @@ export default function EmailThreadSummaryCard({ request }: Props) {
         </div>
       </div>
       <div className="p-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-        {!ready ? (
+        {loading ? (
           <div className="flex items-center gap-2 text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
-            <span>Analyzing request context…</span>
+            <span>Loading conversation context…</span>
+          </div>
+        ) : totalMsgs === 0 ? (
+          <div className="text-center py-6 text-gray-400 dark:text-gray-500">
+            <Inbox className="mx-auto h-10 w-10 mb-2 opacity-60" />
+            <p className="text-sm">No messages to summarize</p>
+            <p className="text-xs mt-1">Start the Agent ↔ Sales chat or RM email thread to see insights.</p>
+          </div>
+        ) : !showPoints ? (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+            <span>
+              Analyzing {totalMsgs} message{totalMsgs === 1 ? '' : 's'}…
+            </span>
           </div>
         ) : (
           <div className="rounded-lg border-l-4 border-violet-500 bg-violet-50/60 dark:bg-violet-950/30 pl-3 py-2 pr-2">
-            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">Key points</p>
+            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
+              Key points ({totalMsgs} message{totalMsgs === 1 ? '' : 's'} analyzed)
+            </p>
             <ul className="list-disc pl-4 space-y-1.5 text-[0.85rem]">
               {points.map((p, i) => (
                 <li key={i}>{p}</li>

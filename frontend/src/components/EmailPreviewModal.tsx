@@ -122,7 +122,7 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setMessage((prev) => (prev ? `${prev}\n\n${line}` : line))}
+                  onClick={() => setMessage(line)}
                   className="text-left text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors max-w-full"
                 >
                   {line}

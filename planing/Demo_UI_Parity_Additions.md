@@ -1,10 +1,10 @@
 # Demo UI parity — added features
 
-This document lists features and routes aligned with the static HTML demos under `UI.demo_design/` (`agent.html`, `sales.html`, `admin.html`) and the JavaScript behaviour in `agent.js` / `sales.js`.
+This document describes how the React app aligns with the static HTML demos under `UI.demo_design/` (`agent.html`, `sales.html`, `admin.html`) and the JavaScript behaviour in `agent.js` / `sales.js`. It is kept in sync with the current implementation.
 
 ## Summary
 
-The React app now mirrors the demo navigation structure, request-detail side panels (AI assistant, AI summary, RM actions), email “smart replies,” flight reference grid filters, and admin “all requests” overview. A previously broken sidebar link to bulk upload is wired to a real route.
+The app mirrors the demo navigation structure, request-detail side panels (AI assistant, AI summary, RM actions), email smart replies, a **mock** flight schedule with filters, admin “all requests,” and supporting queues. The agent bulk-upload sidebar link is registered in `App.tsx`.
 
 ---
 
@@ -12,53 +12,58 @@ The React app now mirrors the demo navigation structure, request-detail side pan
 
 | Route | Roles | Purpose |
 |-------|-------|---------|
-| `/bulk-upload` | Agent | Bulk Excel upload (was linked in the sidebar but not registered in `App.tsx`). |
-| `/flights` | Agent, Sales, Admin | Flight availability grid (mock schedule — same role as demo). |
-| `/inbox` | Sales, Admin | Email aggregation inbox (existing page, now in the nav). |
-| `/city-view` | Sales, Admin | City-wise request table with airport tabs (demo `City-Wise View`). |
+| `/bulk-upload` | Agent | Bulk Excel upload (sidebar link wired in `App.tsx`). |
+| `/flights` | Agent, Sales, Admin | **Mock** flight schedule (`FlightDemoSchedule` via `FlightAvailability.tsx`; data and airport options from `frontend/src/data/flightMock.ts`). |
+| `/inbox` | Sales, Admin | Email aggregation inbox; listed in the sidebar for **both** roles. |
+| `/city-view` | Sales, Admin | City-wise request table with airport tabs (demo “City-Wise View”). |
 | `/agent-history` | Sales, Admin | Per-agent cards with counts from loaded requests; admins merge company names from `/admin/agents` when available. |
 | `/admin/requests` | Admin | Full request list with filters and SLA column; opens `/pending/:id` for review. |
 
-Deep link: `/pending?search=<text>` pre-fills the pending queue search (used from Agent history cards).
+**Deep link:** `/pending?search=<text>` pre-fills the pending queue search (used from Agent history cards).
 
 ---
 
 ## New or updated UI components
 
-- **`AiPricingAssistant`** — Suggested OMR, confidence bar, recommendation line (heuristics matching `sales.js` `updateAI`).
-- **`EmailThreadSummaryCard`** — Bullet “key points” summary from request context (heuristics matching `generateEmailSummary` / `createSummary`).
-- **`demoAiHelpers.ts`** — Shared helpers for suggested price, confidence, summary bullets, and RM smart-reply strings.
+- **`AiPricingAssistant`** — Suggested OMR, confidence bar, recommendation line. Heuristics follow `sales.js` `updateAI` (suggested price uses `price > 100 ? 0.9 : 0.95`; no extra urgency factor on the suggested price).
+- **`EmailThreadSummaryCard`** — Bullet “key points” summary from request context (`buildDemoEmailSummaryPoints`). Loads **chat message count** and **RM email thread count** via `messageService` / `emailService` so it stays correct when the Agent ↔ Sales tab is hidden. If both counts are zero, shows **“No messages to summarize”** (aligned with the demo); otherwise a short “analyzing” delay then key points with “N messages analyzed.” Reset per request via `key={req.id}` on the sales detail page.
+- **`demoAiHelpers.ts`** — Shared helpers for suggested price, confidence, summary bullets, and RM smart-reply strings (`DEMO_SMART_REPLIES` matches `sales.js` `SMART_REPLIES` wording).
+
+---
 
 ## Behaviour updates
 
 - **Sales request detail** — Right column order: AI Assistant → AI Summary → Actions → Attachments → Notes (matches demo).
 - **Agent request detail** — AI Assistant card above Notes (matches demo).
-- **Send to RM modal** — “Smart replies” chip row appends template lines to the message (matches `SMART_REPLIES` in `sales.js`).
-- **Email thread (Sales ↔ RM)** — “Nudge RM” sends a short reminder via the existing reply API when status is `rm_pending` and a thread exists.
-- **Flight availability** — Date filter added next to route filter (mock dates from `flightMock.ts`).
-- **Agent dashboard** — “Check Flights” quick action (demo primary actions).
-- **Sidebar** — Rebuilt to follow demo labels and order; admin includes “All requests” and “Flight availability.” Active-state logic for `/admin/*` routes fixed so only the current admin section highlights.
+- **Send to RM modal** — “Smart replies” chips **replace** the RM message body with the chosen template (same strings as `sales.js` `SMART_REPLIES`; `insertSmartReply` behaviour in the demo).
+- **Email thread (Sales ↔ RM)** — “Nudge RM” sends a short reminder via the reply API when status is `rm_pending`, a thread exists, and the user can reply (`canReply`). It does **not** require simulate/dev mode.
+- **Flight availability** — Implemented by `FlightDemoSchedule.tsx`: trip type, from/to, date filters, text search, and mock `MOCK_FLIGHTS` rows. Copy links to `booking.salamair.com` for real booking; **not** live inventory on this route.
+- **Agent dashboard** — “Check Flights” quick action navigates to `/flights`.
+- **Sidebar** — Role-based labels and order; **admin** includes “All requests,” “Email aggregation,” and “Flight availability.” Active-state helper keeps `/admin/*` highlighting correct.
 - **Admin sub-nav** — “All requests” entry points to `/admin/requests`.
+- **Pending approvals** — Table includes an **SLA** column (`SlaIndicator`) for non-terminal statuses; supports `search` query param as above.
 
 ---
 
 ## Notes
 
 - AI panels use **deterministic heuristics** (no external LLM). They are intended to match the demo UX, not to provide production pricing advice.
-- Flight data remains **demo / reference only** (`frontend/src/data/flightMock.ts`).
+- `/flights` uses **mock-only** schedule data in-app (`flightMock.ts`). A separate live-search component (`SalamAirLiveSearch.tsx`) exists in the repo but is **not** mounted on `/flights` by default.
 - City-wise filtering uses **substring match** on the request `route` field for the selected IATA code (same idea as the demo’s `route.includes(curCity)`).
 
 ---
 
 ## Files touched (reference)
 
-- `frontend/src/App.tsx` — Routes.
-- `frontend/src/components/Layout/Sidebar.tsx` — Navigation + active state helper.
-- `frontend/src/components/admin/AdminLayout.tsx` — Admin tabs.
-- `frontend/src/pages/sales/CityWiseView.tsx`, `AgentHistoryPage.tsx` — New pages.
-- `frontend/src/pages/admin/AdminAllRequestsPage.tsx` — New page.
-- `frontend/src/components/AiPricingAssistant.tsx`, `EmailThreadSummaryCard.tsx`, `utils/demoAiHelpers.ts` — New.
-- `frontend/src/pages/sales/SalesRequestDetail.tsx`, `frontend/src/pages/agent/RequestDetail.tsx` — AI panels.
-- `frontend/src/components/EmailPreviewModal.tsx`, `EmailThreadView.tsx` — Smart replies and nudge.
-- `frontend/src/pages/FlightAvailability.tsx`, `frontend/src/pages/agent/AgentDashboard.tsx` — Demo parity tweaks.
-- `frontend/src/pages/sales/PendingApprovals.tsx` — `search` query parameter support.
+| Area | Files |
+|------|--------|
+| Routes | `frontend/src/App.tsx` |
+| Navigation | `frontend/src/components/Layout/Sidebar.tsx` |
+| Admin shell | `frontend/src/components/admin/AdminLayout.tsx` |
+| Pages | `frontend/src/pages/sales/CityWiseView.tsx`, `AgentHistoryPage.tsx`, `frontend/src/pages/admin/AdminAllRequestsPage.tsx` |
+| AI / demo text | `frontend/src/components/AiPricingAssistant.tsx`, `EmailThreadSummaryCard.tsx`, `utils/demoAiHelpers.ts` |
+| Request detail | `frontend/src/pages/sales/SalesRequestDetail.tsx`, `frontend/src/pages/agent/RequestDetail.tsx` |
+| RM email UX | `frontend/src/components/EmailPreviewModal.tsx`, `EmailThreadView.tsx` |
+| Flights mock | `frontend/src/pages/FlightAvailability.tsx`, `frontend/src/pages/FlightDemoSchedule.tsx`, `frontend/src/data/flightMock.ts` |
+| Agent home | `frontend/src/pages/agent/AgentDashboard.tsx` |
+| Pending queue | `frontend/src/pages/sales/PendingApprovals.tsx` |
