@@ -19,6 +19,7 @@ from app.api.routes.sla import router as sla_router
 from app.api.routes.tags import router as tags_router
 from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
+from app.api.routes.proxy import router as proxy_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.schema_sync import apply_runtime_schema_fixes
@@ -123,6 +124,7 @@ app.include_router(sla_router, prefix="/api/v1/sla", tags=["SLA"])
 app.include_router(search_router, prefix="/api/v1/search", tags=["Search"])
 app.include_router(tags_router, prefix="/api/v1/tags", tags=["Tags"])
 app.include_router(ws_router, prefix="/api/v1", tags=["WebSocket"])
+app.include_router(proxy_router, prefix="/api/v1/proxy/salamair", tags=["Proxy"])
 
 
 @app.get("/api/health", tags=["Health"])
