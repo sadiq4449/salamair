@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # When False: never send. When True: send (if credentials fail, SMTP errors). When None: send
     # only if SMTP_USER and SMTP_PASSWORD are both set (so Railway can omit this when creds exist).
     EMAIL_ENABLED: Optional[bool] = None
+    # Railway Hobby/Free often blocks outbound SMTP (465/587). Use Resend HTTPS API (port 443) instead.
+    # https://resend.com — verify your domain (or use onboarding@resend.dev while testing).
+    RESEND_API_KEY: str = ""
     RM_DEFAULT_EMAIL: str = "rm@salamair.com"
 
     # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup).
@@ -57,10 +60,12 @@ class Settings(BaseSettings):
 
     @property
     def email_sending_active(self) -> bool:
-        """True unless EMAIL_ENABLED is explicitly false; if unset, requires SMTP_USER + SMTP_PASSWORD."""
+        """True unless EMAIL_ENABLED is explicitly false; if unset, Resend key or SMTP_USER + SMTP_PASSWORD."""
         if self.EMAIL_ENABLED is False:
             return False
         if self.EMAIL_ENABLED is True:
+            return True
+        if (self.RESEND_API_KEY or "").strip():
             return True
         u, p = (self.SMTP_USER or "").strip(), (self.SMTP_PASSWORD or "").strip()
         return bool(u and p)

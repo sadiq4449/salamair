@@ -164,9 +164,20 @@ export default function AdminDashboardPage() {
           </div>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs mb-4">
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1">
-              <dt className="text-gray-500">SMTP active</dt>
-              <dd className={emailStatus.email_sending_active ? 'text-teal-700 dark:text-teal-400 font-medium' : 'text-amber-700 dark:text-amber-400'}>
-                {emailStatus.email_sending_active ? 'yes' : 'no'}
+              <dt className="text-gray-500">Outbound sending</dt>
+              <dd
+                className={
+                  emailStatus.resend_configured ||
+                  (emailStatus.smtp_user_configured && emailStatus.smtp_password_configured)
+                    ? 'text-teal-700 dark:text-teal-400 font-medium'
+                    : 'text-amber-700 dark:text-amber-400'
+                }
+              >
+                {emailStatus.resend_configured
+                  ? 'Resend'
+                  : emailStatus.smtp_user_configured && emailStatus.smtp_password_configured
+                    ? 'SMTP'
+                    : 'no'}
               </dd>
             </div>
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1">
@@ -178,9 +189,15 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
               <dt className="text-gray-500">Outbound</dt>
               <dd className="text-right font-mono text-gray-800 dark:text-gray-200 break-all">
-                {emailStatus.smtp_host}:{emailStatus.smtp_port}{' '}
-                {emailStatus.smtp_implicit_ssl ? 'SSL' : `STARTTLS=${emailStatus.smtp_use_tls ? 'on' : 'off'}`} · timeout{' '}
-                {emailStatus.smtp_timeout_seconds}s · from {emailStatus.smtp_from_email}
+                {emailStatus.resend_configured ? (
+                  <>Resend API (HTTPS) · from {emailStatus.smtp_from_email}</>
+                ) : (
+                  <>
+                    {emailStatus.smtp_host}:{emailStatus.smtp_port}{' '}
+                    {emailStatus.smtp_implicit_ssl ? 'SSL' : `STARTTLS=${emailStatus.smtp_use_tls ? 'on' : 'off'}`} · timeout{' '}
+                    {emailStatus.smtp_timeout_seconds}s · from {emailStatus.smtp_from_email}
+                  </>
+                )}
               </dd>
             </div>
             <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">

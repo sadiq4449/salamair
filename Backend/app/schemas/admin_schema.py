@@ -168,6 +168,7 @@ class AdminEmailStatusResponse(BaseModel):
     smtp_use_tls: bool
     smtp_implicit_ssl: bool
     smtp_timeout_seconds: int
+    resend_configured: bool
     smtp_user_configured: bool
     smtp_password_configured: bool
     email_enabled_env: bool | None = Field(None, description="Raw EMAIL_ENABLED from env, if set")

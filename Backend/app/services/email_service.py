@@ -9,6 +9,8 @@ from email.mime.text import MIMEText
 from urllib.parse import quote
 from uuid import UUID
 
+import httpx
+
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
@@ -76,11 +78,58 @@ def _enhance_smtp_error(err: str) -> str:
     if "timed out" in low or "timeout" in low:
         return (
             f"{err}\n\n"
-            "Timeout hints: try SMTP_IMPLICIT_SSL=true with SMTP_PORT=465 (Gmail); "
-            "raise SMTP_TIMEOUT_SECONDS; confirm the host allows outbound SMTP from your server "
-            "(Railway region); disable VPN/firewall blocking 587/465."
+            "Railway Free/Hobby plans block outbound SMTP (ports 465/587). Use RESEND_API_KEY "
+            "(Resend sends over HTTPS port 443) or upgrade Railway. "
+            "See Backend/.env.example. IMAP inbound on 993 often still works."
         )
     return err
+
+
+def _send_via_resend(
+    to_email: str,
+    subject: str,
+    body_text: str,
+    body_html: str,
+    message_id: str,
+    *,
+    in_reply_to: str | None = None,
+    references: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Send via Resend HTTP API (works when SMTP egress is blocked, e.g. Railway Hobby)."""
+    key = (settings.RESEND_API_KEY or "").strip()
+    if not key:
+        return None, "RESEND_API_KEY is not set"
+
+    payload: dict = {
+        "from": f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": body_html,
+        "text": body_text,
+    }
+    if in_reply_to:
+        payload["headers"] = {
+            "In-Reply-To": _normalize_msg_id_header(in_reply_to),
+            "References": (references or in_reply_to).strip(),
+        }
+    try:
+        r = httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=45.0,
+        )
+        if r.status_code >= 400:
+            try:
+                detail = r.json()
+                msg = detail.get("message") or detail.get("name") or str(detail)
+            except Exception:
+                msg = r.text or r.reason_phrase
+            return None, str(msg)[:800]
+
+        return message_id, None
+    except httpx.RequestError as e:
+        return None, str(e)[:800]
 
 
 def build_subject(request_code: str, route: str) -> str:
@@ -186,18 +235,33 @@ def send_smtp_email(
 ) -> tuple[str | None, str | None]:
     """Send via SMTP. Returns (message_id, None) on success, (None, error_hint) if skipped or failed."""
     if not settings.email_sending_active:
-        logger.info("SMTP disabled — not sent to %s: %s", to_email, subject)
+        logger.info("Email disabled — not sent to %s: %s", to_email, subject)
         return None, (
-            "SMTP is off: set EMAIL_ENABLED=true, or set SMTP_USER and SMTP_PASSWORD "
-            "(omit EMAIL_ENABLED to auto-enable when creds are set), e.g. Railway env."
+            "Email sending is off: set RESEND_API_KEY, or SMTP_USER + SMTP_PASSWORD "
+            "(omit EMAIL_ENABLED=false), e.g. on Railway."
         )
+
+    message_id = f"<{uuid.uuid4()}@salamair.com>"
+
+    if (settings.RESEND_API_KEY or "").strip():
+        mid, err = _send_via_resend(
+            to_email,
+            subject,
+            body_text,
+            body_html,
+            message_id,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+        if mid:
+            logger.info("Resend email to %s: %s", to_email, subject)
+        return mid, err
 
     try:
         msg = MIMEMultipart("alternative")
         msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
         msg["To"] = to_email
         msg["Subject"] = subject
-        message_id = f"<{uuid.uuid4()}@salamair.com>"
         msg["Message-ID"] = message_id
         if in_reply_to:
             irt = _normalize_msg_id_header(in_reply_to)

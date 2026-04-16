@@ -395,6 +395,7 @@ def admin_email_status(_user: User = Depends(require_role("admin"))):
         smtp_use_tls=settings.SMTP_USE_TLS,
         smtp_implicit_ssl=settings.SMTP_IMPLICIT_SSL,
         smtp_timeout_seconds=max(15, int(settings.SMTP_TIMEOUT_SECONDS)),
+        resend_configured=bool((settings.RESEND_API_KEY or "").strip()),
         smtp_user_configured=bool((settings.SMTP_USER or "").strip()),
         smtp_password_configured=bool((settings.SMTP_PASSWORD or "").strip()),
         email_enabled_env=settings.EMAIL_ENABLED,

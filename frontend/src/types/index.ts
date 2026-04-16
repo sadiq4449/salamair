@@ -327,6 +327,7 @@ export interface AdminEmailStatus {
   smtp_use_tls: boolean;
   smtp_implicit_ssl: boolean;
   smtp_timeout_seconds: number;
+  resend_configured: boolean;
   smtp_user_configured: boolean;
   smtp_password_configured: boolean;
   email_enabled_env: boolean | null;
