@@ -318,6 +318,32 @@ export interface AdminStats {
   system_uptime: string;
 }
 
+export interface AdminEmailStatus {
+  email_sending_active: boolean;
+  imap_polling_active: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_from_email: string;
+  smtp_use_tls: boolean;
+  smtp_user_configured: boolean;
+  smtp_password_configured: boolean;
+  email_enabled_env: boolean | null;
+  imap_host: string;
+  imap_port: number;
+  imap_use_ssl: boolean;
+  imap_user_configured: boolean;
+  imap_password_configured: boolean;
+  imap_enabled_env: boolean | null;
+  rm_default_email: string;
+}
+
+export interface AdminEmailTestSendResponse {
+  success: boolean;
+  message: string;
+  sent_to: string;
+  smtp_error?: string | null;
+}
+
 export interface AdminUserRow {
   id: string;
   name: string;

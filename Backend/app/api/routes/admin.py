@@ -28,6 +28,9 @@ from app.schemas.admin_schema import (
     AdminConfigUpdateRequest,
     AdminCreateUserRequest,
     AdminCreateUserResponse,
+    AdminEmailStatusResponse,
+    AdminEmailTestSendRequest,
+    AdminEmailTestSendResponse,
     AdminLogItem,
     AdminLogListResponse,
     AdminPasswordResetResponse,
@@ -40,8 +43,10 @@ from app.schemas.admin_schema import (
     LogActorSummary,
     LogTargetSummary,
 )
+from app.schemas.email_schema import PollInboxResponse
 from app.services.admin_audit import ADMIN_CONFIG_KEYS, ensure_default_system_config, log_admin_action
 from app.services.email_service import send_smtp_email
+from app.services.imap_inbox_service import poll_inbox_once
 from app.services.reminder_runner import ensure_default_reminder_rules, run_reminder_scan
 
 router = APIRouter()
@@ -352,11 +357,11 @@ def admin_reset_password(
 
     email_sent = False
     smtp_error: str | None = None
-    if settings.EMAIL_ENABLED:
+    if settings.email_sending_active:
         _, smtp_error = send_smtp_email(target.email, subject, body_text, body_html)
         email_sent = smtp_error is None
     else:
-        smtp_error = "EMAIL_ENABLED is false"
+        smtp_error = "SMTP disabled (set EMAIL_ENABLED or SMTP_USER + SMTP_PASSWORD)"
 
     log_admin_action(
         db,
@@ -375,6 +380,114 @@ def admin_reset_password(
         + (" Credentials were emailed to the user." if email_sent else f" Email was not sent ({smtp_error})."),
         email_sent=email_sent,
         temporary_password=temp_password if not email_sent else None,
+    )
+
+
+@router.get("/email/status", response_model=AdminEmailStatusResponse)
+def admin_email_status(_user: User = Depends(require_role("admin"))):
+    """Shows whether SMTP/IMAP are active (no secrets). Use after deploy to verify env vars."""
+    return AdminEmailStatusResponse(
+        email_sending_active=settings.email_sending_active,
+        imap_polling_active=settings.imap_polling_active,
+        smtp_host=settings.SMTP_HOST,
+        smtp_port=settings.SMTP_PORT,
+        smtp_from_email=settings.SMTP_FROM_EMAIL,
+        smtp_use_tls=settings.SMTP_USE_TLS,
+        smtp_user_configured=bool((settings.SMTP_USER or "").strip()),
+        smtp_password_configured=bool((settings.SMTP_PASSWORD or "").strip()),
+        email_enabled_env=settings.EMAIL_ENABLED,
+        imap_host=settings.IMAP_HOST,
+        imap_port=settings.IMAP_PORT,
+        imap_use_ssl=settings.IMAP_USE_SSL,
+        imap_user_configured=bool((settings.IMAP_USER or "").strip()),
+        imap_password_configured=bool((settings.IMAP_PASSWORD or "").strip()),
+        imap_enabled_env=settings.IMAP_ENABLED,
+        rm_default_email=settings.RM_DEFAULT_EMAIL,
+    )
+
+
+@router.post("/email/test-send", response_model=AdminEmailTestSendResponse)
+def admin_email_test_send(
+    payload: AdminEmailTestSendRequest,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    """Send a short test message via SMTP (defaults to admin’s own email)."""
+    to_addr = str(payload.to) if payload.to else actor.email
+    subject = "Salam Air SmartDeal — SMTP test"
+    body_text = (
+        "This is a test message from the SmartDeal admin panel.\n\n"
+        "If you received this, outbound SMTP is configured correctly.\n"
+    )
+    body_html = (
+        "<p>This is a <strong>test</strong> message from the SmartDeal admin panel.</p>"
+        "<p>If you received this, outbound SMTP is configured correctly.</p>"
+    )
+    if not settings.email_sending_active:
+        log_admin_action(
+            db,
+            action="email_test_send",
+            actor_id=actor.id,
+            target_type="system",
+            details=f"skipped (SMTP inactive); would send to {to_addr}",
+            ip_address=_client_ip(http_request),
+            user_agent=http_request.headers.get("user-agent"),
+        )
+        db.commit()
+        return AdminEmailTestSendResponse(
+            success=False,
+            message="SMTP is not active. Set SMTP_USER and SMTP_PASSWORD on the server (and do not set EMAIL_ENABLED=false).",
+            sent_to=to_addr,
+            smtp_error="email_sending_active is false",
+        )
+    mid, err = send_smtp_email(to_addr, subject, body_text, body_html)
+    log_admin_action(
+        db,
+        action="email_test_send",
+        actor_id=actor.id,
+        target_type="system",
+        details=f"sent to {to_addr}; ok={mid is not None}",
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    return AdminEmailTestSendResponse(
+        success=mid is not None,
+        message="Test email accepted by the mail server." if mid else "The mail server rejected the message.",
+        sent_to=to_addr,
+        smtp_error=err,
+    )
+
+
+@router.post("/email/test-inbox", response_model=PollInboxResponse)
+def admin_email_test_inbox(
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    """Run one IMAP poll (same as Sync inbox). Use after sending a reply that includes [REQ-…] in the subject."""
+    result = poll_inbox_once(db)
+    log_admin_action(
+        db,
+        action="email_test_inbox_poll",
+        actor_id=actor.id,
+        target_type="system",
+        details=(
+            f"ok={result.get('ok')} skipped={result.get('skipped')} "
+            f"processed={result.get('processed')} stored={result.get('stored')}"
+        ),
+        ip_address=_client_ip(http_request),
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    db.commit()
+    return PollInboxResponse(
+        ok=result.get("ok", False),
+        skipped=result.get("skipped", False),
+        reason=result.get("reason"),
+        processed=result.get("processed", 0),
+        stored=result.get("stored", 0),
+        errors=result.get("errors") or [],
     )
 
 

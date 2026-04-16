@@ -1,13 +1,15 @@
 """
 Poll IMAP inbox for incoming RM replies. Matches emails to requests via [REQ-YYYY-NNN] in subject.
 
-Requires IMAP_ENABLED and credentials. Typically use the same mailbox as SMTP (e.g. Gmail).
+Requires imap_polling_active (IMAP credentials or IMAP_ENABLED) and IMAP_USER/IMAP_PASSWORD.
+Typically use the same mailbox as SMTP (e.g. Gmail).
 """
 from __future__ import annotations
 
 import imaplib
 import logging
 import re
+import socket
 import uuid
 from datetime import datetime, timezone
 from email import message_from_bytes
@@ -26,6 +28,55 @@ from app.models.request_history import RequestHistory
 from app.models.user import User
 
 logger = logging.getLogger("uvicorn.error")
+
+
+class IMAP4_SSL_IPv4(imaplib.IMAP4_SSL):
+    """IMAP4 over SSL, IPv4 only (same rationale as SMTP IPv4 on hosts without IPv6 egress)."""
+
+    def _create_socket(self, timeout):
+        if timeout is not None and not timeout:
+            raise ValueError("Non-blocking socket (timeout=0) is not supported")
+        host = None if not self.host else self.host
+        last_exc: OSError | None = None
+        for res in socket.getaddrinfo(host, self.port, socket.AF_INET, socket.SOCK_STREAM):
+            af, socktype, proto, _canon, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                if timeout is not None:
+                    sock.settimeout(timeout)
+                sock.connect(sa)
+                return self.ssl_context.wrap_socket(sock, server_hostname=self.host)
+            except OSError as e:
+                last_exc = e
+                if sock:
+                    sock.close()
+        raise last_exc or OSError(f"Could not reach {host}:{self.port} over IPv4")
+
+
+class IMAP4_IPv4(imaplib.IMAP4):
+    """Plain IMAP, IPv4 only."""
+
+    def _create_socket(self, timeout):
+        if timeout is not None and not timeout:
+            raise ValueError("Non-blocking socket (timeout=0) is not supported")
+        host = None if not self.host else self.host
+        last_exc: OSError | None = None
+        for res in socket.getaddrinfo(host, self.port, socket.AF_INET, socket.SOCK_STREAM):
+            af, socktype, proto, _canon, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                if timeout is not None:
+                    sock.settimeout(timeout)
+                sock.connect(sa)
+                return sock
+            except OSError as e:
+                last_exc = e
+                if sock:
+                    sock.close()
+        raise last_exc or OSError(f"Could not reach {host}:{self.port} over IPv4")
+
 
 # Matches [REQ-2026-001] style codes from build_subject()
 REQ_CODE_PATTERN = re.compile(r"\[(REQ-\d{4}-\d{3})\]", re.IGNORECASE)
@@ -88,18 +139,18 @@ def poll_inbox_once(db: Session) -> dict:
     Fetch UNSEEN messages from IMAP, match to requests, store as incoming EmailMessage.
     Returns summary dict for API response.
     """
-    if not settings.IMAP_ENABLED:
+    if not settings.imap_polling_active:
         return {
             "ok": False,
             "skipped": True,
-            "reason": "IMAP_ENABLED is false",
+            "reason": "IMAP polling off (set IMAP_USER+IMAP_PASSWORD, or IMAP_ENABLED=true with creds)",
             "processed": 0,
             "stored": 0,
             "errors": [],
         }
 
     if not settings.IMAP_USER or not settings.IMAP_PASSWORD:
-        logger.warning("IMAP enabled but IMAP_USER/IMAP_PASSWORD not set")
+        logger.warning("IMAP active but IMAP_USER/IMAP_PASSWORD not set")
         return {
             "ok": False,
             "skipped": True,
@@ -115,9 +166,9 @@ def poll_inbox_once(db: Session) -> dict:
 
     try:
         if settings.IMAP_USE_SSL:
-            mail = imaplib.IMAP4_SSL(settings.IMAP_HOST, settings.IMAP_PORT)
+            mail = IMAP4_SSL_IPv4(settings.IMAP_HOST, settings.IMAP_PORT, timeout=30)
         else:
-            mail = imaplib.IMAP4(settings.IMAP_HOST, settings.IMAP_PORT)
+            mail = IMAP4_IPv4(settings.IMAP_HOST, settings.IMAP_PORT, timeout=30)
 
         mail.login(settings.IMAP_USER, settings.IMAP_PASSWORD)
         mail.select(settings.IMAP_MAILBOX)

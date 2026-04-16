@@ -246,7 +246,7 @@ def send_email_to_rm(
         if delivered
         else (
             "Request saved, but SMTP did not send the message. "
-            "Set EMAIL_ENABLED=true and valid SMTP_* variables on the server (e.g. Railway env)."
+            "Set SMTP_USER and SMTP_PASSWORD (and optional EMAIL_ENABLED=true), e.g. on Railway."
         )
     )
     return SendEmailResponse(
@@ -351,9 +351,15 @@ def reply_to_rm(
         .order_by(EmailMessage.sent_at.desc())
         .first()
     )
-    in_reply_to = last_msg.message_id if last_msg else None
+    in_reply_to = last_msg.message_id if last_msg and last_msg.message_id else None
 
-    message_id, smtp_err = send_smtp_email(thread.rm_email, subject, plain_body, html_body)
+    message_id, smtp_err = send_smtp_email(
+        thread.rm_email,
+        subject,
+        plain_body,
+        html_body,
+        in_reply_to=in_reply_to,
+    )
 
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
@@ -389,7 +395,7 @@ def reply_to_rm(
         if delivered
         else (
             "Reply saved, but SMTP did not send. "
-            "Set EMAIL_ENABLED=true and valid SMTP_* on the server."
+            "Configure SMTP_USER, SMTP_PASSWORD, and SMTP_FROM_EMAIL on the server."
         )
     )
     return ReplyEmailResponse(

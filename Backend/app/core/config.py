@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -20,12 +22,14 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "sales@salamair.com"
     SMTP_FROM_NAME: str = "Salam Air Sales"
     SMTP_USE_TLS: bool = True
-    # When True, send_mail uses real SMTP. When False, sends are skipped (no fake "sent").
-    EMAIL_ENABLED: bool = False
+    # When False: never send. When True: send (if credentials fail, SMTP errors). When None: send
+    # only if SMTP_USER and SMTP_PASSWORD are both set (so Railway can omit this when creds exist).
+    EMAIL_ENABLED: Optional[bool] = None
     RM_DEFAULT_EMAIL: str = "rm@salamair.com"
 
-    # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup)
-    IMAP_ENABLED: bool = False
+    # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup).
+    # False: never poll. True: poll. None: poll only if IMAP_USER and IMAP_PASSWORD are set.
+    IMAP_ENABLED: Optional[bool] = None
     IMAP_HOST: str = "imap.gmail.com"
     IMAP_PORT: int = 993
     IMAP_USE_SSL: bool = True
@@ -45,6 +49,26 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def email_sending_active(self) -> bool:
+        """True unless EMAIL_ENABLED is explicitly false; if unset, requires SMTP_USER + SMTP_PASSWORD."""
+        if self.EMAIL_ENABLED is False:
+            return False
+        if self.EMAIL_ENABLED is True:
+            return True
+        u, p = (self.SMTP_USER or "").strip(), (self.SMTP_PASSWORD or "").strip()
+        return bool(u and p)
+
+    @property
+    def imap_polling_active(self) -> bool:
+        """True unless IMAP_ENABLED is explicitly false; if unset, requires IMAP_USER + IMAP_PASSWORD."""
+        if self.IMAP_ENABLED is False:
+            return False
+        if self.IMAP_ENABLED is True:
+            return True
+        u, p = (self.IMAP_USER or "").strip(), (self.IMAP_PASSWORD or "").strip()
+        return bool(u and p)
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

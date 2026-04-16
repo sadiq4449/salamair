@@ -54,8 +54,10 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
         {deliveryFailed && (
           <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
             <strong className="font-semibold">Not delivered.</strong> The portal saved this draft, but the mail server did not accept the message.
-            On Railway, set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=true</code> and valid Gmail{' '}
-            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_*</code> variables, then send again.
+            On the server, set valid <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
+            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_PASSWORD</code>, and{' '}
+            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password). Do not set{' '}
+            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=false</code> unless you intend to disable sending.
           </div>
         )}
         {deliveryOk && (
@@ -151,7 +153,7 @@ export default function EmailThreadView({
     const r = await pollInbox(requestId);
     if (r === null) return;
     if (r.skipped) {
-      addToast('info', 'IMAP sync is disabled on the server. Set IMAP_ENABLED and credentials.');
+      addToast('info', 'IMAP sync is disabled on the server. Set IMAP_USER and IMAP_PASSWORD (or remove IMAP_ENABLED=false).');
     } else if (r.stored > 0) {
       addToast('success', `Imported ${r.stored} new email(s) from inbox.`);
     } else {

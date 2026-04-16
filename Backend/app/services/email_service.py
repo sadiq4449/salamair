@@ -131,16 +131,29 @@ def build_html_body(
     """
 
 
+def _normalize_msg_id_header(value: str) -> str:
+    v = value.strip()
+    if v.startswith("<") and v.endswith(">"):
+        return v
+    return f"<{v}>" if v else value
+
+
 def send_smtp_email(
     to_email: str,
     subject: str,
     body_text: str,
     body_html: str,
+    *,
+    in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Send via SMTP. Returns (message_id, None) on success, (None, error_hint) if skipped or failed."""
-    if not settings.EMAIL_ENABLED:
-        logger.info("EMAIL_ENABLED=false — SMTP not sent to %s: %s", to_email, subject)
-        return None, "EMAIL_ENABLED is false (set true in server env, e.g. Railway)"
+    if not settings.email_sending_active:
+        logger.info("SMTP disabled — not sent to %s: %s", to_email, subject)
+        return None, (
+            "SMTP is off: set EMAIL_ENABLED=true, or set SMTP_USER and SMTP_PASSWORD "
+            "(omit EMAIL_ENABLED to auto-enable when creds are set), e.g. Railway env."
+        )
 
     try:
         msg = MIMEMultipart("alternative")
@@ -149,6 +162,10 @@ def send_smtp_email(
         msg["Subject"] = subject
         message_id = f"<{uuid.uuid4()}@salamair.com>"
         msg["Message-ID"] = message_id
+        if in_reply_to:
+            irt = _normalize_msg_id_header(in_reply_to)
+            msg["In-Reply-To"] = irt
+            msg["References"] = references.strip() if references else irt
 
         msg.attach(MIMEText(body_text, "plain"))
         msg.attach(MIMEText(body_html, "html"))

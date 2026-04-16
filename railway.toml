@@ -8,7 +8,10 @@
 #    - CORS_ORIGINS      (comma list; include your public URL, e.g. https://your-app.up.railway.app)
 #    - CORS_ORIGIN_REGEX (optional; e.g. https://.*\.up\.railway\.app$ if you use the default *.up.railway.app host)
 #    - DATABASE_SSLMODE  (optional; "require" if Postgres SSL errors; auto handles many *.rlwy.net URLs)
-#    - SMTP_* / EMAIL_ENABLED / IMAP_* as needed (see Backend/app/core/config.py)
+#    - Email (see Backend/.env.example): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL,
+#      SMTP_FROM_NAME, SMTP_USE_TLS=true; optional EMAIL_ENABLED (omit to auto-enable when user+password set).
+#      IMAP: IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, IMAP_USE_SSL=true, IMAP_MAILBOX=INBOX;
+#      optional IMAP_ENABLED. After deploy: Admin → Dashboard → "Email (deploy check)" to test send + IMAP.
 # 4. Root directory: repo root (Dockerfile builds frontend + backend; frontend uses `npm install` in Docker for lockfile tolerance).
 # 5. Generate domain: Settings → Networking → Generate domain.
 #

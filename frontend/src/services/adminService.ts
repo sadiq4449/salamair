@@ -5,16 +5,36 @@ import type {
   AdminConfigItem,
   AdminCreateUserPayload,
   AdminCreateUserResponse,
+  AdminEmailStatus,
+  AdminEmailTestSendResponse,
   AdminLogListResponse,
   AdminStats,
   AdminUpdateUserPayload,
   AdminUserListResponse,
   AdminUpdateUserResponse,
   AdminPasswordResetResponse,
+  PollInboxResponse,
 } from '../types';
 
 export async function getAdminStats(): Promise<AdminStats> {
   const { data } = await api.get<AdminStats>('/admin/stats');
+  return data;
+}
+
+export async function getAdminEmailStatus(): Promise<AdminEmailStatus> {
+  const { data } = await api.get<AdminEmailStatus>('/admin/email/status');
+  return data;
+}
+
+export async function postAdminEmailTestSend(to?: string): Promise<AdminEmailTestSendResponse> {
+  const { data } = await api.post<AdminEmailTestSendResponse>('/admin/email/test-send', {
+    to: to || undefined,
+  });
+  return data;
+}
+
+export async function postAdminEmailTestInbox(): Promise<PollInboxResponse> {
+  const { data } = await api.post<PollInboxResponse>('/admin/email/test-inbox');
   return data;
 }
 

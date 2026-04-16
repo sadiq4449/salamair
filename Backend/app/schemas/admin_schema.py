@@ -155,3 +155,35 @@ class AdminPasswordResetResponse(BaseModel):
 
 class AdminSimpleMessage(BaseModel):
     message: str
+
+
+class AdminEmailStatusResponse(BaseModel):
+    """Non-secret mail configuration for deploy verification."""
+
+    email_sending_active: bool
+    imap_polling_active: bool
+    smtp_host: str
+    smtp_port: int
+    smtp_from_email: str
+    smtp_use_tls: bool
+    smtp_user_configured: bool
+    smtp_password_configured: bool
+    email_enabled_env: bool | None = Field(None, description="Raw EMAIL_ENABLED from env, if set")
+    imap_host: str
+    imap_port: int
+    imap_use_ssl: bool
+    imap_user_configured: bool
+    imap_password_configured: bool
+    imap_enabled_env: bool | None = Field(None, description="Raw IMAP_ENABLED from env, if set")
+    rm_default_email: str
+
+
+class AdminEmailTestSendRequest(BaseModel):
+    to: EmailStr | None = Field(None, description="Recipient; defaults to the admin user email")
+
+
+class AdminEmailTestSendResponse(BaseModel):
+    success: bool
+    message: str
+    sent_to: str
+    smtp_error: str | None = None
