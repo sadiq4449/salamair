@@ -85,6 +85,40 @@ def _enhance_smtp_error(err: str) -> str:
     return err
 
 
+# Resend only allows verified domains. Public inboxes (Gmail, Yahoo, …) cannot be "from".
+RESEND_PUBLIC_SENDER = "onboarding@resend.dev"
+
+
+def _resend_from_and_reply_to() -> tuple[str, list[str] | None]:
+    """
+    Returns (from_address, optional reply_to list).
+    If SMTP_FROM_EMAIL is Gmail/Yahoo/etc., use Resend's test sender + reply_to real address.
+    Override with RESEND_FROM_EMAIL when you have a verified domain in Resend.
+    """
+    override = (settings.RESEND_FROM_EMAIL or "").strip()
+    contact = (settings.SMTP_FROM_EMAIL or "").strip() or "noreply@salamair.com"
+    if override:
+        return override, None
+
+    lower = contact.lower()
+    public_suffixes = (
+        "@gmail.com",
+        "@googlemail.com",
+        "@yahoo.com",
+        "@yahoo.co.uk",
+        "@hotmail.com",
+        "@outlook.com",
+        "@live.com",
+        "@icloud.com",
+        "@protonmail.com",
+        "@aol.com",
+        "@msn.com",
+    )
+    if any(lower.endswith(s) for s in public_suffixes):
+        return RESEND_PUBLIC_SENDER, [contact]
+    return contact, None
+
+
 def _send_via_resend(
     to_email: str,
     subject: str,
@@ -100,13 +134,16 @@ def _send_via_resend(
     if not key:
         return None, "RESEND_API_KEY is not set"
 
+    from_addr, reply_to = _resend_from_and_reply_to()
     payload: dict = {
-        "from": f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>",
+        "from": f"{settings.SMTP_FROM_NAME} <{from_addr}>",
         "to": [to_email],
         "subject": subject,
         "html": body_html,
         "text": body_text,
     }
+    if reply_to:
+        payload["reply_to"] = reply_to
     if in_reply_to:
         payload["headers"] = {
             "In-Reply-To": _normalize_msg_id_header(in_reply_to),

@@ -17,6 +17,7 @@ ENV_PATH = BACKEND / ".env"
 SYNC_KEYS = frozenset(
     {
         "RESEND_API_KEY",
+        "RESEND_FROM_EMAIL",
         "SMTP_HOST",
         "SMTP_PORT",
         "SMTP_USER",

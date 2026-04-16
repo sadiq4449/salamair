@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # Railway Hobby/Free often blocks outbound SMTP (465/587). Use Resend HTTPS API (port 443) instead.
     # https://resend.com — verify your domain (or use onboarding@resend.dev while testing).
     RESEND_API_KEY: str = ""
+    # Optional: verified sender in Resend (e.g. noreply@yourdomain.com). If empty, the app picks a valid From.
+    RESEND_FROM_EMAIL: str = ""
     RM_DEFAULT_EMAIL: str = "rm@salamair.com"
 
     # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup).
