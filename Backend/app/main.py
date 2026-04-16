@@ -22,6 +22,7 @@ from app.api.routes.ws import router as ws_router
 from app.api.routes.proxy import router as proxy_router
 from app.api.routes.salamair_api_proxy import router as salamair_api_proxy_router
 from app.core.config import settings
+from app.core.logging_filters import install_sensitive_log_redaction
 from app.db.base import Base
 from app.db.schema_sync import apply_runtime_schema_fixes
 from app.db.session import engine
@@ -50,6 +51,9 @@ from app.models import (  # noqa: F401
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
+
+# Avoid JWTs and Bearer tokens in uvicorn access/error lines (Railway log history).
+install_sensitive_log_redaction()
 
 
 @asynccontextmanager

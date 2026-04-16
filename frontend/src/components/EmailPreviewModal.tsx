@@ -78,7 +78,8 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0">From</span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Your server’s SMTP sender (<code className="text-xs">SMTP_FROM_EMAIL</code> in env) — not shown in the preview
+                Sender comes from the server (<code className="text-xs">SMTP_FROM_EMAIL</code>; use{' '}
+                <code className="text-xs">RESEND_API_KEY</code> on Railway Hobby) — not shown in the preview
               </span>
             </div>
             <div className="flex items-center gap-3">

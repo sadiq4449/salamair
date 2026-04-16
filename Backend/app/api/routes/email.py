@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -141,6 +141,7 @@ def _log_history(db: Session, request_id: uuid.UUID, action: str, actor_id: uuid
 @router.post("/send", response_model=SendEmailResponse)
 def send_email_to_rm(
     payload: SendEmailRequest,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
@@ -241,12 +242,14 @@ def send_email_to_rm(
     db.refresh(email_msg)
 
     delivered = message_id is not None
+    response.headers["X-Email-Delivered"] = "true" if delivered else "false"
     msg = (
         "Email sent successfully"
         if delivered
         else (
-            "Request saved, but SMTP did not send the message. "
-            "Set SMTP_USER and SMTP_PASSWORD (and optional EMAIL_ENABLED=true), e.g. on Railway."
+            "Request saved, but the message was not delivered. "
+            "On Railway Hobby set RESEND_API_KEY (outbound SMTP is blocked); verify sender in Resend. "
+            "Locally you can use SMTP_USER + SMTP_PASSWORD."
         )
     )
     return SendEmailResponse(
@@ -321,6 +324,7 @@ def get_email_thread(
 @router.post("/reply", response_model=ReplyEmailResponse)
 def reply_to_rm(
     payload: ReplyEmailRequest,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
@@ -390,12 +394,13 @@ def reply_to_rm(
     db.refresh(email_msg)
 
     delivered = message_id is not None
+    response.headers["X-Email-Delivered"] = "true" if delivered else "false"
     msg = (
         "Reply sent successfully"
         if delivered
         else (
-            "Reply saved, but SMTP did not send. "
-            "Configure SMTP_USER, SMTP_PASSWORD, and SMTP_FROM_EMAIL on the server."
+            "Reply saved, but delivery failed. "
+            "Set RESEND_API_KEY on Railway Hobby or full SMTP credentials where SMTP is allowed."
         )
     )
     return ReplyEmailResponse(
