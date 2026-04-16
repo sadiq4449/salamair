@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Info,
   Plane,
   Search,
 } from 'lucide-react';
@@ -63,6 +64,9 @@ interface FlightsPayload {
 }
 
 const BOOKING_SALAMAIR = 'https://booking.salamair.com/en/search';
+
+const fieldClass =
+  'h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-teal-400 dark:focus:ring-teal-500/25';
 
 function formatFareDisplay(amount: number, currencyCode: string | undefined): string {
   if (amount <= 0) return '';
@@ -137,21 +141,23 @@ function DepartingFlightBlock({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200/90 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/80 overflow-hidden">
-      <div className="border-b-2 border-teal-600 px-4 sm:px-6 pt-5 pb-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 className="text-xs font-bold tracking-[0.2em] text-teal-700 dark:text-teal-400">
+    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5">
+      <div className="h-1 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
+      <div className="border-b border-teal-700/15 bg-gradient-to-b from-teal-50/90 to-white px-4 py-4 dark:border-teal-900/30 dark:from-teal-950/40 dark:to-gray-900 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-800 dark:text-teal-300">
               Departing flight
             </h3>
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700 dark:text-gray-200">
-              <Plane className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" aria-hidden />
-              <span className="font-semibold">
-                {originLabel} <span className="font-normal text-gray-400">to</span> {destLabel}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
+              <Plane className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+              <span className="font-bold tracking-wide">
+                {originLabel}{' '}
+                <span className="mx-0.5 font-normal text-teal-600/80 dark:text-teal-400/90">→</span> {destLabel}
               </span>
             </div>
             {headlineDateIso && (
-              <p className="mt-1 text-sm font-medium text-teal-600 dark:text-teal-400">
+              <p className="mt-1.5 text-sm font-medium text-teal-700 dark:text-teal-400">
                 {formatRouteDateLine(headlineDateIso)}
               </p>
             )}
@@ -160,15 +166,15 @@ function DepartingFlightBlock({
             href={BOOKING_SALAMAIR}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 self-start text-xs font-semibold uppercase tracking-wide text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-teal-800 shadow-sm transition-colors hover:bg-teal-50 dark:border-teal-700 dark:bg-teal-950/50 dark:text-teal-200 dark:hover:bg-teal-900/40"
           >
-            Book on SalamAir
-            <ExternalLink className="h-3.5 w-3.5" />
+            Book
+            <ExternalLink className="h-3.5 w-3.5 opacity-80" />
           </a>
         </div>
       </div>
 
-      <div className="px-3 sm:px-5 py-4">
+      <div className="px-3 py-4 sm:px-5">
         <div className="relative flex items-center gap-1">
           <button
             type="button"
@@ -243,13 +249,13 @@ function DepartingFlightBlock({
           </button>
         </div>
 
-        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
-          Fares are indicative (lowest in this calendar window). Full schedules and booking are on{' '}
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-500">
+          Indicative lowest fares in this date window. Confirm times and book on{' '}
           <a
             href={BOOKING_SALAMAIR}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-teal-600 underline-offset-2 hover:underline dark:text-teal-400"
+            className="font-medium text-teal-600 hover:underline dark:text-teal-400"
           >
             SalamAir
           </a>
@@ -329,129 +335,148 @@ export default function SalamAirLiveSearch() {
   }
 
   return (
-    <div className="flex flex-col gap-4 min-h-[min(85vh,900px)]">
-      <p className="text-sm text-gray-600 dark:text-gray-400 max-w-3xl">
-        Live availability uses SalamAir&apos;s booking API through our server (your session is not shared with
-        booking.salamair.com). Embedding their website in a frame does not work here because their API only allows
-        calls from their own domain.
-      </p>
-
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 p-4 shadow-sm">
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            <span>Origin</span>
-            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-500 leading-tight">
-              Airport you depart from
-            </span>
-            <select
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              aria-label="Origin airport"
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 mt-0.5"
-            >
-              {fromOptions.map((opt) => (
-                <option key={opt.code} value={opt.code}>
-                  {formatAirportOption(opt)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            <span>Destination</span>
-            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-500 leading-tight">
-              Airport you fly to
-            </span>
-            <select
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              aria-label="Destination airport"
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 mt-0.5"
-            >
-              {toOptions.map((opt) => (
-                <option key={opt.code} value={opt.code}>
-                  {formatAirportOption(opt)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Trip</span>
-            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5">
-              <button
-                type="button"
-                onClick={() => setTripKind('oneway')}
-                className={`rounded-md px-3 py-2 text-xs font-medium ${
-                  tripKind === 'oneway'
-                    ? 'bg-teal-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                One way
-              </button>
-              <button
-                type="button"
-                onClick={() => setTripKind('round')}
-                className={`rounded-md px-3 py-2 text-xs font-medium ${
-                  tripKind === 'round'
-                    ? 'bg-teal-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                Return
-              </button>
-            </div>
+    <div className="flex flex-col gap-6 pb-8 min-h-[min(85vh,900px)]">
+      {/* Search card — airline-style strip + compact form */}
+      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5">
+        <div className="h-1.5 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
+        <div className="border-b border-gray-100 px-4 py-3.5 dark:border-gray-800 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-teal-800 dark:text-teal-300">
+              Find flights
+            </h2>
+            <details className="group text-xs text-gray-500 dark:text-gray-400">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
+                <Info className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden />
+                How this works
+              </summary>
+              <p className="mt-2 max-w-md rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/80 dark:text-gray-400">
+                Availability is loaded from SalamAir through this portal (not an embedded iframe). Complete booking
+                and payment on{' '}
+                <a
+                  href={BOOKING_SALAMAIR}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-teal-600 hover:underline dark:text-teal-400"
+                >
+                  booking.salamair.com
+                </a>
+                .
+              </p>
+            </details>
           </div>
-
-          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            Depart
-            <input
-              type="date"
-              value={depart}
-              onChange={(e) => setDepart(e.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
-            />
-          </label>
-
-          {tripKind === 'round' && (
-            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-              Return
-              <input
-                type="date"
-                value={returnDate}
-                onChange={(e) => setReturnDate(e.target.value)}
-                min={depart}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
-              />
-            </label>
-          )}
-
-          <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-            Adults
-            <input
-              type="number"
-              min={1}
-              max={9}
-              value={adults}
-              onChange={(e) => setAdults(Math.min(9, Math.max(1, Number(e.target.value) || 1)))}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
-            />
-          </label>
         </div>
 
-        <div className="mt-3 flex justify-stretch sm:justify-end">
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            className="w-full sm:w-auto sm:min-w-[12.5rem] px-5 justify-center"
-            onClick={() => void runSearch()}
-            disabled={loading}
-            isLoading={loading}
-          >
-            <Search className="h-4 w-4 shrink-0" aria-hidden />
-            Search flights
-          </Button>
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end lg:gap-x-3 lg:gap-y-3">
+            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">From</span>
+              <select
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                aria-label="Origin airport"
+                className={fieldClass}
+              >
+                {fromOptions.map((opt) => (
+                  <option key={opt.code} value={opt.code}>
+                    {formatAirportOption(opt)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">To</span>
+              <select
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                aria-label="Destination airport"
+                className={fieldClass}
+              >
+                {toOptions.map((opt) => (
+                  <option key={opt.code} value={opt.code}>
+                    {formatAirportOption(opt)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Trip</span>
+              <div className="flex h-11 rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-600 dark:bg-gray-800/50">
+                <button
+                  type="button"
+                  onClick={() => setTripKind('oneway')}
+                  className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
+                    tripKind === 'oneway'
+                      ? 'bg-white text-teal-700 shadow-sm dark:bg-gray-700 dark:text-teal-300'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  One way
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTripKind('round')}
+                  className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
+                    tripKind === 'round'
+                      ? 'bg-white text-teal-700 shadow-sm dark:bg-gray-700 dark:text-teal-300'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  Return
+                </button>
+              </div>
+            </div>
+
+            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Depart</span>
+              <input
+                type="date"
+                value={depart}
+                onChange={(e) => setDepart(e.target.value)}
+                className={fieldClass}
+              />
+            </label>
+
+            {tripKind === 'round' && (
+              <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Return</span>
+                <input
+                  type="date"
+                  value={returnDate}
+                  onChange={(e) => setReturnDate(e.target.value)}
+                  min={depart}
+                  className={fieldClass}
+                />
+              </label>
+            )}
+
+            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Adults</span>
+              <input
+                type="number"
+                min={1}
+                max={9}
+                value={adults}
+                onChange={(e) => setAdults(Math.min(9, Math.max(1, Number(e.target.value) || 1)))}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+
+          <div className="mt-5 flex justify-stretch border-t border-gray-100 pt-4 dark:border-gray-800 sm:justify-end">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="h-11 w-full min-w-[12.5rem] justify-center rounded-xl px-6 text-sm font-bold shadow-md sm:w-auto"
+              onClick={() => void runSearch()}
+              disabled={loading}
+              isLoading={loading}
+            >
+              <Search className="h-4 w-4 shrink-0" aria-hidden />
+              Search flights
+            </Button>
+          </div>
         </div>
       </div>
 
