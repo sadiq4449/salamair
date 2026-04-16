@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Plane,
+  Search,
+} from 'lucide-react';
 import axios from 'axios';
 import Button from '../ui/Button';
 import { AIRPORT_OPTIONS } from '../../data/flightMock';
@@ -48,6 +55,209 @@ interface FlightsPayload {
   trips?: TripBlock[];
   additionalMessage?: string | null;
   currencies?: string[];
+  searchRequest?: {
+    departureDate?: string;
+    originStationCode?: string;
+    destinationStationCode?: string;
+  };
+}
+
+const BOOKING_SALAMAIR = 'https://booking.salamair.com/en/search';
+
+function formatFareDisplay(amount: number, currencyCode: string | undefined): string {
+  if (amount <= 0) return '';
+  const code = (currencyCode ?? 'USD').slice(0, 3);
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${code} ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  }
+}
+
+function formatDayShort(iso: string): { dow: string; dayMon: string } {
+  const d = new Date(iso);
+  return {
+    dow: d.toLocaleDateString('en-GB', { weekday: 'short' }),
+    dayMon: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+  };
+}
+
+function formatRouteDateLine(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function sameCalendarDay(a: string, b: string): boolean {
+  const da = new Date(a.includes('T') ? a : `${a}T12:00:00`);
+  const db = new Date(b.includes('T') ? b : `${b}T12:00:00`);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+function DepartingFlightBlock({
+  trip,
+  departureAnchorIso,
+}: {
+  trip: TripBlock;
+  departureAnchorIso?: string;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const markets = trip.markets ?? [];
+  const currency = trip.currencyCode;
+
+  const positiveFares = useMemo(
+    () => markets.map((m) => m.lowestFare).filter((f) => f > 0),
+    [trip.markets]
+  );
+  const cheapestFare = positiveFares.length ? Math.min(...positiveFares) : null;
+
+  const originLabel = (trip.originCity ?? trip.origin ?? '?').toUpperCase();
+  const destLabel = (trip.destinationCity ?? trip.destination ?? '?').toUpperCase();
+
+  const headlineDateIso = departureAnchorIso ?? markets[0]?.date;
+
+  function scrollCarousel(dir: -1 | 1) {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = el.clientWidth * 0.6 * dir;
+    el.scrollBy({ left: w, behavior: 'smooth' });
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200/90 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/80 overflow-hidden">
+      <div className="border-b-2 border-teal-600 px-4 sm:px-6 pt-5 pb-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-xs font-bold tracking-[0.2em] text-teal-700 dark:text-teal-400">
+              Departing flight
+            </h3>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700 dark:text-gray-200">
+              <Plane className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" aria-hidden />
+              <span className="font-semibold">
+                {originLabel} <span className="font-normal text-gray-400">to</span> {destLabel}
+              </span>
+            </div>
+            {headlineDateIso && (
+              <p className="mt-1 text-sm font-medium text-teal-600 dark:text-teal-400">
+                {formatRouteDateLine(headlineDateIso)}
+              </p>
+            )}
+          </div>
+          <a
+            href={BOOKING_SALAMAIR}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 self-start text-xs font-semibold uppercase tracking-wide text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+          >
+            Book on SalamAir
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      </div>
+
+      <div className="px-3 sm:px-5 py-4">
+        <div className="relative flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => scrollCarousel(-1)}
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-teal-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-teal-400 dark:hover:bg-gray-700"
+            aria-label="Scroll dates left"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <div
+            ref={scrollRef}
+            className="flex min-h-[6.5rem] flex-1 gap-2 overflow-x-auto scroll-smooth pb-1 pt-0.5 snap-x snap-mandatory scrollbar-thin [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600"
+          >
+            {markets.map((m, mi) => {
+              const hasPrice = typeof m.lowestFare === 'number' && m.lowestFare > 0;
+              const isNoFlights = !hasPrice;
+              const isCheapest = hasPrice && cheapestFare !== null && m.lowestFare === cheapestFare;
+              const isAnchor =
+                departureAnchorIso && m.date ? sameCalendarDay(m.date, departureAnchorIso) : false;
+              const { dow, dayMon } = m.date ? formatDayShort(m.date) : { dow: '—', dayMon: '' };
+
+              return (
+                <div
+                  key={mi}
+                  className={`flex min-w-[5.75rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2.5 text-center transition-shadow sm:min-w-[6.75rem] ${
+                    isAnchor
+                      ? 'border-teal-500 ring-2 ring-teal-500/30 dark:border-teal-400 dark:ring-teal-400/25'
+                      : isCheapest && hasPrice
+                        ? 'border-emerald-400 bg-emerald-50/90 dark:border-emerald-500/60 dark:bg-emerald-950/40'
+                        : 'border-gray-200 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-800/40'
+                  }`}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {dow}
+                  </span>
+                  <span className="text-[11px] text-gray-700 dark:text-gray-200">{dayMon}</span>
+                  {isNoFlights ? (
+                    <span className="mt-1.5 text-[10px] leading-tight text-gray-400 dark:text-gray-500">
+                      No flights
+                    </span>
+                  ) : (
+                    <span
+                      className={`mt-1.5 text-sm font-bold tabular-nums ${
+                        isCheapest
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : isAnchor
+                            ? 'text-teal-700 dark:text-teal-300'
+                            : 'text-gray-900 dark:text-gray-100'
+                      }`}
+                    >
+                      {formatFareDisplay(m.lowestFare, currency)}
+                    </span>
+                  )}
+                  {isCheapest && hasPrice && (
+                    <span className="mt-1 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white dark:bg-emerald-600">
+                      Lowest
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => scrollCarousel(1)}
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-teal-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-teal-400 dark:hover:bg-gray-700"
+            aria-label="Scroll dates right"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+          Fares are indicative (lowest in this calendar window). Full schedules and booking are on{' '}
+          <a
+            href={BOOKING_SALAMAIR}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-teal-600 underline-offset-2 hover:underline dark:text-teal-400"
+          >
+            SalamAir
+          </a>
+          .
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function SalamAirLiveSearch() {
@@ -253,59 +463,24 @@ export default function SalamAirLiveSearch() {
       )}
 
       {payload && (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/30 overflow-hidden">
+        <div className="space-y-4">
           {payload.additionalMessage && (
-            <div className="px-4 py-2 text-sm bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-b border-amber-100 dark:border-amber-900/40">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
               {payload.additionalMessage}
             </div>
           )}
-          <div className="p-4 space-y-6">
-            {!payload.trips?.length && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">No trip data returned for this search.</p>
-            )}
-            {payload.trips?.map((trip, ti) => (
-              <div key={ti} className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {(trip.originCity ?? trip.origin ?? '?') +
-                    ' → ' +
-                    (trip.destinationCity ?? trip.destination ?? '?')}
-                  {trip.currencyCode ? (
-                    <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">
-                      ({trip.currencyCode})
-                    </span>
-                  ) : null}
-                </h3>
-                <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-800/80 text-left text-xs uppercase text-gray-500 dark:text-gray-400">
-                        <th className="px-3 py-2">Date</th>
-                        <th className="px-3 py-2">Lowest fare</th>
-                        <th className="px-3 py-2">Flights</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {(trip.markets ?? []).map((m, mi) => (
-                        <tr key={mi} className="text-gray-900 dark:text-gray-100">
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            {m.date ? new Date(m.date).toLocaleDateString() : '—'}
-                          </td>
-                          <td className="px-3 py-2">
-                            {typeof m.lowestFare === 'number' && m.lowestFare > 0
-                              ? m.lowestFare.toFixed(2)
-                              : '—'}
-                          </td>
-                          <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                            {m.flights == null ? 'No inventory in response' : 'See details on SalamAir'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
+          {!payload.trips?.length && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">No trip data returned for this search.</p>
+          )}
+          {payload.trips?.map((trip, ti) => (
+            <DepartingFlightBlock
+              key={ti}
+              trip={trip}
+              departureAnchorIso={
+                payload.searchRequest?.departureDate ?? `${depart}T12:00:00`
+              }
+            />
+          ))}
         </div>
       )}
     </div>
