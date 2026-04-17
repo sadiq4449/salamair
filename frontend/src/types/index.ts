@@ -329,6 +329,7 @@ export interface AdminEmailStatus {
   smtp_timeout_seconds: number;
   resend_configured: boolean;
   resend_outbound_summary?: string | null;
+  resend_test_sender_mode?: boolean;
   smtp_user_configured: boolean;
   smtp_password_configured: boolean;
   email_enabled_env: boolean | null;

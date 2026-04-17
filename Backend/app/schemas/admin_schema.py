@@ -173,6 +173,10 @@ class AdminEmailStatusResponse(BaseModel):
         None,
         description="Actual Resend From / Reply-To (SMTP_FROM_EMAIL alone is not the envelope when using Gmail+Resend).",
     )
+    resend_test_sender_mode: bool = Field(
+        False,
+        description="True if Resend sandbox sender — only the Resend account email may receive until a domain is verified.",
+    )
     smtp_user_configured: bool
     smtp_password_configured: bool
     email_enabled_env: bool | None = Field(None, description="Raw EMAIL_ENABLED from env, if set")

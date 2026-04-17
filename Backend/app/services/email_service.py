@@ -132,6 +132,14 @@ def _resend_from_and_reply_to() -> tuple[str, list[str] | None]:
     return contact, None
 
 
+def resend_test_sender_mode() -> bool:
+    """True when Resend uses onboarding@resend.dev (public From like Gmail) — sandbox limits recipients until domain verified."""
+    if not (settings.RESEND_API_KEY or "").strip():
+        return False
+    _from_addr, reply_to = _resend_from_and_reply_to()
+    return reply_to is not None
+
+
 def resend_outbound_summary() -> str | None:
     """Human-readable Resend envelope for admin status (matches actual API sends)."""
     if not (settings.RESEND_API_KEY or "").strip():

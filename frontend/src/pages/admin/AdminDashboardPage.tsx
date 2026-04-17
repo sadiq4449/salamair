@@ -214,6 +214,14 @@ export default function AdminDashboardPage() {
               </dd>
             </div>
           </dl>
+          {emailStatus.resend_configured && emailStatus.resend_test_sender_mode ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-3">
+              Resend is in <strong>test sender</strong> mode (Gmail/Yahoo From). Only the email tied to your Resend
+              account receives outbound mail until you verify a domain and set <code className="font-mono">RESEND_FROM_EMAIL</code>.
+              Use <strong>Send test email (to me)</strong> while logged in as that user — it sends to your admin login
+              address.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
