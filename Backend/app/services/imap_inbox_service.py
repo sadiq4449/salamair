@@ -115,42 +115,94 @@ def _html_to_plain(raw: str) -> str:
     return out.strip()
 
 
+def _collapse_duplicate_lines(text: str) -> str:
+    """Remove consecutive duplicate lines (nested HTML often decodes to the same title many times)."""
+    lines = text.splitlines()
+    if not lines:
+        return text.strip()
+    out: list[str] = []
+    prev_key: str | None = None
+    for line in lines:
+        key = line.strip()
+        if key and key == prev_key:
+            continue
+        out.append(line)
+        prev_key = key if key else prev_key
+    return "\n".join(out).strip()
+
+
+def _ctype_lower(part: Message) -> str:
+    return (part.get_content_type() or "").lower()
+
+
+def _decode_text_part(part: Message) -> str:
+    raw = part.get_payload(decode=True)
+    if not raw:
+        return ""
+    charset = part.get_content_charset() or "utf-8"
+    return raw.decode(charset, errors="replace")
+
+
+def _direct_subparts(msg: Message) -> list[Message]:
+    pl = msg.get_payload()
+    if not isinstance(pl, list):
+        return []
+    return [p for p in pl if isinstance(p, Message)]
+
+
+def _body_from_multipart(msg: Message) -> str:
+    """Pick one logical body (do not join every nested MIME part — that duplicates content)."""
+    ctype = (msg.get_content_type() or "").lower()
+    parts = _direct_subparts(msg)
+
+    if ctype == "multipart/alternative":
+        plains = [p for p in parts if _ctype_lower(p) == "text/plain"]
+        htmls = [p for p in parts if _ctype_lower(p) == "text/html"]
+        if plains:
+            t = _decode_text_part(plains[0]).strip()
+            if t:
+                return t
+        if htmls:
+            raw = _decode_text_part(htmls[-1])
+            return _html_to_plain(raw) if raw else ""
+        return ""
+
+    # mixed / related / signed outer: first non-attachment text block
+    for p in parts:
+        cd = (p.get("Content-Disposition") or "").lower()
+        if "attachment" in cd and _ctype_lower(p) not in ("text/plain", "text/html"):
+            continue
+        st = _ctype_lower(p)
+        if st.startswith("multipart/"):
+            inner = _body_from_multipart(p)
+            if inner.strip():
+                return inner
+        elif st == "text/plain":
+            t = _decode_text_part(p).strip()
+            if t:
+                return t
+        elif st == "text/html":
+            raw = _decode_text_part(p)
+            pl = _html_to_plain(raw) if raw else ""
+            if pl.strip():
+                return pl
+    return ""
+
+
 def _get_body_text(msg: Message) -> str:
-    plain_chunks: list[str] = []
-    html_chunks: list[str] = []
+    if not msg.is_multipart():
+        raw = msg.get_payload(decode=True)
+        if not raw:
+            return ""
+        charset = msg.get_content_charset() or "utf-8"
+        text = raw.decode(charset, errors="replace")
+        if _ctype_lower(msg) == "text/html":
+            text = _html_to_plain(text)
+        return _collapse_duplicate_lines(text.strip())
 
-    if msg.is_multipart():
-        for part in msg.walk():
-            ctype = part.get_content_type()
-            if ctype == "text/plain":
-                payload = part.get_payload(decode=True)
-                if payload:
-                    charset = part.get_content_charset() or "utf-8"
-                    plain_chunks.append(payload.decode(charset, errors="replace"))
-            elif ctype == "text/html":
-                payload = part.get_payload(decode=True)
-                if payload:
-                    charset = part.get_content_charset() or "utf-8"
-                    html_chunks.append(payload.decode(charset, errors="replace"))
-    else:
-        payload = msg.get_payload(decode=True)
-        if payload:
-            charset = msg.get_content_charset() or "utf-8"
-            raw = payload.decode(charset, errors="replace")
-            if (msg.get_content_type() or "").lower() == "text/html":
-                html_chunks.append(raw)
-            else:
-                plain_chunks.append(raw)
-
-    best_plain = "\n\n".join(p.strip() for p in plain_chunks if p.strip()).strip()
-    if best_plain:
-        return best_plain
-
-    best_html = "\n\n".join(h.strip() for h in html_chunks if h.strip()).strip()
-    if best_html:
-        converted = _html_to_plain(best_html)
-        return converted if converted else "(No readable text)"
-
+    extracted = _body_from_multipart(msg).strip()
+    if extracted:
+        return _collapse_duplicate_lines(extracted)
     return ""
 
 
