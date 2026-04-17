@@ -296,9 +296,13 @@ def poll_inbox_once(db: Session) -> dict:
                 from_email = (from_email or "").strip().lower()
 
                 our_box = (settings.SMTP_FROM_EMAIL or "").strip().lower()
+                # Skip our own non-reply mail (e.g. copies) but allow same-address *replies* so tests where
+                # RM inbox = sales Gmail (or self-reply) still import when In-Reply-To is present.
                 if from_email == our_box:
-                    mail.store(num, "+FLAGS", "\\Seen")
-                    continue
+                    has_reply_thread = bool((msg.get("In-Reply-To") or "").strip())
+                    if not has_reply_thread:
+                        mail.store(num, "+FLAGS", "\\Seen")
+                        continue
 
                 mid_raw = msg.get("Message-ID")
                 mid = _normalize_message_id(mid_raw)
