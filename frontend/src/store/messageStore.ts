@@ -20,6 +20,8 @@ interface MessageState {
   fetchMessages: (requestId: string, type?: string, page?: number) => Promise<void>;
   addMessage: (msg: ChatMessage) => void;
   sendMessage: (requestId: string, content: string) => Promise<ChatMessage | null>;
+  adminPatchMessage: (messageId: string, content: string) => Promise<void>;
+  adminDeleteMessage: (messageId: string) => Promise<void>;
   setTyping: (data: TypingUser) => void;
   setUserOnline: (data: OnlineUser) => void;
   setOnlineUsers: (users: OnlineUser[]) => void;
@@ -70,6 +72,29 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     } catch {
       set({ error: 'Failed to send message' });
       return null;
+    }
+  },
+
+  adminPatchMessage: async (messageId, content) => {
+    try {
+      const data = await messageService.adminPatchChatMessage(messageId, content);
+      const msg = data as unknown as ChatMessage;
+      set((s) => ({
+        messages: s.messages.map((m) => (m.id === messageId ? msg : m)),
+      }));
+    } catch {
+      set({ error: 'Failed to update message' });
+    }
+  },
+
+  adminDeleteMessage: async (messageId) => {
+    try {
+      await messageService.adminDeleteChatMessage(messageId);
+      set((s) => ({
+        messages: s.messages.filter((m) => m.id !== messageId),
+      }));
+    } catch {
+      set({ error: 'Failed to delete message' });
     }
   },
 

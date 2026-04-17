@@ -22,6 +22,8 @@ export default function UnifiedTimeline({ requestId }: Props) {
     onlineUsers,
     fetchMessages,
     addMessage,
+    adminPatchMessage,
+    adminDeleteMessage,
     setTyping,
     setUserOnline,
     setOnlineUsers,
@@ -161,6 +163,9 @@ export default function UnifiedTimeline({ requestId }: Props) {
               key={msg.id}
               message={msg}
               isOwnMessage={msg.sender?.id === user?.id}
+              canModerate={user?.role === 'admin'}
+              onAdminPatch={(mid, text) => adminPatchMessage(mid, text)}
+              onAdminDelete={(mid) => adminDeleteMessage(mid)}
             />
           ))
         )}

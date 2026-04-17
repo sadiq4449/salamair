@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
@@ -9,7 +9,7 @@ from app.models.message import Message
 from app.models.message_attachment import MessageAttachment
 from app.models.request import Request
 from app.models.user import User
-from app.schemas.message_schema import SendMessageRequest
+from app.schemas.message_schema import AdminMessagePatch, SendMessageRequest
 from app.services.message_service import (
     create_chat_message,
     format_message,
@@ -38,6 +38,56 @@ def _check_access(req: Request, user: User):
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
         )
+
+
+@router.patch("/chat/{message_id}", status_code=status.HTTP_200_OK)
+def admin_patch_message(
+    message_id: uuid.UUID,
+    payload: AdminMessagePatch,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    msg = db.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Message not found"}},
+        )
+    if msg.type != "chat":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_TYPE", "message": "Only chat messages can be edited"}},
+        )
+    req = _get_request_or_404(db, msg.request_id)
+    _check_access(req, current_user)
+    msg.content = payload.content
+    db.commit()
+    db.refresh(msg)
+    return format_message(msg, current_user.id, db)
+
+
+@router.delete("/chat/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_message(
+    message_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    msg = db.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Message not found"}},
+        )
+    if msg.type != "chat":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_TYPE", "message": "Only chat messages can be deleted"}},
+        )
+    req = _get_request_or_404(db, msg.request_id)
+    _check_access(req, current_user)
+    db.delete(msg)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Paperclip, Loader2, CheckCircle, DollarSign, Mail, XCircle } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
+import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
@@ -16,6 +18,7 @@ import AiPricingAssistant from '../../components/AiPricingAssistant';
 import EmailThreadSummaryCard from '../../components/EmailThreadSummaryCard';
 
 export default function SalesRequestDetail() {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentRequest, isDetailLoading, isLoading, fetchRequest, fetchHistory, updateStatus, clearCurrent } = useRequestStore();
@@ -72,6 +75,8 @@ export default function SalesRequestDetail() {
         <ArrowLeft size={16} />
         Back to Queue
       </button>
+
+      {user?.role === 'admin' && id && <AdminRequestControls request={req} requestId={id} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column */}

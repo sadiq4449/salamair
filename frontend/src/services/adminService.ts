@@ -5,14 +5,28 @@ import type {
   AdminConfigItem,
   AdminCreateUserPayload,
   AdminCreateUserResponse,
+  AdminEmailAttachmentItem,
+  AdminEmailMessageDetail,
   AdminEmailStatus,
   AdminEmailTestSendResponse,
+  AdminEmailThreadDetailResponse,
+  AdminEmailThreadListResponse,
   AdminLogListResponse,
+  AdminPasswordResetResponse,
+  AdminRequestAttachmentListItem,
+  AdminRequestAttachmentListResponse,
+  AdminDbRequestRow,
+  AdminDbListResponse,
+  AdminDbMessageRow,
+  AdminDbHistoryRow,
+  AdminDbNotificationRow,
+  AdminDbCounterOfferRow,
+  AdminDbSlaRow,
+  AdminDbChatAttachmentRow,
   AdminStats,
   AdminUpdateUserPayload,
   AdminUserListResponse,
   AdminUpdateUserResponse,
-  AdminPasswordResetResponse,
   PollInboxResponse,
 } from '../types';
 
@@ -116,4 +130,238 @@ export async function updateAdminConfig(
 ): Promise<{ items: AdminConfigItem[] }> {
   const { data } = await api.put<{ items: AdminConfigItem[] }>('/admin/config', { items });
   return data;
+}
+
+export async function adminListEmailThreads(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminEmailThreadListResponse> {
+  const { data } = await api.get<AdminEmailThreadListResponse>('/admin/email-threads', { params });
+  return data;
+}
+
+export async function adminGetEmailThread(threadId: string): Promise<AdminEmailThreadDetailResponse> {
+  const { data } = await api.get<AdminEmailThreadDetailResponse>(`/admin/email-threads/${threadId}`);
+  return data;
+}
+
+export async function adminUpdateEmailThread(
+  threadId: string,
+  payload: { subject?: string; rm_email?: string; status?: string }
+): Promise<AdminEmailThreadDetailResponse> {
+  const { data } = await api.put<AdminEmailThreadDetailResponse>(`/admin/email-threads/${threadId}`, payload);
+  return data;
+}
+
+export async function adminDeleteEmailThread(threadId: string): Promise<void> {
+  await api.delete(`/admin/email-threads/${threadId}`);
+}
+
+export async function adminUpdateEmailMessage(
+  messageId: string,
+  payload: {
+    subject?: string;
+    body?: string;
+    html_body?: string | null;
+    from_email?: string;
+    to_email?: string;
+    direction?: string;
+    status?: string;
+  }
+): Promise<AdminEmailMessageDetail> {
+  const { data } = await api.put<AdminEmailMessageDetail>(`/admin/email-messages/${messageId}`, payload);
+  return data;
+}
+
+export async function adminDeleteEmailMessage(messageId: string): Promise<void> {
+  await api.delete(`/admin/email-messages/${messageId}`);
+}
+
+export async function adminUpdateEmailAttachment(
+  attachmentId: string,
+  payload: { filename?: string; file_url?: string; file_type?: string }
+): Promise<AdminEmailAttachmentItem> {
+  const { data } = await api.put<AdminEmailAttachmentItem>(`/admin/email-attachments/${attachmentId}`, payload);
+  return data;
+}
+
+export async function adminDeleteEmailAttachment(attachmentId: string): Promise<void> {
+  await api.delete(`/admin/email-attachments/${attachmentId}`);
+}
+
+export async function adminListRequestAttachments(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminRequestAttachmentListResponse> {
+  const { data } = await api.get<AdminRequestAttachmentListResponse>('/admin/request-attachments', { params });
+  return data;
+}
+
+export async function adminUpdateRequestAttachment(
+  attachmentId: string,
+  payload: { filename?: string; file_url?: string; file_type?: string }
+): Promise<AdminRequestAttachmentListItem> {
+  const { data } = await api.put<AdminRequestAttachmentListItem>(
+    `/admin/request-attachments/${attachmentId}`,
+    payload
+  );
+  return data;
+}
+
+export async function adminDeleteRequestAttachment(attachmentId: string): Promise<void> {
+  await api.delete(`/admin/request-attachments/${attachmentId}`);
+}
+
+const DB = '/admin/db';
+
+export async function explorerListRequests(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}): Promise<AdminDbListResponse<AdminDbRequestRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbRequestRow>>(`${DB}/requests`, { params });
+  return data;
+}
+
+export async function explorerUpdateRequest(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<AdminDbRequestRow> {
+  const { data } = await api.put<AdminDbRequestRow>(`${DB}/requests/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteRequest(id: string): Promise<void> {
+  await api.delete(`${DB}/requests/${id}`);
+}
+
+export async function explorerListMessages(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+}): Promise<AdminDbListResponse<AdminDbMessageRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbMessageRow>>(`${DB}/messages`, { params });
+  return data;
+}
+
+export async function explorerUpdateMessage(
+  id: string,
+  payload: { content?: string; type?: string; sender_role?: string | null; is_internal?: boolean }
+): Promise<AdminDbMessageRow> {
+  const { data } = await api.put<AdminDbMessageRow>(`${DB}/messages/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteMessage(id: string): Promise<void> {
+  await api.delete(`${DB}/messages/${id}`);
+}
+
+export async function explorerListHistory(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminDbListResponse<AdminDbHistoryRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbHistoryRow>>(`${DB}/request-history`, { params });
+  return data;
+}
+
+export async function explorerUpdateHistory(id: string, payload: { details?: string }): Promise<AdminDbHistoryRow> {
+  const { data } = await api.put<AdminDbHistoryRow>(`${DB}/request-history/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteHistory(id: string): Promise<void> {
+  await api.delete(`${DB}/request-history/${id}`);
+}
+
+export async function explorerListNotifications(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminDbListResponse<AdminDbNotificationRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbNotificationRow>>(`${DB}/notifications`, { params });
+  return data;
+}
+
+export async function explorerUpdateNotification(
+  id: string,
+  payload: { title?: string; message?: string; is_read?: boolean }
+): Promise<AdminDbNotificationRow> {
+  const { data } = await api.put<AdminDbNotificationRow>(`${DB}/notifications/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteNotification(id: string): Promise<void> {
+  await api.delete(`${DB}/notifications/${id}`);
+}
+
+export async function explorerListCounterOffers(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminDbListResponse<AdminDbCounterOfferRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbCounterOfferRow>>(`${DB}/counter-offers`, { params });
+  return data;
+}
+
+export async function explorerUpdateCounterOffer(
+  id: string,
+  payload: { counter_price?: number; message?: string | null; status?: string }
+): Promise<AdminDbCounterOfferRow> {
+  const { data } = await api.put<AdminDbCounterOfferRow>(`${DB}/counter-offers/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteCounterOffer(id: string): Promise<void> {
+  await api.delete(`${DB}/counter-offers/${id}`);
+}
+
+export async function explorerListSla(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminDbListResponse<AdminDbSlaRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbSlaRow>>(`${DB}/sla`, { params });
+  return data;
+}
+
+export async function explorerUpdateSla(
+  id: string,
+  payload: {
+    deadline_at?: string | null;
+    completed_at?: string | null;
+    is_breached?: boolean;
+  }
+): Promise<AdminDbSlaRow> {
+  const { data } = await api.put<AdminDbSlaRow>(`${DB}/sla/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteSla(id: string): Promise<void> {
+  await api.delete(`${DB}/sla/${id}`);
+}
+
+export async function explorerListChatAttachments(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<AdminDbListResponse<AdminDbChatAttachmentRow>> {
+  const { data } = await api.get<AdminDbListResponse<AdminDbChatAttachmentRow>>(`${DB}/chat-attachments`, { params });
+  return data;
+}
+
+export async function explorerUpdateChatAttachment(
+  id: string,
+  payload: { filename?: string; file_url?: string; file_type?: string }
+): Promise<AdminDbChatAttachmentRow> {
+  const { data } = await api.put<AdminDbChatAttachmentRow>(`${DB}/chat-attachments/${id}`, payload);
+  return data;
+}
+
+export async function explorerDeleteChatAttachment(id: string): Promise<void> {
+  await api.delete(`${DB}/chat-attachments/${id}`);
 }

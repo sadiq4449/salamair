@@ -1,9 +1,22 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, ScrollText, Sliders, Bell, Tag, ListOrdered } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  ScrollText,
+  Sliders,
+  Bell,
+  Tag,
+  ListOrdered,
+  Mail,
+  Database,
+} from 'lucide-react';
 
 const links = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { to: '/admin/data-hub', label: 'All database data', icon: Database },
   { to: '/admin/requests', label: 'All requests', icon: ListOrdered },
+  { to: '/admin/mail', label: 'Mail & files', icon: Mail },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/agents', label: 'Agents', icon: Building2 },
   { to: '/admin/logs', label: 'Logs', icon: ScrollText },
@@ -18,7 +31,7 @@ export default function AdminLayout() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Administration</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          User governance, agent profiles, audit logs, and system settings.
+          User governance, mail and attachments, agent profiles, audit logs, and system settings.
         </p>
       </div>
 

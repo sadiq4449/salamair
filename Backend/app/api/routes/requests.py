@@ -81,14 +81,35 @@ def _log_history(
 def create_request(
     payload: RequestCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("agent")),
+    current_user: User = Depends(require_role("agent", "admin")),
 ):
+    if current_user.role == "admin":
+        if not payload.agent_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "AGENT_REQUIRED", "message": "agent_id is required when creating a request as administrator"}},
+            )
+        agent_user = db.query(User).filter(User.id == payload.agent_id, User.role == "agent").first()
+        if not agent_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "INVALID_AGENT", "message": "agent_id must refer to an active agent user"}},
+            )
+        owner_id = agent_user.id
+    else:
+        if payload.agent_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "FORBIDDEN", "message": "Agents cannot set agent_id"}},
+            )
+        owner_id = current_user.id
+
     request_code = _generate_request_code(db)
     new_status = "draft" if payload.is_draft else "submitted"
 
     req = Request(
         request_code=request_code,
-        agent_id=current_user.id,
+        agent_id=owner_id,
         route=payload.route,
         pax=payload.pax,
         price=payload.price,
@@ -102,7 +123,10 @@ def create_request(
     db.flush()
 
     action = "created_draft" if payload.is_draft else "submitted"
-    _log_history(db, req.id, action, current_user.id, to_status=new_status)
+    hist_details = None
+    if current_user.role == "admin":
+        hist_details = f"Created by administrator for agent {owner_id}"
+    _log_history(db, req.id, action, current_user.id, to_status=new_status, details=hist_details)
 
     if new_status == "submitted":
         try:
@@ -202,7 +226,7 @@ def list_requests(
 
 @router.get("/bulk-template")
 def download_bulk_template(
-    _user: User = Depends(require_role("agent")),
+    _user: User = Depends(require_role("agent", "admin")),
 ):
     data = build_template_workbook()
     return Response(
@@ -215,7 +239,7 @@ def download_bulk_template(
 @router.post("/bulk-preview")
 def bulk_preview_endpoint(
     file: UploadFile = File(...),
-    _user: User = Depends(require_role("agent")),
+    _user: User = Depends(require_role("agent", "admin")),
 ):
     raw = file.file.read()
     return preview_bulk(raw)
@@ -224,12 +248,26 @@ def bulk_preview_endpoint(
 @router.post("/bulk-upload")
 def bulk_upload_endpoint(
     file: UploadFile = File(...),
+    agent_id: uuid.UUID | None = Query(None, description="Target agent user id (required for administrators)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("agent")),
+    current_user: User = Depends(require_role("agent", "admin")),
 ):
     raw = file.file.read()
     try:
-        return commit_bulk_upload(db, current_user, raw)
+        if current_user.role == "admin":
+            if not agent_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": {"code": "AGENT_REQUIRED", "message": "agent_id query parameter is required for bulk upload as administrator"}},
+                )
+            target = db.query(User).filter(User.id == agent_id, User.role == "agent").first()
+            if not target:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": {"code": "INVALID_AGENT", "message": "agent_id must refer to an agent user"}},
+                )
+            return commit_bulk_upload(db, current_user, target, raw)
+        return commit_bulk_upload(db, current_user, current_user, raw)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -267,7 +305,7 @@ def update_request(
     request_id: uuid.UUID,
     payload: RequestUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("agent")),
+    current_user: User = Depends(require_role("agent", "admin")),
 ):
     req = db.query(Request).filter(Request.id == request_id).first()
     if not req:
@@ -275,22 +313,30 @@ def update_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
         )
-    if req.agent_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "You can only edit your own requests"}},
-        )
-    if req.status not in ("draft", "submitted"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": {"code": "INVALID_STATE", "message": f"Cannot edit request in '{req.status}' status"}},
-        )
+    if current_user.role == "agent":
+        if req.agent_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": "You can only edit your own requests"}},
+            )
+        if req.status not in ("draft", "submitted"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "INVALID_STATE", "message": f"Cannot edit request in '{req.status}' status"}},
+            )
 
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(req, field, value)
 
-    _log_history(db, req.id, "updated", current_user.id, details=f"Updated fields: {', '.join(update_data.keys())}")
+    detail_note = f"Updated fields: {', '.join(update_data.keys())}"
+    if current_user.role == "admin":
+        detail_note = f"[Admin] {detail_note}"
+    _log_history(db, req.id, "updated", current_user.id, details=detail_note)
+    try:
+        sync_sla_for_request(db, req)
+    except Exception as e:
+        logger.warning("SLA sync on update failed: %s", e)
     db.commit()
     db.refresh(req)
     return req

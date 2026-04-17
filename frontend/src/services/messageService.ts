@@ -37,4 +37,13 @@ export const messageService = {
   async markRead(messageIds: string[]): Promise<void> {
     await api.post('/messages/read', messageIds);
   },
+
+  async adminPatchChatMessage(messageId: string, content: string): Promise<Record<string, unknown>> {
+    const { data } = await api.patch(`/messages/chat/${messageId}`, { content });
+    return data;
+  },
+
+  async adminDeleteChatMessage(messageId: string): Promise<void> {
+    await api.delete(`/messages/chat/${messageId}`);
+  },
 };

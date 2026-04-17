@@ -11,6 +11,7 @@ from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.user import User
 from app.schemas.counter_offer_schema import CounterOfferCreate, CounterOfferRead
+from app.schemas.advanced_schema import TagBrief
 from app.schemas.request import (
     RequestListItem,
     RequestListResponse,
@@ -39,6 +40,10 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "rm_pending": {"approved", "rejected"},
     "counter_offered": {"submitted"},
 }
+
+ALLOWED_FORCE_STATUSES = frozenset(VALID_TRANSITIONS.keys()) | frozenset(
+    s for v in VALID_TRANSITIONS.values() for s in v
+)
 
 
 def _log_history(
@@ -132,23 +137,46 @@ def update_request_status(
             detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
         )
 
-    allowed = VALID_TRANSITIONS.get(req.status, set())
-    if payload.status not in allowed:
+    force = bool(payload.force) and current_user.role == "admin"
+    if payload.force and current_user.role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "INVALID_TRANSITION",
-                    "message": f"Cannot transition from '{req.status}' to '{payload.status}'. Allowed: {', '.join(sorted(allowed))}",
-                }
-            },
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Only administrators may use forced status updates"}},
         )
+
+    if force:
+        if payload.status not in ALLOWED_FORCE_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "INVALID_STATUS",
+                        "message": f"Status must be one of: {', '.join(sorted(ALLOWED_FORCE_STATUSES))}",
+                    }
+                },
+            )
+    else:
+        allowed = VALID_TRANSITIONS.get(req.status, set())
+        if payload.status not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "INVALID_TRANSITION",
+                        "message": f"Cannot transition from '{req.status}' to '{payload.status}'. Allowed: {', '.join(sorted(allowed))}",
+                    }
+                },
+            )
 
     old_status = req.status
     req.status = payload.status
 
     if current_user.id and not req.assigned_to:
         req.assigned_to = current_user.id
+
+    reason = payload.reason
+    if force:
+        reason = (reason + " " if reason else "") + "[Admin forced status]"
 
     _log_history(
         db,
@@ -157,7 +185,7 @@ def update_request_status(
         current_user.id,
         from_status=old_status,
         to_status=payload.status,
-        details=payload.reason,
+        details=reason,
     )
     sync_sla_for_request(db, req)
     db.commit()

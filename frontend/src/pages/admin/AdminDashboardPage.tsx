@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Activity,
   Mail,
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   Send,
   Inbox,
+  Database,
 } from 'lucide-react';
 import {
   getAdminStats,
@@ -124,6 +126,20 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-4">
+      <Link
+        to="/admin/data-hub"
+        className="flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/90 dark:bg-purple-950/40 px-4 py-3 text-sm text-purple-900 dark:text-purple-100 hover:bg-purple-100/90 dark:hover:bg-purple-950/60 transition-colors"
+      >
+        <Database className="h-5 w-5 shrink-0" />
+        <span>
+          <span className="font-semibold">All database data</span>
+          <span className="block text-xs opacity-90 mt-0.5">
+            View and edit requests, chat messages, history, notifications, counter offers, SLA, chat files — without SQL or
+            Railway tables.
+          </span>
+        </span>
+      </Link>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map(({ label, value, icon: Icon }) => (
           <div

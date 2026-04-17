@@ -29,12 +29,16 @@ export interface CreateRequestData {
   priority: string;
   notes?: string;
   status?: string;
+  /** Required when an administrator creates a request on behalf of an agent */
+  agent_id?: string;
 }
 
 export interface StatusUpdateData {
   status: string;
   notes?: string;
   reason?: string;
+  /** Administrator only: bypass workflow transition rules */
+  force?: boolean;
 }
 
 export interface CounterOfferData {
@@ -58,7 +62,13 @@ export const requestService = {
   },
 
   async createRequest(payload: CreateRequestData): Promise<RequestDetail> {
-    const { data } = await api.post<RequestDetail>('/requests', payload);
+    const { status, agent_id, ...rest } = payload;
+    const body: Record<string, unknown> = {
+      ...rest,
+      is_draft: status === 'draft',
+    };
+    if (agent_id) body.agent_id = agent_id;
+    const { data } = await api.post<RequestDetail>('/requests', body);
     return data;
   },
 
@@ -90,6 +100,7 @@ export const requestService = {
     await api.put(`/sales/requests/${id}/status`, {
       status: payload.status,
       reason: payload.reason ?? payload.notes,
+      force: payload.force ?? false,
     });
     return requestService.getRequest(id);
   },

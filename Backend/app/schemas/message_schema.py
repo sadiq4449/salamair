@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MessageSender(BaseModel):
@@ -39,6 +39,10 @@ class SendMessageRequest(BaseModel):
     request_id: UUID
     content: str
     type: str = "chat"
+
+
+class AdminMessagePatch(BaseModel):
+    content: str = Field(..., min_length=1, max_length=20000)
 
 
 class MessageListResponse(BaseModel):

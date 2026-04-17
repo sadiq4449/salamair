@@ -15,6 +15,10 @@ class RequestCreate(BaseModel):
     notes: str | None = None
     priority: str = Field("normal", pattern=r"^(normal|urgent)$")
     is_draft: bool = False
+    agent_id: UUID | None = Field(
+        None,
+        description="Required when an administrator creates a request on behalf of an agent",
+    )
 
 
 class RequestUpdate(BaseModel):
@@ -84,3 +88,7 @@ class RequestListResponse(BaseModel):
 class StatusUpdate(BaseModel):
     status: str
     reason: str | None = None
+    force: bool = Field(
+        False,
+        description="If true (admin only), set status directly without workflow transition checks",
+    )

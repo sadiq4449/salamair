@@ -1,4 +1,5 @@
-import { Paperclip, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Paperclip, Download, Pencil, Trash2 } from 'lucide-react';
 import type { ChatMessage } from '../../types';
 
 const ROLE_STYLES: Record<string, { bg: string; border: string; badge: string; label: string }> = {
@@ -65,10 +66,25 @@ function formatFullTime(dateStr: string): string {
 interface Props {
   message: ChatMessage;
   isOwnMessage?: boolean;
+  canModerate?: boolean;
+  onAdminPatch?: (messageId: string, content: string) => void | Promise<void>;
+  onAdminDelete?: (messageId: string) => void | Promise<void>;
 }
 
-export default function MessageBubble({ message, isOwnMessage }: Props) {
-  const { type, sender, content, attachments, timestamp } = message;
+export default function MessageBubble({
+  message,
+  isOwnMessage,
+  canModerate,
+  onAdminPatch,
+  onAdminDelete,
+}: Props) {
+  const { type, sender, content, attachments, timestamp, id } = message;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+
+  useEffect(() => {
+    setDraft(content);
+  }, [content]);
 
   if (type === 'system') {
     return (
@@ -129,8 +145,70 @@ export default function MessageBubble({ message, isOwnMessage }: Props) {
         <div
           className={`${style.bg} border-l-3 ${style.border} rounded-lg px-4 py-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed`}
         >
-          {content}
+          {editing ? (
+            <div className="space-y-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={4}
+                className="w-full text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 p-2"
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700"
+                  onClick={() => {
+                    setDraft(content);
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="text-xs px-2 py-1 rounded bg-teal-600 text-white"
+                  onClick={async () => {
+                    if (onAdminPatch && draft.trim()) {
+                      await onAdminPatch(id, draft.trim());
+                      setEditing(false);
+                    }
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            content
+          )}
         </div>
+        {canModerate && type === 'chat' && onAdminPatch && onAdminDelete && !editing && (
+          <div className="flex gap-2 mt-1 justify-end">
+            <button
+              type="button"
+              className="text-[11px] inline-flex items-center gap-1 text-purple-600 hover:underline"
+              onClick={() => {
+                setDraft(content);
+                setEditing(true);
+              }}
+            >
+              <Pencil size={12} />
+              Edit
+            </button>
+            <button
+              type="button"
+              className="text-[11px] inline-flex items-center gap-1 text-red-600 hover:underline"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.confirm('Delete this chat message?')) {
+                  void onAdminDelete(id);
+                }
+              }}
+            >
+              <Trash2 size={12} />
+              Delete
+            </button>
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="mt-2 space-y-1">
             {attachments.map((att) => (

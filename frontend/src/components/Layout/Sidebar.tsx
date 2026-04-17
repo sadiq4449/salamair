@@ -56,7 +56,10 @@ const navByRole: Record<string, NavItem[]> = {
   admin: [
     { label: 'Dashboard', path: '/dashboard', icon: Shield },
     { label: 'Admin panel', path: '/admin/dashboard', icon: Settings2 },
+    { label: 'Pending Approvals', path: '/pending', icon: Clock },
+    { label: 'Requests', path: '/requests', icon: List },
     { label: 'All requests', path: '/admin/requests', icon: ListOrdered },
+    { label: 'Bulk upload', path: '/bulk-upload', icon: Upload },
     { label: 'Email aggregation', path: '/inbox', icon: Inbox },
     { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Flight availability', path: '/flights', icon: Plane },
@@ -168,7 +171,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Agent quick action */}
-        {role === 'agent' && (
+        {(role === 'agent' || role === 'admin') && (
           <div className="px-3 pb-2">
             <div className="text-[0.65rem] font-semibold uppercase text-gray-400 px-3 pb-2 tracking-wider">
               Actions
@@ -214,7 +217,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
       </aside>
 
-      {role === 'agent' && (
+      {(role === 'agent' || role === 'admin') && (
         <CreateRequestModal
           isOpen={showCreate}
           onClose={() => setShowCreate(false)}

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Paperclip, Loader2, Mail } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
+import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
@@ -53,6 +55,8 @@ export default function RequestDetail() {
         <ArrowLeft size={16} />
         Back to Requests
       </button>
+
+      {user?.role === 'admin' && id && <AdminRequestControls request={req} requestId={id} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column */}

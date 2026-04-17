@@ -1,14 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Loader2, Upload } from 'lucide-react';
 import Button from '../components/ui/Button';
+import { useAuth } from '../hooks/useAuth';
 import { bulkPreview, bulkUpload, downloadBulkTemplateBlob } from '../services/advancedService';
+import { listAdminAgents } from '../services/adminService';
 
 export default function BulkUploadPage() {
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof bulkPreview>> | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<Awaited<ReturnType<typeof bulkUpload>> | null>(null);
+  const [agentOptions, setAgentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [agentUserId, setAgentUserId] = useState('');
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    listAdminAgents({ limit: 500 })
+      .then((res) => {
+        const active = res.items.filter((a) => a.is_active);
+        setAgentOptions(active.map((a) => ({ id: a.id, name: a.name })));
+        setAgentUserId((prev) => prev || active[0]?.id || '');
+      })
+      .catch(() => setAgentOptions([]));
+  }, [user?.role]);
 
   async function handlePreview(f: File) {
     setLoading(true);
@@ -33,9 +49,13 @@ export default function BulkUploadPage() {
 
   async function handleConfirmUpload() {
     if (!file) return;
+    if (user?.role === 'admin' && !agentUserId) return;
     setUploading(true);
     try {
-      const res = await bulkUpload(file);
+      const res = await bulkUpload(
+        file,
+        user?.role === 'admin' ? agentUserId : undefined,
+      );
       setResult(res);
     } finally {
       setUploading(false);
@@ -50,6 +70,26 @@ export default function BulkUploadPage() {
           Download template
         </Button>
       </div>
+
+      {user?.role === 'admin' && (
+        <div className="max-w-md">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Upload requests for agent
+          </label>
+          <select
+            value={agentUserId}
+            onChange={(e) => setAgentUserId(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+          >
+            <option value="">Select agent…</option>
+            {agentOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center">
         <input
@@ -113,7 +153,15 @@ export default function BulkUploadPage() {
               </tbody>
             </table>
           </div>
-          <Button onClick={handleConfirmUpload} disabled={!file || preview.valid_rows === 0 || uploading}>
+          <Button
+            onClick={handleConfirmUpload}
+            disabled={
+              !file ||
+              preview.valid_rows === 0 ||
+              uploading ||
+              (user?.role === 'admin' && !agentUserId)
+            }
+          >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

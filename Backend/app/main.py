@@ -13,6 +13,8 @@ from app.api.routes.messages import router as messages_router
 from app.api.routes.notifications import router as notifications_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.admin import router as admin_router
+from app.api.routes.admin_data import router as admin_data_router
+from app.api.routes.admin_explorer import router as admin_explorer_router
 from app.api.routes.requests import router as requests_router
 from app.api.routes.search import router as search_router
 from app.api.routes.sla import router as sla_router
@@ -125,6 +127,8 @@ app.include_router(messages_router, prefix="/api/v1/messages", tags=["Messages"]
 app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["Notifications"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(admin_data_router, prefix="/api/v1/admin", tags=["Admin Data"])
+app.include_router(admin_explorer_router, prefix="/api/v1/admin/db", tags=["Admin DB Explorer"])
 app.include_router(sla_router, prefix="/api/v1/sla", tags=["SLA"])
 app.include_router(search_router, prefix="/api/v1/search", tags=["Search"])
 app.include_router(tags_router, prefix="/api/v1/tags", tags=["Tags"])

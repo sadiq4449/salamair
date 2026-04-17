@@ -1,8 +1,10 @@
-import { useState, useRef, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { X, Upload } from 'lucide-react';
 import Button from './ui/Button';
+import { useAuth } from '../hooks/useAuth';
 import { useRequestStore } from '../store/requestStore';
 import { requestService } from '../services/requestService';
+import { listAdminAgents } from '../services/adminService';
 
 const ROUTES = [
   { value: 'MCT-DXB', label: 'MCT - DXB' },
@@ -19,8 +21,11 @@ interface Props {
 }
 
 export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props) {
+  const { user } = useAuth();
   const { createRequest, isLoading } = useRequestStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [agentOptions, setAgentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [agentUserId, setAgentUserId] = useState('');
 
   const [form, setForm] = useState({
     route: '',
@@ -32,6 +37,17 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
     notes: '',
   });
   const [files, setFiles] = useState<File[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || user?.role !== 'admin') return;
+    listAdminAgents({ limit: 500 })
+      .then((res) => {
+        const active = res.items.filter((a) => a.is_active);
+        setAgentOptions(active.map((a) => ({ id: a.id, name: a.name })));
+        setAgentUserId((prev) => prev || active[0]?.id || '');
+      })
+      .catch(() => setAgentOptions([]));
+  }, [isOpen, user?.role]);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -56,6 +72,9 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
   async function handleSubmit(e: FormEvent, asDraft = false) {
     e.preventDefault();
     try {
+      if (user?.role === 'admin' && !agentUserId) {
+        return;
+      }
       const created = await createRequest({
         route: form.route,
         pax: Number(form.pax),
@@ -65,6 +84,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
         priority: form.priority,
         notes: form.notes || undefined,
         status: asDraft ? 'draft' : 'submitted',
+        ...(user?.role === 'admin' && agentUserId ? { agent_id: agentUserId } : {}),
       });
 
       if (files.length > 0) {
@@ -98,6 +118,26 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
 
         {/* Body */}
         <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-5">
+          {user?.role === 'admin' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Create on behalf of agent
+              </label>
+              <select
+                value={agentUserId}
+                onChange={(e) => setAgentUserId(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
+              >
+                <option value="">Select agent…</option>
+                {agentOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Route */}
             <div>

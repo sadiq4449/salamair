@@ -112,7 +112,10 @@ export async function bulkPreview(file: File): Promise<{
   return data;
 }
 
-export async function bulkUpload(file: File): Promise<{
+export async function bulkUpload(
+  file: File,
+  agentId?: string,
+): Promise<{
   message: string;
   total_rows: number;
   created: number;
@@ -122,6 +125,7 @@ export async function bulkUpload(file: File): Promise<{
   const fd = new FormData();
   fd.append('file', file);
   const { data } = await api.post('/requests/bulk-upload', fd, {
+    params: agentId ? { agent_id: agentId } : {},
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data;

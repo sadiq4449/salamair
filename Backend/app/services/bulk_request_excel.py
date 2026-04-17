@@ -189,7 +189,7 @@ def build_template_workbook() -> bytes:
     return bio.getvalue()
 
 
-def commit_bulk_upload(db: Session, agent: User, content: bytes) -> dict[str, Any]:
+def commit_bulk_upload(db: Session, acting_user: User, agent_owner: User, content: bytes) -> dict[str, Any]:
     raw, err = parse_excel_rows(content)
     if err:
         raise ValueError(err)
@@ -247,7 +247,7 @@ def commit_bulk_upload(db: Session, agent: User, content: bytes) -> dict[str, An
 
         req = Request(
             request_code=code,
-            agent_id=agent.id,
+            agent_id=agent_owner.id,
             route=row["route"],
             pax=row["pax"],
             price=Decimal(str(row["price"])),
@@ -263,9 +263,13 @@ def commit_bulk_upload(db: Session, agent: User, content: bytes) -> dict[str, An
             RequestHistory(
                 request_id=req.id,
                 action="bulk_uploaded",
-                actor_id=agent.id,
+                actor_id=acting_user.id,
                 to_status="submitted",
-                details="Created via bulk Excel upload",
+                details=(
+                    "Created via bulk Excel upload"
+                    if acting_user.id == agent_owner.id
+                    else f"Bulk Excel upload by admin for agent {agent_owner.name} ({agent_owner.email})"
+                ),
             )
         )
         sync_sla_for_request(db, req)

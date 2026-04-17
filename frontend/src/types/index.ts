@@ -459,3 +459,188 @@ export interface AdminConfigItem {
   value: string;
   description?: string | null;
 }
+
+/** Admin mail & attachment explorer (human-readable DB view) */
+export interface AdminEmailThreadListItem {
+  thread_id: string;
+  request_id: string;
+  request_code: string;
+  route: string;
+  request_status: string;
+  agent_name: string | null;
+  subject: string;
+  rm_email: string;
+  thread_status: string;
+  message_count: number;
+  last_activity_at: string;
+  preview: string;
+}
+
+export interface AdminEmailThreadListResponse {
+  items: AdminEmailThreadListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminEmailAttachmentItem {
+  id: string;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+}
+
+export interface AdminEmailMessageDetail {
+  id: string;
+  thread_id: string;
+  direction: string;
+  from_email: string;
+  to_email: string;
+  subject: string;
+  body: string;
+  html_body: string | null;
+  message_id: string | null;
+  in_reply_to: string | null;
+  status: string;
+  sent_at: string;
+  received_at: string | null;
+  created_at: string;
+  attachments: AdminEmailAttachmentItem[];
+}
+
+export interface AdminEmailThreadDetailResponse {
+  thread_id: string;
+  request_id: string;
+  request_code: string;
+  route: string;
+  request_status: string;
+  subject: string;
+  rm_email: string;
+  thread_status: string;
+  created_at: string;
+  updated_at: string;
+  messages: AdminEmailMessageDetail[];
+}
+
+export interface AdminRequestAttachmentListItem {
+  id: string;
+  request_id: string;
+  request_code: string;
+  route: string;
+  request_status: string;
+  agent_name: string | null;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+  uploaded_at: string;
+}
+
+export interface AdminRequestAttachmentListResponse {
+  items: AdminRequestAttachmentListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** Admin DB explorer (/admin/db/*) */
+export interface AdminDbRequestRow {
+  id: string;
+  request_code: string;
+  agent_id: string;
+  agent_name: string | null;
+  route: string;
+  pax: number;
+  price: number;
+  status: string;
+  priority: string;
+  travel_date: string | null;
+  return_date: string | null;
+  notes: string | null;
+  assigned_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminDbListResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminDbMessageRow {
+  id: string;
+  request_id: string;
+  request_code: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  type: string;
+  sender_role: string | null;
+  content: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
+export interface AdminDbHistoryRow {
+  id: string;
+  request_id: string;
+  request_code: string;
+  action: string;
+  from_status: string | null;
+  to_status: string | null;
+  actor_id: string;
+  actor_name: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export interface AdminDbNotificationRow {
+  id: string;
+  user_id: string;
+  user_email: string;
+  type: string;
+  title: string;
+  message: string;
+  request_id: string | null;
+  request_code: string | null;
+  is_read: boolean;
+  is_email_sent: boolean;
+  created_at: string;
+}
+
+export interface AdminDbCounterOfferRow {
+  id: string;
+  request_id: string;
+  request_code: string;
+  original_price: number;
+  counter_price: number;
+  message: string | null;
+  created_by: string;
+  creator_name: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminDbSlaRow {
+  id: string;
+  request_id: string;
+  request_code: string;
+  status: string;
+  started_at: string;
+  deadline_at: string;
+  completed_at: string | null;
+  is_breached: boolean;
+}
+
+export interface AdminDbChatAttachmentRow {
+  id: string;
+  message_id: string;
+  request_id: string;
+  request_code: string;
+  filename: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+}

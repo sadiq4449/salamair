@@ -8,6 +8,8 @@ import AdminConfigPage from './pages/admin/AdminConfigPage';
 import AdminRemindersPage from './pages/admin/AdminRemindersPage';
 import AdminTagsPage from './pages/admin/AdminTagsPage';
 import AdminAllRequestsPage from './pages/admin/AdminAllRequestsPage';
+import AdminMailDataPage from './pages/admin/AdminMailDataPage';
+import AdminDataHubPage from './pages/admin/AdminDataHubPage';
 import SlaDashboardPage from './pages/SlaDashboardPage';
 import BulkUploadPage from './pages/BulkUploadPage';
 import FlightAvailability from './pages/FlightAvailability';
@@ -125,13 +127,13 @@ export default function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
 
-            {/* Agent routes */}
-            <Route path="/requests" element={<RoleRoute roles={['agent']}><RequestList /></RoleRoute>} />
-            <Route path="/requests/:id" element={<RoleRoute roles={['agent']}><RequestDetail /></RoleRoute>} />
+            {/* Agent routes (administrators have full access to the same flows) */}
+            <Route path="/requests" element={<RoleRoute roles={['agent', 'admin']}><RequestList /></RoleRoute>} />
+            <Route path="/requests/:id" element={<RoleRoute roles={['agent', 'admin']}><RequestDetail /></RoleRoute>} />
             <Route
               path="/bulk-upload"
               element={
-                <RoleRoute roles={['agent']}>
+                <RoleRoute roles={['agent', 'admin']}>
                   <BulkUploadPage />
                 </RoleRoute>
               }
@@ -206,6 +208,7 @@ export default function App() {
             >
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
+              <Route path="data-hub" element={<AdminDataHubPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="agents" element={<AdminAgentsPage />} />
               <Route path="logs" element={<AdminLogsPage />} />
@@ -213,6 +216,7 @@ export default function App() {
               <Route path="reminders" element={<AdminRemindersPage />} />
               <Route path="tags" element={<AdminTagsPage />} />
               <Route path="requests" element={<AdminAllRequestsPage />} />
+              <Route path="mail" element={<AdminMailDataPage />} />
             </Route>
           </Route>
 
