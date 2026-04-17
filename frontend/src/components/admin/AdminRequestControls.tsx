@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Loader2, Save, Shield } from 'lucide-react';
 import Button from '../ui/Button';
 import { useRequestStore } from '../../store/requestStore';
-import type { RequestDetail } from '../../types';
+import type { Priority, RequestDetail, RequestStatus } from '../../types';
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: RequestStatus[] = [
   'draft',
   'submitted',
   'under_review',
@@ -118,7 +118,9 @@ export default function AdminRequestControls({ request, requestId }: Props) {
               <select
                 className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
                 value={fields.priority}
-                onChange={(e) => setFields((f) => ({ ...f, priority: e.target.value }))}
+                onChange={(e) =>
+                  setFields((f) => ({ ...f, priority: e.target.value as Priority }))
+                }
               >
                 <option value="normal">normal</option>
                 <option value="urgent">urgent</option>
@@ -172,7 +174,7 @@ export default function AdminRequestControls({ request, requestId }: Props) {
             <select
               className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
               value={forcedStatus}
-              onChange={(e) => setForcedStatus(e.target.value)}
+              onChange={(e) => setForcedStatus(e.target.value as RequestStatus)}
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>

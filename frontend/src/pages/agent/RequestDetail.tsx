@@ -16,6 +16,7 @@ import AiPricingAssistant from '../../components/AiPricingAssistant';
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { currentRequest, isDetailLoading, fetchRequest, fetchHistory, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
   const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
