@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "sales@salamair.com"
+    SMTP_FROM_EMAIL: str = "sadiqcds22@gmail.com"
     SMTP_FROM_NAME: str = "Salam Air Sales"
     SMTP_USE_TLS: bool = True
     # Connection timeout (seconds). Increase if you see "timed out" on slow or distant SMTP.
