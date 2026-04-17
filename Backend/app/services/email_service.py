@@ -85,6 +85,19 @@ def _enhance_smtp_error(err: str) -> str:
     return err
 
 
+def _enhance_resend_error(err: str) -> str:
+    """Resend test sender (onboarding@resend.dev) only allows sending to the account email until a domain is verified."""
+    low = err.lower()
+    if "only send testing" in low or "verify a domain" in low:
+        return (
+            f"{err}\n\n"
+            "While using Resend’s test sender (onboarding@resend.dev), Resend only delivers to the email "
+            "address tied to your Resend API key. To email other recipients (e.g. RM), verify a domain at "
+            "https://resend.com/domains and set RESEND_FROM_EMAIL to an address on that domain in Railway / .env."
+        )
+    return err
+
+
 # Resend only allows verified domains. Public inboxes (Gmail, Yahoo, …) cannot be "from".
 RESEND_PUBLIC_SENDER = "onboarding@resend.dev"
 
@@ -126,7 +139,11 @@ def resend_outbound_summary() -> str | None:
     from_addr, reply_to = _resend_from_and_reply_to()
     disp = (settings.SMTP_FROM_NAME or "Salam Air").strip()
     if reply_to:
-        return f"Envelope From: {disp} <{from_addr}> | Reply-To: {reply_to[0]}"
+        return (
+            f"Envelope From: {disp} <{from_addr}> | Reply-To: {reply_to[0]}\n"
+            "Test sender: Resend only accepts the recipient = your Resend account email until you verify a domain "
+            "and set RESEND_FROM_EMAIL (e.g. noreply@yourdomain.com)."
+        )
     return f"Envelope From: {disp} <{from_addr}>"
 
 
@@ -173,7 +190,7 @@ def _send_via_resend(
                 msg = detail.get("message") or detail.get("name") or str(detail)
             except Exception:
                 msg = r.text or r.reason_phrase
-            return None, str(msg)[:800]
+            return None, _enhance_resend_error(str(msg))[:1200]
 
         return message_id, None
     except httpx.RequestError as e:
