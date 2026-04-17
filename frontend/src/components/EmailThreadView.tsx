@@ -24,32 +24,51 @@ function formatTime(iso: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatFullDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function EmailBubble({ email }: { email: EmailMessageItem }) {
   const isOutgoing = email.direction === 'outgoing';
   const deliveryFailed = isOutgoing && email.status === 'failed';
   const deliveryOk = isOutgoing && email.status === 'sent';
+  const showHtml = isOutgoing && Boolean(email.html_body?.trim());
 
   return (
     <div className="flex gap-3">
-      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${
-        isOutgoing ? 'bg-teal-500' : 'bg-amber-500'
-      }`}>
+      <div
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${
+          isOutgoing ? 'bg-teal-500' : 'bg-amber-500'
+        }`}
+      >
         {isOutgoing ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
-            {isOutgoing ? 'Sales Team' : 'Revenue Management'}
+            {isOutgoing ? 'Sales (portal)' : 'RM / inbox'}
           </span>
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold uppercase ${
-            email.status === 'received' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-              : email.status === 'sent' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              : email.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-          }`}>
-            {email.status === 'sent' && isOutgoing ? 'smtp sent' : email.status}
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold uppercase ${
+              email.status === 'received'
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : email.status === 'sent'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  : email.status === 'failed'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            {email.status === 'sent' && isOutgoing ? 'sent' : email.status}
           </span>
-          <span className="text-xs text-gray-400 ml-auto shrink-0">{formatTime(email.sent_at)}</span>
         </div>
         {deliveryFailed && (
           <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
@@ -62,21 +81,49 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
         )}
         {deliveryOk && (
           <p className="mb-2 text-[0.7rem] text-gray-500 dark:text-gray-400">
-            Handed to your SMTP server for <span className="font-medium">{email.to_email}</span>. If RM sees nothing, check spam and that the address exists.
+            Delivered to <span className="font-medium">{email.to_email}</span>. If RM sees nothing, check spam.
           </p>
         )}
-        <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
-          isOutgoing
-            ? deliveryFailed
-              ? 'bg-red-50/80 dark:bg-red-950/20 border-l-3 border-red-400 text-gray-700 dark:text-gray-300'
-              : 'bg-teal-50 dark:bg-teal-900/20 border-l-3 border-teal-400 text-gray-700 dark:text-gray-300'
-            : 'bg-amber-50 dark:bg-amber-900/20 border-l-3 border-amber-400 text-gray-700 dark:text-gray-300'
-        }`}>
-          <p className="text-xs text-gray-400 mb-1.5">
-            {email.from_email} → {email.to_email}
-          </p>
-          <p className="whitespace-pre-wrap">{email.body}</p>
-        </div>
+
+        <article
+          className={`rounded-xl border overflow-hidden shadow-sm ${
+            isOutgoing
+              ? deliveryFailed
+                ? 'border-red-200 dark:border-red-900/50 bg-white dark:bg-gray-900'
+                : 'border-teal-200/80 dark:border-teal-900/40 bg-white dark:bg-gray-900'
+              : 'border-amber-200/80 dark:border-amber-900/40 bg-white dark:bg-gray-900'
+          }`}
+        >
+          <header className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/90 dark:bg-gray-950/60">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug pr-2">{email.subject}</h3>
+            <dl className="mt-2 grid gap-1 text-[0.7rem] text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                <div>
+                  <span className="text-gray-400">From </span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300 break-all">{email.from_email}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">To </span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300 break-all">{email.to_email}</span>
+                </div>
+              </div>
+              <div className="text-gray-400 dark:text-gray-500" title={formatFullDate(email.sent_at)}>
+                {formatFullDate(email.sent_at)} <span className="text-gray-400">· {formatTime(email.sent_at)}</span>
+              </div>
+            </dl>
+          </header>
+          <div className="px-4 py-3 text-sm">
+            {showHtml ? (
+              <div
+                className="email-thread-html max-w-full overflow-x-auto text-[13px] leading-relaxed text-gray-800 dark:text-gray-200 [&_*]:max-w-full [&_img]:max-h-40 [&_table]:text-xs [&_a]:text-teal-600"
+                dangerouslySetInnerHTML={{ __html: email.html_body as string }}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-gray-200">{email.body}</div>
+            )}
+          </div>
+        </article>
+
         {email.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {email.attachments.map((att) => (
@@ -157,15 +204,25 @@ export default function EmailThreadView({
     } else if (r.stored > 0) {
       addToast('success', `Imported ${r.stored} new email(s) from inbox.`);
     } else {
-      addToast('info', 'No new emails in inbox (or none matched a request REQ code).');
+      const scanned = typeof r.processed === 'number' && r.processed > 0 ? ` Scanned ${r.processed} message(s).` : '';
+      const errHint =
+        r.errors?.length && r.errors[0]
+          ? ` ${r.errors[0]}`
+          : '';
+      addToast(
+        'info',
+        `No new replies imported for this deal.${scanned} Replies need [REQ-…] in the subject.${errHint}`,
+      );
     }
   }
 
   return (
     <div>
       <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-        This panel shows what the <strong className="text-gray-700 dark:text-gray-300">portal stored</strong>. Real delivery to RM only happens when SMTP succeeds (badge <strong>smtp sent</strong>).
-        The address <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong> must be a real inbox you can open.
+        Thread order is oldest → newest. RM replies from email appear after you{' '}
+        <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong> (subject must keep{' '}
+        <code className="font-mono text-[0.65rem]">[REQ-…]</code>). RM address:{' '}
+        <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong>.
       </p>
       {hasOutgoingFailed && (
         <div className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
@@ -212,7 +269,7 @@ export default function EmailThreadView({
           <p className="text-xs text-gray-400 mt-1">Send a request to RM to start the email thread</p>
         </div>
       ) : (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+        <div className="space-y-5 max-h-[min(520px,70vh)] overflow-y-auto pr-1">
           {emails.map((email) => (
             <EmailBubble key={email.id} email={email} />
           ))}

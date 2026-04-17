@@ -6,12 +6,13 @@ Typically use the same mailbox as SMTP (e.g. Gmail).
 """
 from __future__ import annotations
 
+import html as html_std
 import imaplib
 import logging
 import re
 import socket
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from email.header import decode_header
 from email.message import Message
@@ -81,7 +82,10 @@ class IMAP4_IPv4(imaplib.IMAP4):
 # Matches [REQ-2026-001] style codes from build_subject()
 REQ_CODE_PATTERN = re.compile(r"\[(REQ-\d{4}-\d{3})\]", re.IGNORECASE)
 # Gmail may drop long IMAP sessions; keep each poll small.
-_MAX_UNSEEN_PER_POLL = 30
+# Use SINCE (not only UNSEEN) so replies already opened in Gmail still get imported.
+_IMAP_SINCE_DAYS = 45
+_MAX_MESSAGES_PER_POLL = 80
+_MAX_ERROR_LINES = 12
 
 
 def _decode_subject(subject: str | None) -> str:
@@ -97,7 +101,24 @@ def _decode_subject(subject: str | None) -> str:
     return "".join(out).strip()
 
 
+def _html_to_plain(raw: str) -> str:
+    """Strip tags / boilerplate from HTML parts so the portal shows readable text."""
+    if not raw or not raw.strip():
+        return ""
+    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", "", raw)
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</(p|div|tr|table|h[1-6])>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html_std.unescape(text)
+    lines = [ln.rstrip() for ln in text.splitlines()]
+    out = "\n".join(ln for ln in lines if ln.strip())
+    return out.strip()
+
+
 def _get_body_text(msg: Message) -> str:
+    plain_chunks: list[str] = []
+    html_chunks: list[str] = []
+
     if msg.is_multipart():
         for part in msg.walk():
             ctype = part.get_content_type()
@@ -105,18 +126,31 @@ def _get_body_text(msg: Message) -> str:
                 payload = part.get_payload(decode=True)
                 if payload:
                     charset = part.get_content_charset() or "utf-8"
-                    return payload.decode(charset, errors="replace").strip()
-        for part in msg.walk():
-            if part.get_content_type() == "text/html":
+                    plain_chunks.append(payload.decode(charset, errors="replace"))
+            elif ctype == "text/html":
                 payload = part.get_payload(decode=True)
                 if payload:
                     charset = part.get_content_charset() or "utf-8"
-                    return payload.decode(charset, errors="replace").strip()
+                    html_chunks.append(payload.decode(charset, errors="replace"))
     else:
         payload = msg.get_payload(decode=True)
         if payload:
             charset = msg.get_content_charset() or "utf-8"
-            return payload.decode(charset, errors="replace").strip()
+            raw = payload.decode(charset, errors="replace")
+            if (msg.get_content_type() or "").lower() == "text/html":
+                html_chunks.append(raw)
+            else:
+                plain_chunks.append(raw)
+
+    best_plain = "\n\n".join(p.strip() for p in plain_chunks if p.strip()).strip()
+    if best_plain:
+        return best_plain
+
+    best_html = "\n\n".join(h.strip() for h in html_chunks if h.strip()).strip()
+    if best_html:
+        converted = _html_to_plain(best_html)
+        return converted if converted else "(No readable text)"
+
     return ""
 
 
@@ -136,7 +170,8 @@ def extract_request_code(subject: str) -> str | None:
 
 def poll_inbox_once(db: Session) -> dict:
     """
-    Fetch UNSEEN messages from IMAP, match to requests, store as incoming EmailMessage.
+    Fetch recent messages from IMAP (SINCE window, not only UNSEEN), match [REQ-YYYY-NNN] in subject,
+    store as incoming EmailMessage. Using SINCE imports replies even if already opened in Gmail.
     Returns summary dict for API response.
     """
     if not settings.imap_polling_active:
@@ -173,19 +208,25 @@ def poll_inbox_once(db: Session) -> dict:
         mail.login(settings.IMAP_USER, settings.IMAP_PASSWORD)
         mail.select(settings.IMAP_MAILBOX)
 
-        typ, data = mail.search(None, "UNSEEN")
+        since = (datetime.now(timezone.utc).date() - timedelta(days=_IMAP_SINCE_DAYS)).strftime("%d-%b-%Y")
+        typ, data = mail.search(None, f"(SINCE {since})")
         if typ != "OK" or not data or not data[0]:
             mail.logout()
             return {"ok": True, "skipped": False, "processed": 0, "stored": 0, "errors": []}
 
-        unseen_ids = data[0].split()
-        if len(unseen_ids) > _MAX_UNSEEN_PER_POLL:
-            errors.append(
-                f"IMAP: processing {_MAX_UNSEEN_PER_POLL} of {len(unseen_ids)} UNSEEN; run Sync again for the rest."
-            )
-            unseen_ids = unseen_ids[:_MAX_UNSEEN_PER_POLL]
+        id_bytes = data[0].split()
+        if not id_bytes:
+            mail.logout()
+            return {"ok": True, "skipped": False, "processed": 0, "stored": 0, "errors": []}
 
-        for num in unseen_ids:
+        if len(id_bytes) > _MAX_MESSAGES_PER_POLL:
+            errors.append(
+                f"IMAP: processing newest {_MAX_MESSAGES_PER_POLL} of {len(id_bytes)} messages in "
+                f"{_IMAP_SINCE_DAYS}-day window; click Sync again to continue."
+            )
+            id_bytes = id_bytes[-_MAX_MESSAGES_PER_POLL:]
+
+        for num in id_bytes:
             processed += 1
             try:
                 typ, msg_data = mail.fetch(num, "(RFC822)")
@@ -216,7 +257,7 @@ def poll_inbox_once(db: Session) -> dict:
 
                 request_code = extract_request_code(subject)
                 if not request_code:
-                    errors.append(f"No REQ code in subject: {subject[:80]}...")
+                    # Other mail in the same inbox window — skip quietly (avoid error spam on Sync).
                     mail.store(num, "+FLAGS", "\\Seen")
                     continue
 
@@ -319,6 +360,9 @@ def poll_inbox_once(db: Session) -> dict:
             "stored": stored,
             "errors": errors + [str(e)],
         }
+
+    if len(errors) > _MAX_ERROR_LINES:
+        errors = errors[:_MAX_ERROR_LINES]
 
     return {
         "ok": True,

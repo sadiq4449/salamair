@@ -142,6 +142,8 @@ export interface EmailMessageItem {
   to_email: string;
   subject: string;
   body: string;
+  /** Portal-outgoing HTML (our template); shown in thread when present for nicer layout */
+  html_body?: string | null;
   status: EmailStatus;
   attachments: EmailAttachmentItem[];
   sent_at: string;

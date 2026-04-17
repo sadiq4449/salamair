@@ -40,6 +40,7 @@ class EmailMessageRead(BaseModel):
     to_email: str
     subject: str
     body: str
+    html_body: str | None = None
     status: str
     attachments: list[EmailAttachmentRead] = []
     sent_at: datetime

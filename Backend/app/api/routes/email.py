@@ -294,6 +294,7 @@ def get_email_thread(
             emails=[],
         )
 
+    msgs = sorted(thread.messages, key=lambda m: (m.sent_at, m.created_at))
     emails = [
         EmailMessageRead(
             id=m.id,
@@ -302,13 +303,14 @@ def get_email_thread(
             to_email=m.to_email,
             subject=m.subject,
             body=m.body,
+            html_body=m.html_body,
             status=m.status,
             attachments=[EmailAttachmentRead.model_validate(a) for a in m.attachments],
             sent_at=m.sent_at,
             received_at=m.received_at,
             created_at=m.created_at,
         )
-        for m in thread.messages
+        for m in msgs
     ]
 
     return EmailThreadRead(
@@ -418,7 +420,8 @@ def poll_inbox(
     _auth: None = Depends(_require_poll_access),
 ):
     """
-    Fetch UNSEEN emails from IMAP, match subjects containing [REQ-YYYY-NNN], store as incoming messages.
+    Fetch recent IMAP messages (rolling SINCE window), match subjects containing [REQ-YYYY-NNN],
+    store incoming rows (Message-ID dedupes). Replies already read in Gmail are still imported.
     Configure IMAP_* env vars. Call from UI (sales) or cron with X-Email-Poll-Secret.
     """
     result = poll_inbox_once(db)

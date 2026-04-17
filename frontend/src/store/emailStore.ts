@@ -7,6 +7,7 @@ import type {
   ReplyEmailPayload,
   SendEmailResponse,
   ReplyEmailResponse,
+  PollInboxResponse,
 } from '../types';
 
 function apiErrorMessage(err: unknown): string {
@@ -35,7 +36,7 @@ interface EmailState {
   sendEmail: (payload: SendEmailPayload) => Promise<SendEmailResponse>;
   reply: (payload: ReplyEmailPayload) => Promise<ReplyEmailResponse>;
   simulateReply: (requestId: string, message?: string) => Promise<void>;
-  pollInbox: (requestId?: string) => Promise<{ stored: number; skipped?: boolean } | null>;
+  pollInbox: (requestId?: string) => Promise<PollInboxResponse | null>;
   clearThread: () => void;
 }
 
@@ -102,7 +103,7 @@ export const useEmailStore = create<EmailState>((set, get) => ({
         await get().fetchThread(requestId);
       }
       set({ isSending: false });
-      return { stored: r.stored, skipped: r.skipped };
+      return r;
     } catch {
       set({ error: 'Failed to sync inbox', isSending: false });
       return null;
