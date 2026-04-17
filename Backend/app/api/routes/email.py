@@ -26,7 +26,14 @@ from app.schemas.email_schema import (
     SendEmailResponse,
     SimulateReplyRequest,
 )
-from app.services.email_service import build_html_body, build_plain_body, build_subject, send_smtp_email
+from app.services.email_service import (
+    build_html_body,
+    build_plain_body,
+    build_subject,
+    build_thread_reply_html,
+    build_thread_reply_plain,
+    send_smtp_email,
+)
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
@@ -177,15 +184,17 @@ def send_email_to_rm(
     subject = build_subject(req.request_code, req.route)
 
     travel_date_str = str(req.travel_date) if req.travel_date else None
+    # Show configured outbound mailbox in template (falls back to login email)
+    contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
     html_body = build_html_body(
         req.request_code, req.route, req.pax, float(req.price),
         travel_date_str, payload.message, current_user.name,
-        current_user.email, current_user.id,
+        contact_email, current_user.id,
     )
     plain_body = build_plain_body(
         req.request_code, req.route, req.pax, float(req.price),
         travel_date_str, payload.message, current_user.name,
-        current_user.email, current_user.id,
+        contact_email, current_user.id,
     )
 
     message_id, smtp_err = send_smtp_email(rm_email, subject, plain_body, html_body)
@@ -342,16 +351,13 @@ def reply_to_rm(
         )
 
     subject = f"Re: {thread.subject}"
-    travel_date_str = str(req.travel_date) if req.travel_date else None
-    html_body = build_html_body(
-        req.request_code, req.route, req.pax, float(req.price),
-        travel_date_str, payload.message, current_user.name,
-        current_user.email, current_user.id,
+    # Thread replies: only the typed text + short signature (full fare template is for POST /send only).
+    contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
+    plain_body = build_thread_reply_plain(
+        req.request_code, req.route, payload.message, current_user.name, contact_email,
     )
-    plain_body = build_plain_body(
-        req.request_code, req.route, req.pax, float(req.price),
-        travel_date_str, payload.message, current_user.name,
-        current_user.email, current_user.id,
+    html_body = build_thread_reply_html(
+        req.request_code, req.route, payload.message, current_user.name, contact_email,
     )
 
     last_msg = (

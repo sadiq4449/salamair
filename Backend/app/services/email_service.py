@@ -290,6 +290,47 @@ def build_html_body(
     """
 
 
+def build_thread_reply_plain(
+    request_code: str,
+    route: str,
+    message: str,
+    sender_name: str,
+    contact_email: str,
+) -> str:
+    """Short plain body for follow-up replies in an existing RM thread (not the full fare template)."""
+    msg = message.strip()
+    ce = contact_email.strip()
+    return (
+        f"{msg}\n\n"
+        "—\n"
+        f"{sender_name}\n"
+        f"{ce}\n"
+        f"[{request_code}] {route} · Salam Air SmartDeal\n"
+    )
+
+
+def build_thread_reply_html(
+    request_code: str,
+    route: str,
+    message: str,
+    sender_name: str,
+    contact_email: str,
+) -> str:
+    """Minimal HTML for thread replies — message + small signature (matches plain)."""
+    msg = _esc(message.strip())
+    ce_raw = contact_email.strip()
+    ce = _esc(ce_raw)
+    safe_mailto = quote(ce_raw, safe="@+.-_")
+    return f"""
+    <div style="font-family:Inter,-apple-system,sans-serif;max-width:600px;margin:0 auto;color:#1f2937;font-size:15px;line-height:1.55">
+      <p style="margin:0 0 8px;white-space:pre-wrap;color:#374151">{msg}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0" />
+      <p style="margin:0;font-size:13px;color:#6b7280">{_esc(sender_name)} · <a href="mailto:{safe_mailto}" style="color:#0d9488">{ce}</a></p>
+      <p style="margin:8px 0 0;font-size:12px;color:#9ca3af">[{_esc(request_code)}] {_esc(route)} · Salam Air SmartDeal</p>
+    </div>
+    """
+
+
 def _normalize_msg_id_header(value: str) -> str:
     v = value.strip()
     if v.startswith("<") and v.endswith(">"):
