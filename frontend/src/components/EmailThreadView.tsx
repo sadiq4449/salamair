@@ -9,6 +9,8 @@ interface Props {
   canReply?: boolean;
   canSimulate?: boolean;
   requestStatus?: RequestStatus;
+  /** Fetch IMAP once when this tab opens so RM email replies show without tapping Sync (default: true) */
+  autoSyncInbox?: boolean;
 }
 
 
@@ -151,14 +153,27 @@ export default function EmailThreadView({
   canReply = false,
   canSimulate = false,
   requestStatus,
+  autoSyncInbox = true,
 }: Props) {
   const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
-    fetchThread(requestId);
-  }, [requestId, fetchThread]);
+    let cancelled = false;
+    (async () => {
+      await fetchThread(requestId);
+      if (cancelled || !autoSyncInbox) return;
+      const r = await pollInbox(requestId, { silent: true });
+      if (cancelled || !r) return;
+      if (r.stored > 0) {
+        addToast('success', `Imported ${r.stored} RM reply email(s) from inbox.`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId, autoSyncInbox, fetchThread, pollInbox, addToast]);
 
   if (isLoading) {
     return (
@@ -219,9 +234,10 @@ export default function EmailThreadView({
   return (
     <div>
       <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-        Thread order is oldest → newest. RM replies from email appear after you{' '}
-        <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong> (subject must keep{' '}
-        <code className="font-mono text-[0.65rem]">[REQ-…]</code>). RM address:{' '}
+        Thread order is oldest → newest. RM replies from email are pulled when you open this tab (same mailbox as{' '}
+        <code className="font-mono text-[0.65rem]">IMAP_USER</code> on the server). Use{' '}
+        <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong> to refresh. Replies must keep{' '}
+        <code className="font-mono text-[0.65rem]">[REQ-…]</code> in the subject line. RM:{' '}
         <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong>.
       </p>
       {hasOutgoingFailed && (

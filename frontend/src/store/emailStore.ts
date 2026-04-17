@@ -36,7 +36,10 @@ interface EmailState {
   sendEmail: (payload: SendEmailPayload) => Promise<SendEmailResponse>;
   reply: (payload: ReplyEmailPayload) => Promise<ReplyEmailResponse>;
   simulateReply: (requestId: string, message?: string) => Promise<void>;
-  pollInbox: (requestId?: string) => Promise<PollInboxResponse | null>;
+  pollInbox: (
+    requestId?: string,
+    opts?: { silent?: boolean },
+  ) => Promise<PollInboxResponse | null>;
   clearThread: () => void;
 }
 
@@ -95,17 +98,24 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     }
   },
 
-  pollInbox: async (requestId) => {
-    set({ isSending: true, error: null });
+  pollInbox: async (requestId, opts) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      set({ isSending: true, error: null });
+    }
     try {
       const r = await emailService.pollInbox();
       if (requestId) {
         await get().fetchThread(requestId);
       }
-      set({ isSending: false });
+      if (!silent) {
+        set({ isSending: false });
+      }
       return r;
     } catch {
-      set({ error: 'Failed to sync inbox', isSending: false });
+      if (!silent) {
+        set({ error: 'Failed to sync inbox', isSending: false });
+      }
       return null;
     }
   },
