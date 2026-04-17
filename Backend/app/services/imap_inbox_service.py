@@ -21,6 +21,7 @@ from email.utils import parseaddr, parsedate_to_datetime
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.notification_service import notify_email_received
 from app.models.email_message import EmailMessage
 from app.models.email_thread import EmailThread
@@ -334,6 +335,7 @@ def poll_inbox_once(db: Session) -> dict:
                     db.flush()
 
                 body = _get_body_text(msg)
+                body = sanitize_incoming_rm_body(body)
                 if not body:
                     body = "(No text body)"
 

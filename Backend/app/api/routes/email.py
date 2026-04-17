@@ -28,6 +28,7 @@ from app.schemas.email_schema import (
 )
 from app.services.email_service import build_html_body, build_plain_body, build_subject, send_smtp_email
 from app.services.imap_inbox_service import poll_inbox_once
+from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
 
 router = APIRouter()
@@ -80,6 +81,8 @@ def list_email_inbox(
         if last:
             last_at = last.sent_at or last.created_at
             body = last.body or ""
+            if last.direction == "incoming":
+                body = sanitize_incoming_rm_body(body)
             preview = body if len(body) <= 160 else body[:157] + "..."
         items.append(
             EmailInboxItem(
@@ -302,7 +305,7 @@ def get_email_thread(
             from_email=m.from_email,
             to_email=m.to_email,
             subject=m.subject,
-            body=m.body,
+            body=sanitize_incoming_rm_body(m.body) if m.direction == "incoming" else m.body,
             html_body=m.html_body,
             status=m.status,
             attachments=[EmailAttachmentRead.model_validate(a) for a in m.attachments],
