@@ -123,8 +123,4 @@ export const requestService = {
   async addNote(id: string, payload: NoteData): Promise<void> {
     await api.post(`/sales/requests/${id}/notes`, { note: payload.content });
   },
-
-  async claimRequest(id: string): Promise<void> {
-    await api.post(`/sales/requests/${id}/claim`);
-  },
 };

@@ -63,8 +63,6 @@ export interface RequestItem {
   travel_date: string | null;
   status: RequestStatus;
   priority: Priority;
-  /** Sales queue: null = unassigned pool */
-  assigned_to?: string | null;
   tags?: TagBrief[];
   created_at: string;
 }

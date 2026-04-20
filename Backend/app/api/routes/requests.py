@@ -9,7 +9,6 @@ from sqlalchemy import extract, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_db, require_role
-from app.api.request_access import ensure_sales_can_view_request
 from app.models.attachment import Attachment
 from app.models.request import Request
 from app.models.request_history import RequestHistory
@@ -168,10 +167,6 @@ def list_requests(
 
     if current_user.role == "agent":
         query = query.filter(Request.agent_id == current_user.id)
-    if current_user.role == "sales":
-        query = query.filter(
-            or_(Request.assigned_to.is_(None), Request.assigned_to == current_user.id)
-        )
 
     if status_filter:
         query = query.filter(Request.status == status_filter)
@@ -221,7 +216,6 @@ def list_requests(
                 status=r.status,
                 priority=r.priority,
                 travel_date=r.travel_date,
-                assigned_to=r.assigned_to,
                 tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
                 created_at=r.created_at,
             )
@@ -303,7 +297,6 @@ def get_request(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own requests"}},
         )
-    ensure_sales_can_view_request(req, current_user)
     return req
 
 
@@ -367,7 +360,6 @@ def upload_attachment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only upload to your own requests"}},
         )
-    ensure_sales_can_view_request(req, current_user)
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -409,7 +401,6 @@ def get_request_sla(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own request SLA"}},
         )
-    ensure_sales_can_view_request(req, current_user)
     sla = compute_sla(req, db)
     return {"request_id": str(req.id), "request_code": req.request_code, "status": req.status, "sla": sla}
 
@@ -432,7 +423,6 @@ def update_request_tags(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only tag your own requests"}},
         )
-    ensure_sales_can_view_request(req, current_user)
     tags = db.query(Tag).filter(Tag.id.in_(payload.tag_ids)).all() if payload.tag_ids else []
     req.tags = tags
     db.commit()
@@ -460,5 +450,4 @@ def list_attachments(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own request attachments"}},
         )
-    ensure_sales_can_view_request(req, current_user)
     return db.query(Attachment).filter(Attachment.request_id == request_id).all()
