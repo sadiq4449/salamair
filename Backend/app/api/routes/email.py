@@ -114,11 +114,23 @@ def _require_poll_access(
     x_email_poll_secret: str | None = Header(None, alias="X-Email-Poll-Secret"),
     user: User | None = Depends(get_current_user_optional),
 ) -> None:
-    """Allow sales/admin JWT, or X-Email-Poll-Secret when EMAIL_POLL_SECRET is set."""
+    """Allow sales/admin JWT, or X-Email-Poll-Secret when EMAIL_POLL_SECRET is set.
+    Authenticated agents get 403 — not 401 — so the SPA does not wipe the session (axios 401 interceptor).
+    """
     if settings.EMAIL_POLL_SECRET and x_email_poll_secret == settings.EMAIL_POLL_SECRET:
         return
     if user and user.role in ("sales", "admin"):
         return
+    if user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "POLL_INBOX_FORBIDDEN",
+                    "message": "Inbox poll is only available to sales and administrators (or server poll secret).",
+                }
+            },
+        )
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail={

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw, Bell } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
+import { useAuth } from '../hooks/useAuth';
 import type { EmailMessageItem, RequestStatus } from '../types';
 
 interface Props {
@@ -157,13 +158,15 @@ export default function EmailThreadView({
 }: Props) {
   const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
+  const { isSales, isAdmin } = useAuth();
+  const canPollInbox = isSales || isAdmin;
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       await fetchThread(requestId);
-      if (cancelled || !autoSyncInbox) return;
+      if (cancelled || !autoSyncInbox || !canPollInbox) return;
       const r = await pollInbox(requestId, { silent: true });
       if (cancelled || !r) return;
       if (r.stored > 0) {
@@ -173,7 +176,7 @@ export default function EmailThreadView({
     return () => {
       cancelled = true;
     };
-  }, [requestId, autoSyncInbox, fetchThread, pollInbox, addToast]);
+  }, [requestId, autoSyncInbox, canPollInbox, fetchThread, pollInbox, addToast]);
 
   if (isLoading) {
     return (
@@ -261,7 +264,7 @@ export default function EmailThreadView({
           {hasThread && (
             <span className="text-xs text-gray-400">{emails.length} email{emails.length > 1 ? 's' : ''}</span>
           )}
-          {canReply && (
+          {canReply && canPollInbox && (
             <button
               type="button"
               onClick={handlePollInbox}
