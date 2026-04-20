@@ -21,6 +21,7 @@ from email.utils import parseaddr, parsedate_to_datetime
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.services.email_service import RESEND_PUBLIC_SENDER
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.notification_service import notify_email_received
 from app.models.email_message import EmailMessage
@@ -294,6 +295,15 @@ def poll_inbox_once(db: Session) -> dict:
                 from_header = msg.get("From") or ""
                 _, from_email = parseaddr(from_header)
                 from_email = (from_email or "").strip().lower()
+
+                # Outbound fare emails use Resend's From (e.g. onboarding@resend.dev or RESEND_FROM_EMAIL).
+                # The same message can appear in the polled mailbox during testing — it is not an RM reply.
+                resend_env_from = (settings.RESEND_FROM_EMAIL or "").strip().lower()
+                if from_email == RESEND_PUBLIC_SENDER.lower() or (
+                    resend_env_from and from_email == resend_env_from
+                ):
+                    mail.store(num, "+FLAGS", "\\Seen")
+                    continue
 
                 our_box = (settings.SMTP_FROM_EMAIL or "").strip().lower()
                 # Skip our own non-reply mail (e.g. copies) but allow same-address *replies* so tests where
