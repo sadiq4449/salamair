@@ -218,18 +218,33 @@ async def run_flight_chat(
 
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(60.0, connect=15.0),
+            timeout=httpx.Timeout(90.0, connect=30.0),
             follow_redirects=True,
         ) as client:
-            token = await create_salamair_session(client)
-            if not token:
+            session = await create_salamair_session(client)
+            if not session.token:
+                if session.error == "forbidden":
+                    return FlightChatResponse(
+                        answer=(
+                            "Salam Air’s booking API blocked this server (common on some cloud datacenters). "
+                            "Open Find flights in the portal on your PC — that uses your browser and usually works."
+                        ),
+                        source="api_error",
+                    )
+                if session.error == "network":
+                    return FlightChatResponse(
+                        answer=(
+                            "Could not connect to Salam Air (network). Try again in a minute or use Find flights."
+                        ),
+                        source="api_error",
+                    )
                 return FlightChatResponse(
                     answer="Could not reach Salam Air booking services right now. Try again shortly or use Find flights.",
                     source="api_error",
                 )
             data = await search_flights_oneway(
                 client,
-                token,
+                session.token,
                 origin=origin,
                 destination=dest,
                 departure_date=dep,
@@ -239,7 +254,7 @@ async def run_flight_chat(
     except httpx.HTTPError as e:
         logger.warning("SalamAir search failed: %s", e)
         return FlightChatResponse(
-            answer="The live availability check timed out or failed. Please try **Find flights** or retry in a moment.",
+            answer="The live availability check timed out or failed. Please try Find flights or retry in a moment.",
             source="api_error",
         )
 
