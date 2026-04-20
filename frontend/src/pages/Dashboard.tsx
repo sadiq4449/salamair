@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../utils/constants';
 import AgentDashboard from './agent/AgentDashboard';
 import SalesDashboard from './sales/SalesDashboard';
+import Analytics from './Analytics';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -59,6 +60,8 @@ function AdminDashboard() {
           />
         </div>
       </div>
+
+      <Analytics embedded />
     </div>
   );
 }

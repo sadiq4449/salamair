@@ -63,7 +63,6 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Email aggregation', path: '/inbox', icon: Inbox },
     { label: 'SLA dashboard', path: '/sla-dashboard', icon: Timer },
     { label: 'Flight availability', path: '/flights', icon: Plane },
-    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
     { label: 'Notifications', path: '/notifications', icon: Bell },
   ],
 };

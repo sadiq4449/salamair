@@ -201,7 +201,12 @@ function DemoCard({ title, right, children }: { title: string; right?: React.Rea
 
 const PAGE_SIZE = 10;
 
-export default function Analytics() {
+export interface AnalyticsProps {
+  /** When true, used inside main Dashboard (admin): compact title, no duplicate page chrome. */
+  embedded?: boolean;
+}
+
+export default function Analytics({ embedded = false }: AnalyticsProps) {
   const { isAgent, isSales, isAdmin } = useAuth();
   const isSalesOrAdmin = Boolean(isSales || isAdmin);
 
@@ -390,13 +395,24 @@ export default function Analytics() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className={embedded ? 'space-y-6 mt-2' : 'space-y-6'}>
+      <div
+        className={`flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between ${
+          embedded ? 'pt-2 border-t border-gray-100 dark:border-gray-800' : ''
+        }`}
+      >
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-teal-600" />
-            Analytics
-          </h1>
+          {embedded ? (
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-teal-600 shrink-0" />
+              Analytics
+            </h2>
+          ) : (
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-7 w-7 text-teal-600" />
+              Analytics
+            </h1>
+          )}
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{headerSubtitle}</p>
         </div>
 

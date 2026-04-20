@@ -61,6 +61,15 @@ function RoleRoute({ roles, children }: { roles: UserRole[]; children: React.Rea
   return <>{children}</>;
 }
 
+/** Admins see analytics on the main Dashboard; keep /analytics for agents & sales only. */
+function AnalyticsEntry() {
+  const { user } = useAuth();
+  if (user?.role === 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Analytics />;
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -193,7 +202,7 @@ export default function App() {
               path="/analytics"
               element={
                 <RoleRoute roles={['agent', 'sales', 'admin']}>
-                  <Analytics />
+                  <AnalyticsEntry />
                 </RoleRoute>
               }
             />
