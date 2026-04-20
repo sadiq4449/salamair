@@ -25,6 +25,8 @@ import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
+from app.core.rate_limit import BOOKING_PROXY_RATE, limiter
+
 router = APIRouter()
 
 TARGET_ORIGIN = "https://booking.salamair.com"
@@ -70,7 +72,8 @@ def _rewrite_css(css: str, proxy_prefix: str) -> str:
 
 
 @router.get("/{path:path}")
-async def proxy_salamair(path: str, request: Request):
+@limiter.limit(BOOKING_PROXY_RATE)
+async def proxy_salamair(request: Request, path: str):
     target_url = urljoin(TARGET_ORIGIN + "/", path)
 
     if request.url.query:

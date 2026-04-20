@@ -24,6 +24,7 @@ from app.schemas.request import (
     RequestUpdate,
 )
 from app.services.bulk_request_excel import build_template_workbook, commit_bulk_upload, preview_bulk
+from app.services.upload_limits import get_max_upload_bytes
 from app.services.notification_service import (
     compute_sla,
     notify_request_created,
@@ -37,6 +38,16 @@ logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "uploads")
+
+
+def _enforce_upload_size(raw: bytes, db: Session) -> None:
+    max_b = get_max_upload_bytes(db)
+    if len(raw) > max_b:
+        mb = max(max_b // (1024 * 1024), 1)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"error": {"code": "FILE_TOO_LARGE", "message": f"File exceeds maximum size ({mb} MB)"}},
+        )
 
 
 def _generate_request_code(db: Session) -> str:
@@ -239,9 +250,11 @@ def download_bulk_template(
 @router.post("/bulk-preview")
 def bulk_preview_endpoint(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     _user: User = Depends(require_role("agent", "admin")),
 ):
     raw = file.file.read()
+    _enforce_upload_size(raw, db)
     return preview_bulk(raw)
 
 
@@ -253,6 +266,7 @@ def bulk_upload_endpoint(
     current_user: User = Depends(require_role("agent", "admin")),
 ):
     raw = file.file.read()
+    _enforce_upload_size(raw, db)
     try:
         if current_user.role == "admin":
             if not agent_id:
@@ -368,6 +382,7 @@ def upload_attachment(
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
     contents = file.file.read()
+    _enforce_upload_size(contents, db)
     with open(file_path, "wb") as f:
         f.write(contents)
 

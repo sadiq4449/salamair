@@ -4,8 +4,10 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from starlette.requests import Request
 
 from app.api.deps import get_current_user, get_db
+from app.core.rate_limit import AUTH_RATE, limiter
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.agent_profile import AgentProfile
 from app.models.user import User
@@ -16,7 +18,9 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit(AUTH_RATE)
+def register(request: Request, payload: RegisterRequest, db: Session = Depends(get_db)):
+    _ = request  # used by slowapi
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(
@@ -41,7 +45,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(AUTH_RATE)
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
+    _ = request
     """Login with JSON body."""
     user = _authenticate(db, payload.email, payload.password)
     user.last_login = datetime.now(timezone.utc)
@@ -52,10 +58,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login/token", response_model=TokenResponse, tags=["Authentication"])
+@limiter.limit(AUTH_RATE)
 def login_form(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    _ = request
     """Login with OAuth2 form data (for Swagger UI "Authorize" button).
     Use email as the username field."""
     user = _authenticate(db, form_data.username, form_data.password)

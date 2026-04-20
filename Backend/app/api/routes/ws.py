@@ -9,8 +9,15 @@ from sqlalchemy.orm import joinedload
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.message import Message
+from app.models.request import Request
 from app.models.user import User
-from app.services.message_service import create_chat_message, format_message, mark_messages_read
+from app.services.message_service import (
+    create_chat_message,
+    filter_message_ids_for_user,
+    format_message,
+    mark_messages_read,
+)
+from app.services.request_access import user_can_access_request
 from app.services.websocket_manager import manager
 
 logger = logging.getLogger("uvicorn.error")
@@ -71,6 +78,12 @@ async def notification_websocket(websocket: WebSocket):
 
 @router.websocket("/ws/{request_id}")
 async def websocket_endpoint(websocket: WebSocket, request_id: str):
+    try:
+        rid = _uuid.UUID(request_id)
+    except ValueError:
+        await websocket.close(code=4400, reason="Invalid request id")
+        return
+
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4001, reason="Missing token")
@@ -80,6 +93,19 @@ async def websocket_endpoint(websocket: WebSocket, request_id: str):
     if not user_info:
         await websocket.close(code=4003, reason="Invalid token")
         return
+
+    db0 = SessionLocal()
+    try:
+        user_row = db0.query(User).filter(User.id == user_info["id_uuid"]).first()
+        req_row = db0.query(Request).filter(Request.id == rid).first()
+        if not req_row or not user_row:
+            await websocket.close(code=4404, reason="Request not found")
+            return
+        if not user_can_access_request(user_row, req_row):
+            await websocket.close(code=4403, reason="Forbidden")
+            return
+    finally:
+        db0.close()
 
     user_id = user_info["id"]
     room_id = request_id
@@ -124,7 +150,7 @@ async def websocket_endpoint(websocket: WebSocket, request_id: str):
                         sender = db.query(User).filter(User.id == user_info["id_uuid"]).first()
                         if not sender:
                             continue
-                        msg = create_chat_message(db, request_id, sender, content)
+                        msg = create_chat_message(db, rid, sender, content)
                         formatted = format_message(msg, user_info["id_uuid"], db)
                     finally:
                         db.close()
@@ -144,9 +170,18 @@ async def websocket_endpoint(websocket: WebSocket, request_id: str):
                 msg_id = data.get("data", {}).get("message_id")
                 if msg_id:
                     try:
+                        mid = _uuid.UUID(str(msg_id))
+                    except ValueError:
+                        continue
+                    try:
                         db = SessionLocal()
                         try:
-                            mark_messages_read(db, [_uuid.UUID(msg_id)], _uuid.UUID(user_id))
+                            user_row = db.query(User).filter(User.id == user_info["id_uuid"]).first()
+                            if not user_row:
+                                continue
+                            allowed = filter_message_ids_for_user(db, user_row, [mid])
+                            if allowed:
+                                mark_messages_read(db, allowed, _uuid.UUID(user_id))
                         finally:
                             db.close()
                     except Exception as e:

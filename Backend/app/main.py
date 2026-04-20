@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request as FastAPIRequest, status
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -24,7 +26,8 @@ from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
 from app.api.routes.proxy import router as proxy_router
 from app.api.routes.salamair_api_proxy import router as salamair_api_proxy_router
-from app.core.config import settings
+from app.core.config import settings, validate_production_settings
+from app.core.rate_limit import limiter
 from app.core.logging_filters import install_sensitive_log_redaction
 from app.db.base import Base
 from app.db.schema_sync import apply_runtime_schema_fixes
@@ -61,6 +64,7 @@ install_sensitive_log_redaction()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_production_settings()
     Base.metadata.create_all(bind=engine)
     apply_runtime_schema_fixes(engine)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -73,6 +77,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

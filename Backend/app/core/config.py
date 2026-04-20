@@ -2,6 +2,11 @@ from typing import Optional
 
 from pydantic_settings import BaseSettings
 
+# Refused at startup in production when SECRET_KEY is still a placeholder or too short.
+_INSECURE_SECRET_KEYS = frozenset(
+    {"CHANGE-ME-set-a-real-secret-in-env", "change-this-to-a-random-secret-key", ""}
+)
+
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/salamair"
@@ -86,3 +91,16 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_production_settings() -> None:
+    """Call on startup: block production deploy with default JWT secret."""
+    env = (settings.ENVIRONMENT or "").strip().lower()
+    if env not in ("production", "prod"):
+        return
+    sk = (settings.SECRET_KEY or "").strip()
+    if sk in _INSECURE_SECRET_KEYS or len(sk) < 32:
+        raise RuntimeError(
+            "Refusing to start in production: set ENVIRONMENT only when SECRET_KEY is a unique "
+            "random string of at least 32 characters (not the default from .env.example)."
+        )

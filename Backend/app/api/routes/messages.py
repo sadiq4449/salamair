@@ -12,10 +12,12 @@ from app.models.user import User
 from app.schemas.message_schema import AdminMessagePatch, SendMessageRequest
 from app.services.message_service import (
     create_chat_message,
+    filter_message_ids_for_user,
     format_message,
     get_timeline,
     mark_messages_read,
 )
+from app.services.request_access import user_can_access_request
 
 router = APIRouter()
 
@@ -33,7 +35,7 @@ def _get_request_or_404(db: Session, request_id: uuid.UUID) -> Request:
 
 
 def _check_access(req: Request, user: User):
-    if user.role == "agent" and req.agent_id != user.id:
+    if not user_can_access_request(user, req):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
@@ -144,7 +146,18 @@ async def upload_chat_attachment(
     safe_name = f"{uuid.uuid4()}{ext}"
     file_path = UPLOAD_DIR / safe_name
 
+    max_bytes = get_max_upload_bytes(db)
     content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": {
+                    "code": "FILE_TOO_LARGE",
+                    "message": f"File exceeds maximum size ({max_bytes // (1024 * 1024)} MB)",
+                }
+            },
+        )
     file_path.write_bytes(content)
 
     att = MessageAttachment(
@@ -173,5 +186,6 @@ def mark_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("agent", "sales", "admin")),
 ):
-    marked = mark_messages_read(db, message_ids, current_user.id)
+    allowed = filter_message_ids_for_user(db, current_user, message_ids)
+    marked = mark_messages_read(db, allowed, current_user.id)
     return {"marked": marked}

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.message import Message
 from app.models.message_read_status import MessageReadStatus
+from app.models.request import Request
 from app.models.user import User
 
 
@@ -83,6 +84,24 @@ def get_timeline(
         .all()
     )
     return messages, total
+
+
+def filter_message_ids_for_user(
+    db: Session,
+    user: User,
+    message_ids: list[uuid.UUID],
+) -> list[uuid.UUID]:
+    """Message IDs that belong to requests this user may access (same rule as timeline)."""
+    if not message_ids:
+        return []
+    q = (
+        db.query(Message.id)
+        .filter(Message.id.in_(message_ids))
+        .join(Request, Message.request_id == Request.id)
+    )
+    if user.role == "agent":
+        q = q.filter(Request.agent_id == user.id)
+    return [row[0] for row in q.all()]
 
 
 def mark_messages_read(
