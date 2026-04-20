@@ -60,6 +60,20 @@ def _client_ip(http_request: FastAPIRequest) -> str | None:
     return None
 
 
+def _format_process_uptime(started: datetime) -> str:
+    """Human-readable elapsed time since API process start (UTC)."""
+    now = datetime.now(timezone.utc)
+    total_sec = max(0, int((now - started).total_seconds()))
+    days, rem = divmod(total_sec, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
 def _active_admin_count(db: Session, exclude_user_id: UUID | None = None) -> int:
     q = db.query(func.count(User.id)).filter(User.role == "admin", User.is_active.is_(True))
     if exclude_user_id is not None:
@@ -96,10 +110,14 @@ def _target_display_name(db: Session, target_type: str | None, target_id: UUID |
 
 @router.get("/stats", response_model=AdminStatsResponse)
 def admin_stats(
+    request: FastAPIRequest,
     db: Session = Depends(get_db),
     _user: User = Depends(require_role("admin")),
 ):
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    started = getattr(request.app.state, "started_at_utc", None)
+    uptime_str = _format_process_uptime(started) if isinstance(started, datetime) else settings.REPORTED_SYSTEM_UPTIME
 
     total_users = int(db.query(func.count(User.id)).scalar() or 0)
     active_users_today = int(
@@ -128,7 +146,7 @@ def admin_stats(
         requests_today=requests_today,
         pending_requests=pending_requests,
         emails_sent_today=emails_sent_today,
-        system_uptime=settings.REPORTED_SYSTEM_UPTIME,
+        system_uptime=uptime_str,
     )
 
 

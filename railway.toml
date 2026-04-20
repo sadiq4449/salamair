@@ -1,21 +1,23 @@
 # Railway config-as-code: https://docs.railway.com/deploy/config-as-code
 #
-# === Deploy steps ===
-# 1. New Project → "Deploy from GitHub repo" (this repo) or `railway up` from CLI.
-# 2. Add PostgreSQL: "+ New" → Database → PostgreSQL. Railway injects DATABASE_URL on the web service.
-# 3. On the web service, set variables (Variables tab):
-#    - SECRET_KEY        (long random string, required in production)
-#    - CORS_ORIGINS      (comma list; include your public URL, e.g. https://your-app.up.railway.app)
-#    - CORS_ORIGIN_REGEX (optional; e.g. https://.*\.up\.railway\.app$ if you use the default *.up.railway.app host)
-#    - DATABASE_SSLMODE  (optional; "require" if Postgres SSL errors; auto handles many *.rlwy.net URLs)
-#    - Email: On Free/Hobby, outbound SMTP (465/587) is blocked — use RESEND_API_KEY (Resend, HTTPS/443)
-#      plus SMTP_FROM_EMAIL / SMTP_FROM_NAME verified in Resend. IMAP (993) for inbound usually works.
-#      Alternatively: SMTP_* for local/VPS, or upgrade Railway for SMTP egress.
-#      See Backend/.env.example. After deploy: Admin → Dashboard → "Email (deploy check)".
-# 4. Root directory: repo root (Dockerfile builds frontend + backend; frontend uses `npm install` in Docker for lockfile tolerance).
-# 5. Generate domain: Settings → Networking → Generate domain.
+# Monolith: Dockerfile builds the Vite SPA into Backend/static, then runs FastAPI + uvicorn on PORT.
+# Root directory for the service: repo root (do not set to Backend/ or frontend/ alone).
 #
-# Health: GET /api/health (no DB query; app still needs DB at startup for create_all).
+# === Deploy steps ===
+# 1. New Project → "Deploy from GitHub repo" (this repo) or `railway up` from the CLI.
+# 2. Add PostgreSQL: "+ New" → Database → PostgreSQL. Link DATABASE_URL to the web service.
+# 3. Web service → Variables (minimum for production):
+#    - SECRET_KEY         Long random string (required).
+#    - CORS_ORIGINS       Comma list; must include your public app origin, e.g. https://your-app.up.railway.app
+#    - CORS_ORIGIN_REGEX  Optional; e.g. https://.*\.up\.railway\.app$ for default Railway hosts.
+#    - DATABASE_SSLMODE   Optional; "require" if you see Postgres SSL errors (many Railway URLs auto-SSL).
+#    - Email: Free/Hobby often blocks SMTP 465/587 — use RESEND_API_KEY (HTTPS/443). IMAP 993 inbound usually works.
+#      Full list: Backend/.env.example. After deploy: Admin → Dashboard → "Email (deploy check)".
+#    - REDIS_URL          Optional. If set, analytics may use Redis; else in-process TTL cache (see ANALYTICS_CACHE_TTL_SECONDS in config).
+# 4. Settings → Networking → Generate domain (open / for SPA; API under /api/v1/...).
+#
+# Health: GET /api/health — used below; no DB round-trip (DB still required at startup for schema).
+# Admin dashboard stats (users, requests, emails, API process uptime) come from the database and process start time.
 
 [build]
 builder = "DOCKERFILE"

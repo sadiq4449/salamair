@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request as FastAPIRequest, status
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     apply_runtime_schema_fixes(engine)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    app.state.started_at_utc = datetime.now(timezone.utc)
     yield
 
 

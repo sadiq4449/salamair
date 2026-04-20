@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
     { label: 'Requests today', value: stats.requests_today, icon: Activity },
     { label: 'Pending requests', value: stats.pending_requests, icon: Activity },
     { label: 'Emails sent today', value: stats.emails_sent_today, icon: Mail },
-    { label: 'Reported uptime', value: stats.system_uptime, icon: Server },
+    { label: 'API process uptime', value: stats.system_uptime, icon: Server },
   ];
 
   async function refreshEmailStatus() {

@@ -156,7 +156,7 @@ def analytics_agent_performance(
     to_: str | None = Query(None, alias="to"),
     period: str | None = Query(None, description="today | week | month | quarter when from/to omitted"),
     sort: str = Query("revenue"),
-    limit: int = Query(20, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

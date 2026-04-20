@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     # Optional: verified sender in Resend (e.g. noreply@yourdomain.com). If empty, the app picks a valid From.
     RESEND_FROM_EMAIL: str = ""
-    RM_DEFAULT_EMAIL: str = "rm@salamair.com"
+    RM_DEFAULT_EMAIL: str = "sadiqcds22@gmail.com"
 
     # Inbound: IMAP poll (same mailbox as SMTP_USER for typical Gmail setup).
     # False: never poll. True: poll. None: poll only if IMAP_USER and IMAP_PASSWORD are set.
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
     ANALYTICS_CACHE_TTL_SECONDS: int = 600
 
-    # Shown on admin dashboard when host-level uptime is not tracked
+    # Fallback for admin dashboard if app.state.started_at_utc is missing (should not happen in normal runs)
     REPORTED_SYSTEM_UPTIME: str = "99.9%"
 
     @property
