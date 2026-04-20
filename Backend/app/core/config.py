@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
     ANALYTICS_CACHE_TTL_SECONDS: int = 600
 
+    # Groq (OpenAI-compatible): pricing assistant on request detail. If unset, API returns heuristic fallback.
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
     # Fallback for admin dashboard if app.state.started_at_utc is missing (should not happen in normal runs)
     REPORTED_SYSTEM_UPTIME: str = "99.9%"
 

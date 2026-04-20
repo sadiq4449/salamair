@@ -1,5 +1,5 @@
 """
-Sync email-related vars from Backend/.env to the linked Railway service.
+Sync selected vars from Backend/.env to the linked Railway service (email, Groq AI, etc.).
 Skips DATABASE_URL, SECRET_KEY, CORS_ORIGINS, ENVIRONMENT (keep Railway's own).
 Run: python Backend/scripts/sync_env_to_railway.py
 """
@@ -37,6 +37,8 @@ SYNC_KEYS = frozenset(
         "IMAP_PASSWORD",
         "IMAP_MAILBOX",
         "EMAIL_POLL_SECRET",
+        "GROQ_API_KEY",
+        "GROQ_MODEL",
     }
 )
 

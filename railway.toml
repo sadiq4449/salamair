@@ -14,6 +14,8 @@
 #    - Email: Free/Hobby often blocks SMTP 465/587 — use RESEND_API_KEY (HTTPS/443). IMAP 993 inbound usually works.
 #      Full list: Backend/.env.example. After deploy: Admin → Dashboard → "Email (deploy check)".
 #    - REDIS_URL          Optional. If set, analytics may use Redis; else in-process TTL cache (see ANALYTICS_CACHE_TTL_SECONDS in config).
+#    - GROQ_API_KEY       Optional. Powers POST /api/v1/ai/pricing-assistant; omit for heuristic-only AI card (see Backend/.env.example).
+#    - GROQ_MODEL         Optional; default llama-3.3-70b-versatile. Or sync from local .env: python Backend/scripts/sync_env_to_railway.py
 # 4. Settings → Networking → Generate domain (open / for SPA; API under /api/v1/...).
 #
 # Health: GET /api/health — used below; no DB round-trip (DB still required at startup for schema).

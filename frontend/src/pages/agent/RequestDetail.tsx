@@ -133,7 +133,14 @@ export default function RequestDetail() {
 
         {/* Right Column (demo: AI assistant + notes) */}
         <div className="space-y-5">
-          <AiPricingAssistant price={Number(req.price)} priority={req.priority} status={req.status} />
+          <AiPricingAssistant
+            price={Number(req.price)}
+            priority={req.priority}
+            status={req.status}
+            route={req.route}
+            pax={req.pax}
+            requestCode={req.request_code}
+          />
 
           {/* Notes Card */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">

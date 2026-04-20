@@ -26,6 +26,7 @@ from app.api.routes.sales import router as sales_router
 from app.api.routes.ws import router as ws_router
 from app.api.routes.proxy import router as proxy_router
 from app.api.routes.salamair_api_proxy import router as salamair_api_proxy_router
+from app.api.routes.ai import router as ai_router
 from app.core.config import settings, validate_production_settings
 from app.core.rate_limit import limiter
 from app.core.logging_filters import install_sensitive_log_redaction
@@ -147,6 +148,7 @@ app.include_router(
     prefix="/api/v1/proxy/salamair-api",
     tags=["SalamAir API proxy"],
 )
+app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
 
 
 @app.get("/api/health", tags=["Health"])
