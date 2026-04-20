@@ -146,7 +146,12 @@ def create_request(
             logger.warning("SLA sync on create failed: %s", e)
 
     db.commit()
-    db.refresh(req)
+    req_out = (
+        db.query(Request)
+        .options(joinedload(Request.agent), joinedload(Request.attachments), joinedload(Request.tags))
+        .filter(Request.id == req.id)
+        .first()
+    )
 
     if new_status == "submitted":
         try:
@@ -160,7 +165,7 @@ def create_request(
         except Exception as e:
             logger.warning("Failed to send request-created notifications: %s", e)
 
-    return req
+    return req_out or req
 
 
 @router.get("", response_model=RequestListResponse)
@@ -352,8 +357,13 @@ def update_request(
     except Exception as e:
         logger.warning("SLA sync on update failed: %s", e)
     db.commit()
-    db.refresh(req)
-    return req
+    req_out = (
+        db.query(Request)
+        .options(joinedload(Request.agent), joinedload(Request.attachments), joinedload(Request.tags))
+        .filter(Request.id == request_id)
+        .first()
+    )
+    return req_out or req
 
 
 @router.post("/{request_id}/attachments", response_model=AttachmentRead, status_code=status.HTTP_201_CREATED)

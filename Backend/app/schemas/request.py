@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.schemas.advanced_schema import TagBrief
+from app.schemas.attachment import AttachmentRead
 
 
 class RequestCreate(BaseModel):
@@ -55,6 +56,7 @@ class RequestRead(BaseModel):
     priority: str
     assigned_to: UUID | None = None
     tags: list[TagBrief] = Field(default_factory=list)
+    attachments: list[AttachmentRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
