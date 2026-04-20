@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Bot, Loader2 } from 'lucide-react';
+import { Bot, Loader2, Send } from 'lucide-react';
 import type { Priority, RequestStatus } from '../types';
 import {
   demoConfidencePercent,
   demoRecommendationLabel,
   demoSuggestedPriceOmR,
 } from '../utils/demoAiHelpers';
-import { fetchPricingAssistant, type PricingAssistantResult } from '../services/aiService';
+import { fetchPricingAssistant, postFlightChat, type PricingAssistantResult } from '../services/aiService';
 
 interface Props {
   price: number;
@@ -15,6 +15,8 @@ interface Props {
   route?: string | null;
   pax?: number | null;
   requestCode?: string | null;
+  /** Request travel date — used when user asks vaguely (“on this date?”). */
+  travelDate?: string | null;
 }
 
 function toneFromRecommendation(text: string): 'success' | 'warning' | 'neutral' {
@@ -31,9 +33,13 @@ export default function AiPricingAssistant({
   route,
   pax,
   requestCode,
+  travelDate,
 }: Props) {
   const [insight, setInsight] = useState<PricingAssistantResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [flightQ, setFlightQ] = useState('');
+  const [flightAns, setFlightAns] = useState<string | null>(null);
+  const [flightLoading, setFlightLoading] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -75,6 +81,25 @@ export default function AiPricingAssistant({
       ? 'Powered by Groq'
       : 'Smart pricing analysis';
 
+  async function submitFlightQuestion() {
+    const q = flightQ.trim();
+    if (!q || flightLoading) return;
+    setFlightLoading(true);
+    setFlightAns(null);
+    try {
+      const ctx: { route?: string; travel_date?: string; pax?: number } = {};
+      if (route) ctx.route = route;
+      if (travelDate) ctx.travel_date = travelDate.slice(0, 10);
+      if (pax != null && pax > 0) ctx.pax = pax;
+      const res = await postFlightChat(q, Object.keys(ctx).length ? ctx : undefined);
+      setFlightAns(res.answer);
+    } catch {
+      setFlightAns('Could not reach the assistant. Try again or use Find flights for a full search.');
+    } finally {
+      setFlightLoading(false);
+    }
+  }
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-slate-50 to-white dark:from-gray-900 dark:to-gray-950 shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
@@ -114,6 +139,43 @@ export default function AiPricingAssistant({
           }`}
         >
           <span className="font-medium">{rec.text}</span>
+        </div>
+
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-400">
+            Live availability (Salam Air search)
+          </p>
+          <p className="text-[0.7rem] text-gray-500 dark:text-gray-400">
+            Urdu / English — e.g. &quot;Is there a flight on this route on 25 May?&quot; Uses the same live API as Find
+            flights.
+          </p>
+          <div className="flex gap-2">
+            <textarea
+              value={flightQ}
+              onChange={(e) => setFlightQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void submitFlightQuestion();
+                }
+              }}
+              placeholder="Ask about flights on a date…"
+              rows={2}
+              className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30 resize-y"
+            />
+            <button
+              type="button"
+              onClick={() => void submitFlightQuestion()}
+              disabled={flightLoading || !flightQ.trim()}
+              className="shrink-0 self-end h-9 w-9 rounded-lg bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="Send question"
+            >
+              {flightLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+          {flightAns && (
+            <p className="text-xs text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{flightAns}</p>
+          )}
         </div>
       </div>
     </div>

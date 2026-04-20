@@ -164,6 +164,7 @@ export default function SalesRequestDetail() {
             route={req.route}
             pax={req.pax}
             requestCode={req.request_code}
+            travelDate={req.travel_date}
           />
           <EmailThreadSummaryCard key={req.id} request={req} />
 

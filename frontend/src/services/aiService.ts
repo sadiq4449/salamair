@@ -24,3 +24,28 @@ export function fetchPricingAssistant(
     .post<PricingAssistantResult>('/ai/pricing-assistant', body, { signal })
     .then((r) => r.data);
 }
+
+export interface FlightChatContext {
+  route?: string;
+  travel_date?: string;
+  pax?: number;
+}
+
+export interface FlightChatResult {
+  answer: string;
+  source: 'live_api' | 'clarify' | 'no_groq' | 'api_error';
+}
+
+export function postFlightChat(
+  message: string,
+  context: FlightChatContext | undefined,
+  signal?: AbortSignal
+): Promise<FlightChatResult> {
+  return api
+    .post<FlightChatResult>(
+      '/ai/flight-chat',
+      { message, context: context && Object.keys(context).length ? context : undefined },
+      { signal }
+    )
+    .then((r) => r.data);
+}

@@ -3,7 +3,13 @@ from fastapi import APIRouter, Depends, Request
 from app.api.deps import get_current_user
 from app.core.rate_limit import limiter
 from app.models.user import User
-from app.schemas.ai_schema import PricingAssistantRequest, PricingAssistantResponse
+from app.schemas.ai_schema import (
+    FlightChatRequest,
+    FlightChatResponse,
+    PricingAssistantRequest,
+    PricingAssistantResponse,
+)
+from app.services.flight_assistant_service import run_flight_chat
 from app.services.groq_service import fetch_pricing_insight
 
 router = APIRouter()
@@ -49,3 +55,14 @@ async def pricing_assistant(
     if insight:
         return insight
     return _fallback_response(body)
+
+
+@router.post("/flight-chat", response_model=FlightChatResponse)
+@limiter.limit("20/minute")
+async def flight_chat(
+    request: Request,
+    body: FlightChatRequest,
+    _user: User = Depends(get_current_user),
+) -> FlightChatResponse:
+    """Answer availability-style questions using SalamAir live search + Groq."""
+    return await run_flight_chat(message=body.message, context=body.context)

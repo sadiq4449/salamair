@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
-def _parse_json_object(content: str) -> Optional[dict]:
+def parse_llm_json_object(content: str) -> Optional[dict]:
     text = (content or "").strip()
     try:
         return json.loads(text)
@@ -32,11 +32,49 @@ def _parse_json_object(content: str) -> Optional[dict]:
     return None
 
 
-async def fetch_pricing_insight(body: PricingAssistantRequest) -> Optional[PricingAssistantResponse]:
+async def groq_chat_text(
+    *,
+    system: str,
+    user: str,
+    temperature: float = 0.35,
+    max_tokens: int = 500,
+) -> Optional[str]:
+    """Single chat completion; returns assistant message text or None."""
     api_key = (settings.GROQ_API_KEY or "").strip()
     if not api_key:
         return None
+    model = (settings.GROQ_MODEL or "llama-3.3-70b-versatile").strip()
+    payload: dict = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(
+                GROQ_CHAT_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            r.raise_for_status()
+            data = r.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("Groq request failed: %s", e)
+        return None
+    try:
+        return str(data["choices"][0]["message"]["content"] or "").strip() or None
+    except (KeyError, IndexError, TypeError):
+        return None
 
+
+async def fetch_pricing_insight(body: PricingAssistantRequest) -> Optional[PricingAssistantResponse]:
     ctx_bits: list[str] = []
     if body.request_code:
         ctx_bits.append(f"request_code: {body.request_code}")
@@ -64,39 +102,11 @@ async def fetch_pricing_insight(body: PricingAssistantRequest) -> Optional[Prici
         }
     )
 
-    model = (settings.GROQ_MODEL or "llama-3.3-70b-versatile").strip()
-    payload: dict = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ],
-        "temperature": 0.35,
-        "max_tokens": 220,
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            r = await client.post(
-                GROQ_CHAT_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-            r.raise_for_status()
-            data = r.json()
-    except (httpx.HTTPError, ValueError) as e:
-        logger.warning("Groq request failed: %s", e)
+    content = await groq_chat_text(system=system, user=user_msg, temperature=0.35, max_tokens=220)
+    if not content:
         return None
 
-    try:
-        content = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
-        return None
-
-    parsed = _parse_json_object(content)
+    parsed = parse_llm_json_object(content)
     if not parsed:
         return None
 
