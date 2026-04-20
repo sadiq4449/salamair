@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
+from app.api.request_access import ensure_sales_conversation_access
 from app.models.message import Message
 from app.models.message_attachment import MessageAttachment
 from app.models.request import Request
@@ -38,6 +39,8 @@ def _check_access(req: Request, user: User):
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
         )
+    if user.role == "sales":
+        ensure_sales_conversation_access(req, user)
 
 
 @router.patch("/chat/{message_id}", status_code=status.HTTP_200_OK)

@@ -6,6 +6,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user_optional, get_db, require_role
+from app.api.request_access import ensure_sales_can_mutate, ensure_sales_conversation_access
 from app.core.config import settings
 from app.models.email_attachment import EmailAttachment
 from app.models.email_message import EmailMessage
@@ -49,12 +50,14 @@ def list_email_inbox(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
-    """All RM email threads (sales / admin)."""
+    """RM email threads: each sales user sees only requests assigned to them; admins see all."""
     q = (
         db.query(EmailThread)
         .join(Request, Request.id == EmailThread.request_id)
         .options(joinedload(EmailThread.request).joinedload(Request.agent))
     )
+    if current_user.role == "sales":
+        q = q.filter(Request.assigned_to == current_user.id)
     if search:
         term = f"%{search.strip()}%"
         q = q.filter(or_(Request.request_code.ilike(term), Request.route.ilike(term)))
@@ -156,6 +159,9 @@ def send_email_to_rm(
     current_user: User = Depends(require_role("sales", "admin")),
 ):
     req = _get_request_or_404(db, payload.request_id)
+    ensure_sales_can_mutate(req, current_user)
+    if current_user.role == "sales" and current_user.id and not req.assigned_to:
+        req.assigned_to = current_user.id
 
     # Queue can show "submitted"; sending to RM means sales has started review.
     if req.status == "submitted":
@@ -288,6 +294,8 @@ def get_email_thread(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
         )
+    if current_user.role == "sales":
+        ensure_sales_conversation_access(req, current_user)
 
     thread = (
         db.query(EmailThread)
@@ -343,6 +351,9 @@ def reply_to_rm(
     current_user: User = Depends(require_role("sales", "admin")),
 ):
     req = _get_request_or_404(db, payload.request_id)
+    ensure_sales_can_mutate(req, current_user)
+    if current_user.role == "sales" and current_user.id and not req.assigned_to:
+        req.assigned_to = current_user.id
     thread = db.query(EmailThread).filter(EmailThread.id == payload.thread_id).first()
     if not thread:
         raise HTTPException(
@@ -452,6 +463,7 @@ def simulate_rm_reply(
 ):
     """Dev/demo endpoint: simulate an incoming RM reply."""
     req = _get_request_or_404(db, payload.request_id)
+    ensure_sales_conversation_access(req, current_user)
     thread = db.query(EmailThread).filter(EmailThread.request_id == req.id).first()
     if not thread:
         raise HTTPException(

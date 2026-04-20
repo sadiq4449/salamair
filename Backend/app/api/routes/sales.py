@@ -2,10 +2,16 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, require_role
+from app.api.request_access import (
+    ensure_sales_can_mutate,
+    ensure_sales_conversation_access,
+    sales_assign_if_unset,
+)
 from app.models.counter_offer import CounterOffer
 from app.models.request import Request
 from app.models.request_history import RequestHistory
@@ -95,6 +101,11 @@ def sales_queue(
     if priority:
         query = query.filter(Request.priority == priority)
 
+    if current_user.role == "sales":
+        query = query.filter(
+            or_(Request.assigned_to.is_(None), Request.assigned_to == current_user.id)
+        )
+
     total = query.count()
     requests = (
         query.order_by(Request.created_at.desc())
@@ -115,6 +126,7 @@ def sales_queue(
             status=r.status,
             priority=r.priority,
             travel_date=r.travel_date,
+            assigned_to=r.assigned_to,
             tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
             created_at=r.created_at,
         )
@@ -229,6 +241,9 @@ def create_counter_offer(
             detail={"error": {"code": "INVALID_STATE", "message": "Can only counter-offer requests that are under review"}},
         )
 
+    ensure_sales_can_mutate(req, current_user)
+    sales_assign_if_unset(req, current_user)
+
     offer = CounterOffer(
         request_id=req.id,
         original_price=req.price,
@@ -296,6 +311,9 @@ def send_to_rm(
             detail={"error": {"code": "INVALID_STATE", "message": "Can only send to RM from 'under_review' status"}},
         )
 
+    ensure_sales_can_mutate(req, current_user)
+    sales_assign_if_unset(req, current_user)
+
     old_status = req.status
     req.status = "rm_pending"
 
@@ -325,6 +343,45 @@ def send_to_rm(
     return {"message": "Request sent to Revenue Management", "request_id": str(req.id)}
 
 
+@router.post("/requests/{request_id}/claim", response_model=dict)
+def claim_request(
+    request_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("sales")),
+):
+    """Assign this request to the current sales user so chat, email, and history unlock."""
+    req = db.query(Request).filter(Request.id == request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if req.assigned_to == current_user.id:
+        return {"message": "Already assigned to you", "request_id": str(req.id)}
+    if req.assigned_to and req.assigned_to != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "This request is already assigned to another sales user.",
+                }
+            },
+        )
+
+    req.assigned_to = current_user.id
+    _log_history(
+        db,
+        req.id,
+        "sales_claimed",
+        current_user.id,
+        details="Sales user claimed this request",
+    )
+    sync_sla_for_request(db, req)
+    db.commit()
+    return {"message": "Request claimed", "request_id": str(req.id)}
+
+
 @router.get("/requests/{request_id}/history", response_model=list[HistoryRead])
 def get_request_history(
     request_id: uuid.UUID,
@@ -342,6 +399,8 @@ def get_request_history(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view history of your own requests"}},
         )
+    if current_user.role == "sales":
+        ensure_sales_conversation_access(req, current_user)
 
     entries = (
         db.query(RequestHistory)
@@ -384,6 +443,8 @@ def add_sales_note(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
         )
+
+    ensure_sales_conversation_access(req, current_user)
 
     _log_history(
         db,

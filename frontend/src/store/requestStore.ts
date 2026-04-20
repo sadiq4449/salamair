@@ -27,6 +27,8 @@ interface RequestState {
   sendToRM: (id: string) => Promise<void>;
   fetchHistory: (id: string) => Promise<void>;
   addNote: (id: string, data: NoteData) => Promise<void>;
+  claimRequest: (id: string) => Promise<void>;
+  clearHistory: () => void;
   clearCurrent: () => void;
 }
 
@@ -152,6 +154,25 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       set({ history: [] });
     }
   },
+
+  claimRequest: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await requestService.claimRequest(id);
+      const detail = await requestService.getRequest(id);
+      let events: HistoryEvent[] = [];
+      try {
+        events = await requestService.getHistory(id);
+      } catch {
+        events = [];
+      }
+      set({ currentRequest: detail, history: events, isLoading: false });
+    } catch {
+      set({ error: 'Failed to claim request', isLoading: false });
+    }
+  },
+
+  clearHistory: () => set({ history: [] }),
 
   addNote: async (id, data) => {
     try {

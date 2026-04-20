@@ -72,6 +72,7 @@ class RequestListItem(BaseModel):
     status: str
     priority: str
     travel_date: date | None = None
+    assigned_to: UUID | None = None
     tags: list[TagBrief] = Field(default_factory=list)
     created_at: datetime
 

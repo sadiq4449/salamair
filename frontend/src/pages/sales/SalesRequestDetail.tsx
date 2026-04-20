@@ -21,7 +21,17 @@ export default function SalesRequestDetail() {
   const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentRequest, isDetailLoading, isLoading, fetchRequest, fetchHistory, updateStatus, clearCurrent } = useRequestStore();
+  const {
+    currentRequest,
+    isDetailLoading,
+    isLoading,
+    fetchRequest,
+    fetchHistory,
+    clearHistory,
+    claimRequest,
+    updateStatus,
+    clearCurrent,
+  } = useRequestStore();
   const { clearThread } = useEmailStore();
   const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
   const [showCounter, setShowCounter] = useState(false);
@@ -30,10 +40,25 @@ export default function SalesRequestDetail() {
   useEffect(() => {
     if (id) {
       fetchRequest(id);
-      fetchHistory(id);
     }
-    return () => { clearCurrent(); clearThread(); };
-  }, [id, fetchRequest, fetchHistory, clearCurrent, clearThread]);
+    return () => {
+      clearCurrent();
+      clearThread();
+    };
+  }, [id, fetchRequest, clearCurrent, clearThread]);
+
+  const isSales = user?.role === 'sales';
+  const conversationUnlocked =
+    !isSales || (currentRequest?.assigned_to != null && currentRequest.assigned_to === user?.id);
+
+  useEffect(() => {
+    if (!id || !currentRequest) return;
+    if (conversationUnlocked) {
+      void fetchHistory(id);
+    } else {
+      clearHistory();
+    }
+  }, [id, currentRequest?.assigned_to, conversationUnlocked, fetchHistory, clearHistory]);
 
   if (isDetailLoading) {
     return (
@@ -53,6 +78,10 @@ export default function SalesRequestDetail() {
 
   const req = currentRequest;
   const isTerminal = ['approved', 'rejected'].includes(req.status);
+
+  async function handleClaim() {
+    if (id) await claimRequest(id);
+  }
 
   async function handleApprove() {
     if (id) await updateStatus(id, { status: 'approved' });
@@ -141,7 +170,18 @@ export default function SalesRequestDetail() {
               </div>
             </div>
             <div className="p-6">
-              {activeTab === 'agent-sales' ? (
+              {isSales && !conversationUnlocked ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm text-amber-900 dark:text-amber-100">
+                  <p className="font-medium mb-2">Conversation restricted</p>
+                  <p className="text-amber-800/90 dark:text-amber-200/90 mb-3">
+                    Chat and RM email are visible only to the sales user assigned to this request. Claim it to
+                    continue.
+                  </p>
+                  <Button variant="warning" onClick={handleClaim} isLoading={isLoading}>
+                    Claim this request
+                  </Button>
+                </div>
+              ) : activeTab === 'agent-sales' ? (
                 <UnifiedTimeline requestId={id!} />
               ) : (
                 <EmailThreadView
