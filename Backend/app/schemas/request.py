@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.advanced_schema import TagBrief
 from app.schemas.attachment import AttachmentRead
@@ -23,6 +23,17 @@ class RequestCreate(BaseModel):
 
 
 class RequestUpdate(BaseModel):
+    """Fields editable via ``PUT /requests/{id}``.
+
+    Status transitions are **not** handled here — use the dedicated
+    ``/sales/requests/{id}/status`` endpoint (for sales/admin) or the
+    create endpoint with ``is_draft=false`` (for agents creating a fresh
+    request). ``extra='forbid'`` makes any stray ``status`` (or other
+    unknown) field return a 422 so callers don't silently lose data.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     route: str | None = Field(None, min_length=1, max_length=100)
     pax: int | None = Field(None, gt=0)
     price: float | None = Field(None, gt=0)

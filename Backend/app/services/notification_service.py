@@ -203,7 +203,15 @@ def compute_sla(req: Request, db: Session | None = None) -> dict | None:
     if hours is None:
         return None
 
-    deadline = req.updated_at.replace(tzinfo=timezone.utc) + timedelta(hours=hours)
+    # `updated_at` may arrive naive (SQLite) or already tz-aware (Postgres
+    # `TIMESTAMPTZ`). A blind `.replace(tzinfo=UTC)` on an aware value
+    # silently shifts the time, so coerce defensively.
+    updated_at = req.updated_at
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    else:
+        updated_at = updated_at.astimezone(timezone.utc)
+    deadline = updated_at + timedelta(hours=hours)
     now = datetime.now(timezone.utc)
     remaining = (deadline - now).total_seconds()
     total = hours * 3600

@@ -205,7 +205,6 @@ def update_request_status(
     db.commit()
 
     try:
-        import asyncio
         notifications = []
         if payload.status == "approved":
             notifications = notify_request_approved(db, req)
@@ -214,10 +213,10 @@ def update_request_status(
         elif payload.status == "under_review" and req.assigned_to:
             notifications = notify_request_assigned(db, req, req.assigned_to)
         for n in notifications:
-            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+            manager.push_to_user_threadsafe(str(n.user_id), {
                 "event": "notification",
                 "data": format_notification(n),
-            }))
+            })
     except Exception as e:
         logger.warning("Failed to send status-change notifications: %s", e)
 
@@ -269,13 +268,12 @@ def create_counter_offer(
     db.refresh(offer)
 
     try:
-        import asyncio
         notifications = notify_counter_offered(db, req, float(payload.counter_price))
         for n in notifications:
-            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+            manager.push_to_user_threadsafe(str(n.user_id), {
                 "event": "notification",
                 "data": format_notification(n),
-            }))
+            })
     except Exception as e:
         logger.warning("Failed to send counter-offer notifications: %s", e)
 
@@ -326,13 +324,12 @@ def send_to_rm(
     db.commit()
 
     try:
-        import asyncio
         notifications = notify_sent_to_rm(db, req)
         for n in notifications:
-            asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+            manager.push_to_user_threadsafe(str(n.user_id), {
                 "event": "notification",
                 "data": format_notification(n),
-            }))
+            })
     except Exception as e:
         logger.warning("Failed to send sent-to-rm notifications: %s", e)
 

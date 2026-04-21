@@ -16,6 +16,7 @@ const ALL_TYPES: { key: NotificationType; label: string; description: string }[]
   { key: 'SLA_WARNING', label: 'SLA Warnings', description: 'When SLA deadline is approaching' },
   { key: 'SLA_BREACHED', label: 'SLA Breached', description: 'When SLA deadline has passed' },
   { key: 'REQUEST_ASSIGNED', label: 'Request Assigned', description: 'When a request is assigned to you' },
+  { key: 'REMINDER', label: 'Reminders', description: 'Follow-up reminders for pending requests' },
 ];
 
 export default function NotificationSettings() {

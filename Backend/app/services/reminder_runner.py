@@ -111,10 +111,9 @@ def run_reminder_scan(db: Session) -> dict[str, int]:
                     db.flush()
                     created += 1
                     try:
-                        import asyncio
-
-                        asyncio.ensure_future(
-                            manager.push_to_user(str(user.id), {"event": "notification", "data": format_notification(n)})
+                        manager.push_to_user_threadsafe(
+                            str(user.id),
+                            {"event": "notification", "data": format_notification(n)},
                         )
                     except Exception as e:
                         logger.debug("WS push reminder: %s", e)

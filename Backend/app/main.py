@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,6 +34,7 @@ from app.core.logging_filters import install_sensitive_log_redaction
 from app.db.base import Base
 from app.db.schema_sync import apply_runtime_schema_fixes
 from app.db.session import engine
+from app.services.websocket_manager import manager as ws_manager
 from app.models import (  # noqa: F401
     User,
     AgentProfile,
@@ -68,7 +70,8 @@ async def lifespan(app: FastAPI):
     validate_production_settings()
     Base.metadata.create_all(bind=engine)
     apply_runtime_schema_fixes(engine)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    # Capture the running event loop so sync endpoints can schedule WS pushes.
+    ws_manager.bind_loop(asyncio.get_running_loop())
     app.state.started_at_utc = datetime.now(timezone.utc)
     yield
 
@@ -156,6 +159,8 @@ def health_check():
     return {"status": "healthy", "service": "Salam Air SmartDeal API"}
 
 
+# Ensure the upload directory exists before mounting StaticFiles (runs at
+# import time, before the lifespan startup hook).
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 

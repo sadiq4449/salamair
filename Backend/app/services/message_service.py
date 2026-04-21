@@ -109,23 +109,36 @@ def mark_messages_read(
     message_ids: list[uuid.UUID],
     user_id: uuid.UUID,
 ) -> int:
-    marked = 0
-    for mid in message_ids:
-        existing = (
-            db.query(MessageReadStatus)
-            .filter(MessageReadStatus.message_id == mid, MessageReadStatus.user_id == user_id)
-            .first()
+    """Mark the given messages as read for ``user_id``.
+
+    Uses one bulk SELECT to find already-read rows and one bulk INSERT for
+    the rest — replacing the previous per-id SELECT/INSERT pair (N+1).
+    """
+    if not message_ids:
+        return 0
+
+    already_read = {
+        row[0]
+        for row in db.query(MessageReadStatus.message_id)
+        .filter(
+            MessageReadStatus.user_id == user_id,
+            MessageReadStatus.message_id.in_(message_ids),
         )
-        if not existing:
-            db.add(MessageReadStatus(
-                message_id=mid,
-                user_id=user_id,
-                read_at=datetime.now(timezone.utc),
-            ))
-            marked += 1
-    if marked:
-        db.commit()
-    return marked
+        .all()
+    }
+    to_insert = [mid for mid in set(message_ids) if mid not in already_read]
+    if not to_insert:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    db.bulk_save_objects(
+        [
+            MessageReadStatus(message_id=mid, user_id=user_id, read_at=now)
+            for mid in to_insert
+        ]
+    )
+    db.commit()
+    return len(to_insert)
 
 
 def is_message_read_by(db: Session, message_id: uuid.UUID, user_id: uuid.UUID) -> bool:

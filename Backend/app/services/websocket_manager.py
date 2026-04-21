@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections import defaultdict
@@ -16,6 +17,13 @@ class ConnectionManager:
         self.rooms: dict[str, dict[str, WebSocket]] = defaultdict(dict)
         self.user_info: dict[str, dict] = {}
         self.user_connections: dict[str, list[WebSocket]] = defaultdict(list)
+        # Event loop captured at app startup so sync endpoints (running in a
+        # threadpool, without their own loop) can still schedule pushes.
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Called once from the FastAPI lifespan startup."""
+        self._loop = loop
 
     async def connect(self, websocket: WebSocket, room_id: str, user_id: str, user_info: dict):
         await websocket.accept()
@@ -99,6 +107,23 @@ class ConnectionManager:
         """Push notification to multiple users."""
         for uid in user_ids:
             await self.push_to_user(uid, message)
+
+    # ── Threadsafe helpers for sync endpoints ──
+
+    def push_to_user_threadsafe(self, user_id: str, message: dict) -> None:
+        """Schedule a push from a sync context (e.g. FastAPI `def` endpoint)."""
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            logger.debug("push_to_user_threadsafe called before loop bind; dropping")
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(self.push_to_user(user_id, message), loop)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to schedule threadsafe push: %s", exc)
+
+    def push_to_users_threadsafe(self, user_ids: list[str], message: dict) -> None:
+        for uid in user_ids:
+            self.push_to_user_threadsafe(uid, message)
 
 
 manager = ConnectionManager()

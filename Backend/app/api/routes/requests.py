@@ -1,11 +1,10 @@
 import logging
 import os
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
-from sqlalchemy import extract, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_db, require_role
@@ -24,6 +23,7 @@ from app.schemas.request import (
     RequestUpdate,
 )
 from app.services.bulk_request_excel import build_template_workbook, commit_bulk_upload, preview_bulk
+from app.services.request_codes import generate_request_code
 from app.services.upload_limits import get_max_upload_bytes
 from app.services.notification_service import (
     compute_sla,
@@ -50,22 +50,10 @@ def _enforce_upload_size(raw: bytes, db: Session) -> None:
         )
 
 
-def _generate_request_code(db: Session) -> str:
-    year = datetime.utcnow().year
-    last = (
-        db.query(Request)
-        .filter(extract("year", Request.created_at) == year)
-        .order_by(Request.request_code.desc())
-        .first()
-    )
-    if last and last.request_code:
-        try:
-            seq = int(last.request_code.split("-")[-1]) + 1
-        except (ValueError, IndexError):
-            seq = 1
-    else:
-        seq = 1
-    return f"REQ-{year}-{seq:03d}"
+# Backwards-compatible alias; the canonical implementation lives in
+# ``app.services.request_codes`` so the bulk-upload service can share it
+# without creating a circular import.
+_generate_request_code = generate_request_code
 
 
 def _log_history(
@@ -115,7 +103,7 @@ def create_request(
             )
         owner_id = current_user.id
 
-    request_code = _generate_request_code(db)
+    request_code = generate_request_code(db)
     new_status = "draft" if payload.is_draft else "submitted"
 
     req = Request(
@@ -156,12 +144,11 @@ def create_request(
     if new_status == "submitted":
         try:
             notifications = notify_request_created(db, req)
-            import asyncio
             for n in notifications:
-                asyncio.ensure_future(manager.push_to_user(str(n.user_id), {
+                manager.push_to_user_threadsafe(str(n.user_id), {
                     "event": "notification",
                     "data": format_notification(n),
-                }))
+                })
         except Exception as e:
             logger.warning("Failed to send request-created notifications: %s", e)
 

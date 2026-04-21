@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { requestService } from '../services/requestService';
 import type { RequestItem, RequestDetail, HistoryEvent } from '../types';
-import type { RequestFilters, CreateRequestData, StatusUpdateData, CounterOfferData, NoteData } from '../services/requestService';
+import type { RequestFilters, CreateRequestData, UpdateRequestData, StatusUpdateData, CounterOfferData, NoteData } from '../services/requestService';
 
 interface RequestState {
   requests: RequestItem[];
@@ -21,7 +21,7 @@ interface RequestState {
   fetchRequest: (id: string) => Promise<void>;
   fetchSalesQueue: (params?: RequestFilters) => Promise<void>;
   createRequest: (data: CreateRequestData) => Promise<RequestDetail>;
-  updateRequest: (id: string, data: Partial<CreateRequestData>) => Promise<void>;
+  updateRequest: (id: string, data: UpdateRequestData) => Promise<void>;
   updateStatus: (id: string, data: StatusUpdateData) => Promise<void>;
   createCounterOffer: (id: string, data: CounterOfferData) => Promise<void>;
   sendToRM: (id: string) => Promise<void>;

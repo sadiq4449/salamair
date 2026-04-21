@@ -161,7 +161,14 @@ def sla_dashboard_payload(db: Session) -> dict:
             on_track += 1
 
     total_tracked = on_track + at_risk + breached
-    compliance = round((on_track / total_tracked * 100), 2) if total_tracked else 100.0
+    # `at_risk` requests are still *within* their SLA window — they
+    # should be counted as compliant. Excluding them skews the metric
+    # downward; only `breached` requests are non-compliant.
+    compliance = (
+        round(((on_track + at_risk) / total_tracked * 100), 2)
+        if total_tracked
+        else 100.0
+    )
 
     return {
         "compliance_rate": compliance,

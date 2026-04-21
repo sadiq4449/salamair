@@ -181,8 +181,10 @@ class AdminDbSlaUpdate(BaseModel):
 class AdminDbChatAttachmentRow(BaseModel):
     id: UUID
     message_id: UUID
-    request_id: UUID
-    request_code: str
+    # Nullable so orphaned attachments surface honestly instead of being
+    # papered over with a fabricated UUID.
+    request_id: UUID | None = None
+    request_code: str | None = None
     filename: str
     file_url: str
     file_type: str

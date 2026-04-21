@@ -300,23 +300,27 @@ def explorer_list_history(
         q = q.filter(or_(Request.request_code.ilike(term), RequestHistory.action.ilike(term), RequestHistory.details.ilike(term)))
     total = q.count()
     rows = q.order_by(RequestHistory.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
-    items = []
-    for h in rows:
-        req = db.query(Request).filter(Request.id == h.request_id).first()
-        items.append(
-            AdminDbHistoryRow(
-                id=h.id,
-                request_id=h.request_id,
-                request_code=req.request_code if req else "?",
-                action=h.action,
-                from_status=h.from_status,
-                to_status=h.to_status,
-                actor_id=h.actor_id,
-                actor_name=h.actor.name if h.actor else None,
-                details=h.details,
-                created_at=h.created_at,
-            )
+    # Bulk-load the related Requests in one query to avoid N+1.
+    req_ids = {h.request_id for h in rows}
+    req_codes: dict[uuid.UUID, str] = {}
+    if req_ids:
+        for rid, code in db.query(Request.id, Request.request_code).filter(Request.id.in_(req_ids)).all():
+            req_codes[rid] = code
+    items = [
+        AdminDbHistoryRow(
+            id=h.id,
+            request_id=h.request_id,
+            request_code=req_codes.get(h.request_id, "?"),
+            action=h.action,
+            from_status=h.from_status,
+            to_status=h.to_status,
+            actor_id=h.actor_id,
+            actor_name=h.actor.name if h.actor else None,
+            details=h.details,
+            created_at=h.created_at,
         )
+        for h in rows
+    ]
     return AdminDbHistoryListResponse(items=items, total=total, page=page, limit=limit)
 
 
@@ -404,24 +408,28 @@ def explorer_list_notifications(
         )
     total = q.count()
     rows = q.order_by(Notification.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
-    items = []
-    for n in rows:
-        u = db.query(User).filter(User.id == n.user_id).first()
-        items.append(
-            AdminDbNotificationRow(
-                id=n.id,
-                user_id=n.user_id,
-                user_email=u.email if u else "?",
-                type=n.type,
-                title=n.title,
-                message=n.message,
-                request_id=n.request_id,
-                request_code=n.request_code,
-                is_read=n.is_read,
-                is_email_sent=n.is_email_sent,
-                created_at=n.created_at,
-            )
+    # Bulk-load recipient emails in a single query (avoids N+1).
+    user_ids = {n.user_id for n in rows}
+    user_emails: dict[uuid.UUID, str] = {}
+    if user_ids:
+        for uid, email in db.query(User.id, User.email).filter(User.id.in_(user_ids)).all():
+            user_emails[uid] = email
+    items = [
+        AdminDbNotificationRow(
+            id=n.id,
+            user_id=n.user_id,
+            user_email=user_emails.get(n.user_id, "?"),
+            type=n.type,
+            title=n.title,
+            message=n.message,
+            request_id=n.request_id,
+            request_code=n.request_code,
+            is_read=n.is_read,
+            is_email_sent=n.is_email_sent,
+            created_at=n.created_at,
         )
+        for n in rows
+    ]
     return AdminDbNotificationListResponse(items=items, total=total, page=page, limit=limit)
 
 
@@ -504,23 +512,27 @@ def explorer_list_counter_offers(
         q = q.filter(or_(Request.request_code.ilike(term), CounterOffer.message.ilike(term)))
     total = q.count()
     rows = q.order_by(CounterOffer.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
-    items = []
-    for c in rows:
-        req = db.query(Request).filter(Request.id == c.request_id).first()
-        items.append(
-            AdminDbCounterOfferRow(
-                id=c.id,
-                request_id=c.request_id,
-                request_code=req.request_code if req else "?",
-                original_price=float(c.original_price),
-                counter_price=float(c.counter_price),
-                message=c.message,
-                created_by=c.created_by,
-                creator_name=c.creator.name if c.creator else None,
-                status=c.status,
-                created_at=c.created_at,
-            )
+    # Bulk-load request codes once (avoids N+1).
+    req_ids = {c.request_id for c in rows}
+    req_codes: dict[uuid.UUID, str] = {}
+    if req_ids:
+        for rid, code in db.query(Request.id, Request.request_code).filter(Request.id.in_(req_ids)).all():
+            req_codes[rid] = code
+    items = [
+        AdminDbCounterOfferRow(
+            id=c.id,
+            request_id=c.request_id,
+            request_code=req_codes.get(c.request_id, "?"),
+            original_price=float(c.original_price),
+            counter_price=float(c.counter_price),
+            message=c.message,
+            created_by=c.created_by,
+            creator_name=c.creator.name if c.creator else None,
+            status=c.status,
+            created_at=c.created_at,
         )
+        for c in rows
+    ]
     return AdminDbCounterOfferListResponse(items=items, total=total, page=page, limit=limit)
 
 
@@ -705,16 +717,28 @@ def explorer_list_chat_attachments(
         .limit(limit)
         .all()
     )
-    items = []
+    # Bulk-load parent messages and requests to avoid N+1.
+    msg_ids = {a.message_id for a in rows}
+    msgs: dict[uuid.UUID, Message] = {}
+    if msg_ids:
+        msgs = {m.id: m for m in db.query(Message).filter(Message.id.in_(msg_ids)).all()}
+    req_ids = {m.request_id for m in msgs.values() if m.request_id}
+    req_codes: dict[uuid.UUID, str] = {}
+    if req_ids:
+        for rid, code in db.query(Request.id, Request.request_code).filter(Request.id.in_(req_ids)).all():
+            req_codes[rid] = code
+    items: list[AdminDbChatAttachmentRow] = []
     for a in rows:
-        msg = db.query(Message).filter(Message.id == a.message_id).first()
-        req = db.query(Request).filter(Request.id == msg.request_id).first() if msg else None
+        msg = msgs.get(a.message_id)
+        # Orphaned attachments (no message) expose `request_id=None` so
+        # operators can see the data inconsistency rather than a bogus id.
+        req_id = msg.request_id if msg else None
         items.append(
             AdminDbChatAttachmentRow(
                 id=a.id,
                 message_id=a.message_id,
-                request_id=msg.request_id if msg else uuid.uuid4(),
-                request_code=req.request_code if req else "?",
+                request_id=req_id,
+                request_code=req_codes.get(req_id) if req_id else None,
                 filename=a.filename,
                 file_url=a.file_url,
                 file_type=a.file_type,
@@ -750,12 +774,12 @@ def explorer_update_chat_attachment(
     db.commit()
     db.refresh(a)
     msg = db.query(Message).filter(Message.id == a.message_id).first()
-    req = db.query(Request).filter(Request.id == msg.request_id).first() if msg else None
+    req = db.query(Request).filter(Request.id == msg.request_id).first() if msg and msg.request_id else None
     return AdminDbChatAttachmentRow(
         id=a.id,
         message_id=a.message_id,
-        request_id=msg.request_id if msg else uuid.uuid4(),
-        request_code=req.request_code if req else "?",
+        request_id=msg.request_id if msg else None,
+        request_code=req.request_code if req else None,
         filename=a.filename,
         file_url=a.file_url,
         file_type=a.file_type,

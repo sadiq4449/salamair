@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   CheckCheck,
   Bell,
+  BellRing,
   FileCheck2,
   FileX2,
   ArrowRightLeft,
@@ -28,6 +29,7 @@ const typeIconMap: Record<NotificationType, React.ElementType> = {
   SLA_WARNING: AlertTriangle,
   SLA_BREACHED: AlertOctagon,
   REQUEST_ASSIGNED: UserCheck,
+  REMINDER: BellRing,
 };
 
 const typeColorMap: Record<NotificationType, string> = {
@@ -41,6 +43,7 @@ const typeColorMap: Record<NotificationType, string> = {
   SLA_WARNING: 'text-orange-500 bg-orange-50 dark:bg-orange-900/30',
   SLA_BREACHED: 'text-red-600 bg-red-50 dark:bg-red-900/30',
   REQUEST_ASSIGNED: 'text-cyan-500 bg-cyan-50 dark:bg-cyan-900/30',
+  REMINDER: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30',
 };
 
 function formatTimeAgo(dateStr: string): string {

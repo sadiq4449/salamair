@@ -33,6 +33,22 @@ export interface CreateRequestData {
   agent_id?: string;
 }
 
+/**
+ * Fields editable via `PUT /requests/{id}`. Status changes live on
+ * `/sales/requests/{id}/status` (see `updateStatus` below); `agent_id`
+ * is only settable at creation time. Keeping these out of the update
+ * payload matches the backend `RequestUpdate` schema (extra="forbid").
+ */
+export interface UpdateRequestData {
+  route?: string;
+  pax?: number;
+  travel_date?: string;
+  return_date?: string;
+  price?: number;
+  priority?: string;
+  notes?: string;
+}
+
 export interface StatusUpdateData {
   status: string;
   notes?: string;
@@ -72,7 +88,7 @@ export const requestService = {
     return data;
   },
 
-  async updateRequest(id: string, payload: Partial<CreateRequestData>): Promise<RequestDetail> {
+  async updateRequest(id: string, payload: UpdateRequestData): Promise<RequestDetail> {
     const { data } = await api.put<RequestDetail>(`/requests/${id}`, payload);
     return data;
   },

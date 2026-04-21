@@ -9,34 +9,16 @@ from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook, load_workbook
-from sqlalchemy import extract
 from sqlalchemy.orm import Session
 
 from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.user import User
+from app.services.request_codes import generate_request_code
 
 
 MAX_BULK_ROWS = 500
 EXPECTED_HEADERS = ("Route", "PAX", "Price", "Travel Date", "Return Date", "Notes")
-
-
-def _generate_request_code(db: Session) -> str:
-    year = datetime.utcnow().year
-    last = (
-        db.query(Request)
-        .filter(extract("year", Request.created_at) == year)
-        .order_by(Request.request_code.desc())
-        .first()
-    )
-    if last and last.request_code:
-        try:
-            seq = int(last.request_code.split("-")[-1]) + 1
-        except (ValueError, IndexError):
-            seq = 1
-    else:
-        seq = 1
-    return f"REQ-{year}-{seq:03d}"
 
 
 def _parse_date(val: Any) -> tuple[date | None, str | None]:
@@ -243,7 +225,7 @@ def commit_bulk_upload(db: Session, acting_user: User, agent_owner: User, conten
     from app.services.sla_service import sync_sla_for_request
 
     for row in to_create:
-        code = _generate_request_code(db)
+        code = generate_request_code(db)
 
         req = Request(
             request_code=code,

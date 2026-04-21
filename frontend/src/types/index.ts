@@ -104,12 +104,19 @@ export interface RequestListResponse {
   limit: number;
 }
 
+/**
+ * Matches the backend `HistoryRead` schema returned by
+ * `/sales/requests/{id}/history`. Admin-log rows (with a nested `actor`
+ * object) live in `AdminLogsRow` instead.
+ */
 export interface HistoryEvent {
   id: string;
+  request_id: string;
   action: string;
   from_status: string | null;
   to_status: string | null;
-  actor: string;
+  actor_id: string;
+  actor_name: string | null;
   details: string | null;
   created_at: string;
 }
@@ -260,7 +267,8 @@ export type NotificationType =
   | 'NEW_MESSAGE'
   | 'SLA_WARNING'
   | 'SLA_BREACHED'
-  | 'REQUEST_ASSIGNED';
+  | 'REQUEST_ASSIGNED'
+  | 'REMINDER';
 
 export interface NotificationItem {
   id: string;
