@@ -80,8 +80,9 @@ export default function RequestDetail() {
   const req = currentRequest;
   const pendingCounterOffer =
     req.status === 'counter_offered'
-      ? (req.counter_offers ?? []).find((o) => o.status === 'pending') ?? null
+      ? (req.counter_offers ?? []).find((o) => isPendingOfferStatus(o.status)) ?? null
       : null;
+  const showCounterOfferFallback = req.status === 'counter_offered' && !pendingCounterOffer;
 
   return (
     <div className="space-y-5">
