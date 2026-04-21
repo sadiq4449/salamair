@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Paperclip, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, Paperclip, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -13,6 +14,13 @@ import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
+import Button from '../../components/ui/Button';
+
+/** Backend may omit status on legacy rows; treat as pending when awaiting agent action. */
+function isPendingOfferStatus(status: string | undefined | null): boolean {
+  const t = (status ?? 'pending').trim().toLowerCase();
+  return t === 'pending' || t === '';
+}
 
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +37,29 @@ export default function RequestDetail() {
     }
     return () => { clearCurrent(); clearThread(); };
   }, [id, fetchRequest, fetchHistory, clearCurrent, clearThread]);
+
+  // Refetch when returning to the tab (agent may have missed a counter-offer while away).
+  useEffect(() => {
+    if (!id) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') fetchRequest(id);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [id, fetchRequest]);
+
+  // When a COUNTER_OFFERED notification arrives for this request, reload detail (fixes stale open tabs).
+  useEffect(() => {
+    if (!id) return;
+    return useNotificationStore.subscribe((state, prev) => {
+      const prevLen = prev?.notifications?.length ?? 0;
+      if (state.notifications.length <= prevLen) return;
+      const newest = state.notifications[0];
+      if (newest?.type === 'COUNTER_OFFERED' && newest.request_id === id) {
+        fetchRequest(id);
+      }
+    });
+  }, [id, fetchRequest]);
 
   if (isDetailLoading) {
     return (
@@ -140,6 +171,25 @@ export default function RequestDetail() {
         <div className="space-y-5">
           {pendingCounterOffer && id && (
             <CounterOfferPanel requestId={id} offer={pendingCounterOffer} />
+          )}
+
+          {showCounterOfferFallback && id && (
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm p-5 space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Counter offer</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                A counter offer is waiting for your response. If details do not appear, refresh — the latest offer loads from the server.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={() => fetchRequest(id)}
+                isLoading={isDetailLoading}
+              >
+                <RefreshCw size={16} />
+                Refresh request
+              </Button>
+            </div>
           )}
 
           <AiPricingAssistant

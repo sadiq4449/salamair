@@ -8,7 +8,6 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.attachment import Attachment
@@ -81,6 +80,34 @@ def _log_history(
         details=details,
     )
     db.add(entry)
+
+
+def _build_counter_offer_reads(db: Session, request_id: uuid.UUID) -> list[CounterOfferRead]:
+    """Load counter offers with creator in one query — do not rely on ORM lazy/selectinload on Request."""
+    rows = (
+        db.query(CounterOffer)
+        .options(joinedload(CounterOffer.creator))
+        .filter(CounterOffer.request_id == request_id)
+        .order_by(CounterOffer.created_at.desc())
+        .all()
+    )
+    out: list[CounterOfferRead] = []
+    for o in rows:
+        st = (o.status or "pending").strip() or "pending"
+        out.append(
+            CounterOfferRead(
+                id=o.id,
+                request_id=o.request_id,
+                original_price=float(o.original_price),
+                counter_price=float(o.counter_price),
+                message=o.message,
+                created_by=o.created_by,
+                creator_name=o.creator.name if o.creator else None,
+                status=st,
+                created_at=o.created_at,
+            )
+        )
+    return out
 
 
 @router.post("", response_model=RequestRead, status_code=status.HTTP_201_CREATED)
@@ -312,7 +339,6 @@ def get_request(
             joinedload(Request.agent),
             joinedload(Request.attachments),
             joinedload(Request.tags),
-            selectinload(Request.counter_offers).joinedload(CounterOffer.creator),
         )
         .filter(Request.id == request_id)
         .first()
@@ -328,25 +354,7 @@ def get_request(
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own requests"}},
         )
 
-    counter_offers_sorted = sorted(
-        req.counter_offers or [],
-        key=lambda o: o.created_at,
-        reverse=True,
-    )
-    offers_out = [
-        CounterOfferRead(
-            id=o.id,
-            request_id=o.request_id,
-            original_price=float(o.original_price),
-            counter_price=float(o.counter_price),
-            message=o.message,
-            created_by=o.created_by,
-            creator_name=o.creator.name if o.creator else None,
-            status=o.status,
-            created_at=o.created_at,
-        )
-        for o in counter_offers_sorted
-    ]
+    offers_out = _build_counter_offer_reads(db, request_id)
 
     out = RequestRead.model_validate(req)
     out.counter_offers = offers_out
@@ -550,7 +558,8 @@ def _load_counter_offer_for_response(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "Counter offer not found for this request"}},
         )
-    if offer.status != "pending":
+    eff = ((offer.status or "").strip().lower() or "pending")
+    if eff != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "OFFER_RESOLVED", "message": f"Counter offer is already '{offer.status}'"}},
