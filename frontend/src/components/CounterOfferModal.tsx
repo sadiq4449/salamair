@@ -14,19 +14,35 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
   const { createCounterOffer, isLoading } = useRequestStore();
   const [counterPrice, setCounterPrice] = useState('');
   const [message, setMessage] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  function extractApiError(err: unknown, fallback: string): string {
+    const e = err as { response?: { data?: { error?: { message?: string } } } };
+    return e?.response?.data?.error?.message ?? fallback;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setSubmitError(null);
+    const priceNum = Number(counterPrice);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      setSubmitError('Counter price must be greater than zero');
+      return;
+    }
+    if (Math.abs(priceNum - Number(currentPrice)) < 0.01) {
+      setSubmitError('Counter price must differ from the current price');
+      return;
+    }
     try {
       await createCounterOffer(requestId, {
-        counter_price: Number(counterPrice),
+        counter_price: priceNum,
         message: message || undefined,
       });
-      onClose();
       setCounterPrice('');
       setMessage('');
-    } catch {
-      // error handled by store
+      onClose();
+    } catch (err) {
+      setSubmitError(extractApiError(err, 'Failed to send counter offer'));
     }
   }
 
@@ -83,6 +99,15 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
               className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10 resize-none"
             />
           </div>
+
+          {submitError && (
+            <div
+              role="alert"
+              className="px-3 py-2 rounded-lg text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50"
+            >
+              {submitError}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-2">

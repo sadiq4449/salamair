@@ -16,6 +16,7 @@ import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import EmailThreadSummaryCard from '../../components/EmailThreadSummaryCard';
+import type { CounterOffer } from '../../types';
 
 export default function SalesRequestDetail() {
   const { user } = useAuth();
@@ -174,24 +175,36 @@ export default function SalesRequestDetail() {
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">Actions</h3>
               </div>
               <div className="p-4 space-y-2.5">
-                <Button variant="success" fullWidth onClick={handleApprove} isLoading={isLoading}>
-                  <CheckCircle size={16} />
-                  Approve Request
-                </Button>
-                <Button variant="warning" fullWidth onClick={() => setShowCounter(true)}>
-                  <DollarSign size={16} />
-                  Counter Offer
-                </Button>
-                <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)}>
-                  <Mail size={16} />
-                  Send to RM
-                </Button>
-                <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading}>
-                  <XCircle size={16} />
-                  Reject
-                </Button>
+                {req.status === 'counter_offered' ? (
+                  <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-2.5">
+                    Awaiting agent response to the counter offer. Sales actions are paused until the agent accepts or rejects.
+                  </p>
+                ) : (
+                  <>
+                    <Button variant="success" fullWidth onClick={handleApprove} isLoading={isLoading}>
+                      <CheckCircle size={16} />
+                      Approve Request
+                    </Button>
+                    <Button variant="warning" fullWidth onClick={() => setShowCounter(true)}>
+                      <DollarSign size={16} />
+                      Counter Offer
+                    </Button>
+                    <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)}>
+                      <Mail size={16} />
+                      Send to RM
+                    </Button>
+                    <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading}>
+                      <XCircle size={16} />
+                      Reject
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
+          )}
+
+          {(req.counter_offers ?? []).length > 0 && (
+            <CounterOfferHistoryCard offers={req.counter_offers ?? []} />
           )}
 
           {/* Attachments */}
@@ -262,6 +275,55 @@ function InfoItem({ label, value, highlight }: { label: string; value: string; h
       <p className={`text-sm font-semibold ${highlight ? 'text-teal-600 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
         {value}
       </p>
+    </div>
+  );
+}
+
+const OFFER_STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/40',
+  accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40',
+  rejected: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-900/40',
+};
+
+function CounterOfferHistoryCard({ offers }: { offers: CounterOffer[] }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Counter Offers</h3>
+      </div>
+      <div className="p-4 space-y-2.5">
+        {offers.map((o) => {
+          const badge = OFFER_STATUS_STYLES[o.status] ?? OFFER_STATUS_STYLES.pending;
+          return (
+            <div
+              key={o.id}
+              className="rounded-lg border border-gray-100 dark:border-gray-800 p-3 space-y-1.5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {Number(o.counter_price).toFixed(2)} OMR
+                    <span className="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500 line-through">
+                      {Number(o.original_price).toFixed(2)}
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {o.creator_name ? `by ${o.creator_name}` : 'by sales'} · {new Date(o.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide border ${badge}`}
+                >
+                  {o.status}
+                </span>
+              </div>
+              {o.message && (
+                <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{o.message}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

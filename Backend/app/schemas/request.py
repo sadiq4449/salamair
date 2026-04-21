@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.advanced_schema import TagBrief
 from app.schemas.attachment import AttachmentRead
+from app.schemas.counter_offer_schema import CounterOfferRead
 
 
 class RequestCreate(BaseModel):
@@ -68,6 +69,7 @@ class RequestRead(BaseModel):
     assigned_to: UUID | None = None
     tags: list[TagBrief] = Field(default_factory=list)
     attachments: list[AttachmentRead] = Field(default_factory=list)
+    counter_offers: list[CounterOfferRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

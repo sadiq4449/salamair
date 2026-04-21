@@ -10,6 +10,8 @@ const HIGH_PRIORITY_TYPES = new Set([
   'SLA_BREACHED',
   'SLA_WARNING',
   'COUNTER_OFFERED',
+  'COUNTER_ACCEPTED',
+  'COUNTER_REJECTED',
 ]);
 
 let notificationSound: HTMLAudioElement | null = null;

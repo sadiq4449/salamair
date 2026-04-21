@@ -24,6 +24,8 @@ interface RequestState {
   updateRequest: (id: string, data: UpdateRequestData) => Promise<void>;
   updateStatus: (id: string, data: StatusUpdateData) => Promise<void>;
   createCounterOffer: (id: string, data: CounterOfferData) => Promise<void>;
+  acceptCounterOffer: (id: string, offerId: string) => Promise<void>;
+  rejectCounterOffer: (id: string, offerId: string, reason?: string) => Promise<void>;
   sendToRM: (id: string) => Promise<void>;
   fetchHistory: (id: string) => Promise<void>;
   addNote: (id: string, data: NoteData) => Promise<void>;
@@ -129,8 +131,31 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       await requestService.createCounterOffer(id, data);
       const updated = await requestService.getRequest(id);
       set({ currentRequest: updated, isLoading: false });
-    } catch {
+    } catch (err) {
       set({ error: 'Failed to send counter offer', isLoading: false });
+      throw err;
+    }
+  },
+
+  acceptCounterOffer: async (id, offerId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await requestService.acceptCounterOffer(id, offerId);
+      set({ currentRequest: updated, isLoading: false });
+    } catch (err) {
+      set({ error: 'Failed to accept counter offer', isLoading: false });
+      throw err;
+    }
+  },
+
+  rejectCounterOffer: async (id, offerId, reason) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await requestService.rejectCounterOffer(id, offerId, reason);
+      set({ currentRequest: updated, isLoading: false });
+    } catch (err) {
+      set({ error: 'Failed to reject counter offer', isLoading: false });
+      throw err;
     }
   },
 

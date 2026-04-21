@@ -127,6 +127,17 @@ export const requestService = {
     return data;
   },
 
+  async acceptCounterOffer(id: string, offerId: string): Promise<RequestDetail> {
+    await api.post(`/requests/${id}/counter/${offerId}/accept`);
+    return requestService.getRequest(id);
+  },
+
+  async rejectCounterOffer(id: string, offerId: string, reason?: string): Promise<RequestDetail> {
+    const body = reason ? { reason } : {};
+    await api.post(`/requests/${id}/counter/${offerId}/reject`, body);
+    return requestService.getRequest(id);
+  },
+
   async sendToRM(id: string): Promise<RequestDetail> {
     await api.post(`/sales/requests/${id}/send-to-rm`);
     return requestService.getRequest(id);

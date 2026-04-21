@@ -86,6 +86,7 @@ export interface RequestDetail {
   created_at: string;
   updated_at: string;
   attachments: Attachment[];
+  counter_offers?: CounterOffer[];
 }
 
 export interface Attachment {
@@ -121,12 +122,17 @@ export interface HistoryEvent {
   created_at: string;
 }
 
+export type CounterOfferStatus = 'pending' | 'accepted' | 'rejected';
+
 export interface CounterOffer {
   id: string;
+  request_id: string;
   original_price: number;
   counter_price: number;
   message: string | null;
-  status: string;
+  created_by: string;
+  creator_name: string | null;
+  status: CounterOfferStatus;
   created_at: string;
 }
 
@@ -262,6 +268,8 @@ export type NotificationType =
   | 'REQUEST_APPROVED'
   | 'REQUEST_REJECTED'
   | 'COUNTER_OFFERED'
+  | 'COUNTER_ACCEPTED'
+  | 'COUNTER_REJECTED'
   | 'SENT_TO_RM'
   | 'EMAIL_RECEIVED'
   | 'NEW_MESSAGE'

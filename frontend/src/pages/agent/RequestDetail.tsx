@@ -12,6 +12,7 @@ import RequestTagsEditor from '../../components/RequestTagsEditor';
 import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
+import CounterOfferPanel from '../../components/CounterOfferPanel';
 
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +47,10 @@ export default function RequestDetail() {
   }
 
   const req = currentRequest;
+  const pendingCounterOffer =
+    req.status === 'counter_offered'
+      ? (req.counter_offers ?? []).find((o) => o.status === 'pending') ?? null
+      : null;
 
   return (
     <div className="space-y-5">
@@ -133,6 +138,10 @@ export default function RequestDetail() {
 
         {/* Right Column (demo: AI assistant + notes) */}
         <div className="space-y-5">
+          {pendingCounterOffer && id && (
+            <CounterOfferPanel requestId={id} offer={pendingCounterOffer} />
+          )}
+
           <AiPricingAssistant
             price={Number(req.price)}
             priority={req.priority}

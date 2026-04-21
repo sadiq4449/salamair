@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.models.counter_offer import CounterOffer
 from app.models.notification import Notification
 from app.models.notification_preference import NotificationPreference
 from app.models.request import Request
@@ -18,6 +19,8 @@ NOTIFICATION_TYPES = {
     "REQUEST_APPROVED",
     "REQUEST_REJECTED",
     "COUNTER_OFFERED",
+    "COUNTER_ACCEPTED",
+    "COUNTER_REJECTED",
     "SENT_TO_RM",
     "EMAIL_RECEIVED",
     "NEW_MESSAGE",
@@ -296,6 +299,77 @@ def notify_counter_offered(db: Session, req: Request, counter_price: float) -> l
     )
     db.commit()
     return [n] if n else []
+
+
+def _counter_response_recipients(
+    db: Session,
+    req: Request,
+    offer: CounterOffer,
+) -> list[uuid.UUID]:
+    """The sales user who made the offer, plus the assignee if different."""
+    ids: list[uuid.UUID] = []
+    seen: set[uuid.UUID] = set()
+    if offer.created_by and offer.created_by not in seen:
+        ids.append(offer.created_by)
+        seen.add(offer.created_by)
+    if req.assigned_to and req.assigned_to not in seen:
+        ids.append(req.assigned_to)
+        seen.add(req.assigned_to)
+    return ids
+
+
+def notify_counter_accepted(
+    db: Session,
+    req: Request,
+    offer: CounterOffer,
+) -> list[Notification]:
+    notifications: list[Notification] = []
+    title = "Counter Offer Accepted"
+    message = (
+        f"Agent accepted the counter offer of {float(offer.counter_price)} on "
+        f"{req.request_code} ({req.route})"
+    )
+    for user_id in _counter_response_recipients(db, req, offer):
+        n = create_notification(
+            db, user_id,
+            "COUNTER_ACCEPTED",
+            title,
+            message,
+            request_id=req.id,
+            request_code=req.request_code,
+        )
+        if n:
+            notifications.append(n)
+    db.commit()
+    return notifications
+
+
+def notify_counter_rejected(
+    db: Session,
+    req: Request,
+    offer: CounterOffer,
+    reason: str | None = None,
+) -> list[Notification]:
+    notifications: list[Notification] = []
+    title = "Counter Offer Rejected"
+    base = (
+        f"Agent rejected the counter offer of {float(offer.counter_price)} on "
+        f"{req.request_code} ({req.route})"
+    )
+    message = f"{base}: {reason}" if reason else base
+    for user_id in _counter_response_recipients(db, req, offer):
+        n = create_notification(
+            db, user_id,
+            "COUNTER_REJECTED",
+            title,
+            message,
+            request_id=req.id,
+            request_code=req.request_code,
+        )
+        if n:
+            notifications.append(n)
+    db.commit()
+    return notifications
 
 
 def notify_email_received(db: Session, req: Request) -> list[Notification]:

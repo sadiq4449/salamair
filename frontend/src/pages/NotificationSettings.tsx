@@ -10,6 +10,8 @@ const ALL_TYPES: { key: NotificationType; label: string; description: string }[]
   { key: 'REQUEST_APPROVED', label: 'Request Approved', description: 'When your request is approved' },
   { key: 'REQUEST_REJECTED', label: 'Request Rejected', description: 'When your request is rejected' },
   { key: 'COUNTER_OFFERED', label: 'Counter Offers', description: 'When a counter offer is made' },
+  { key: 'COUNTER_ACCEPTED', label: 'Counter Accepted', description: 'When an agent accepts a counter offer' },
+  { key: 'COUNTER_REJECTED', label: 'Counter Rejected', description: 'When an agent rejects a counter offer' },
   { key: 'SENT_TO_RM', label: 'Sent to RM', description: 'When a request is forwarded to Revenue Management' },
   { key: 'EMAIL_RECEIVED', label: 'Email Received', description: 'When RM replies via email' },
   { key: 'NEW_MESSAGE', label: 'New Messages', description: 'When a new chat message is received' },

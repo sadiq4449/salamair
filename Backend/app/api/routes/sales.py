@@ -40,7 +40,11 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "submitted": {"under_review"},
     "under_review": {"rm_pending", "approved", "rejected", "counter_offered"},
     "rm_pending": {"approved", "rejected"},
-    "counter_offered": {"submitted"},
+    # `counter_offered` is primarily resolved via the agent-facing
+    # `/requests/{id}/counter/{offer_id}/{accept|reject}` endpoints.
+    # The admin/sales status endpoint keeps these two transitions as a
+    # safety net (e.g. admin force-finishing a stalled negotiation).
+    "counter_offered": {"submitted", "approved"},
 }
 
 ALLOWED_FORCE_STATUSES = frozenset(VALID_TRANSITIONS.keys()) | frozenset(
@@ -240,6 +244,21 @@ def create_counter_offer(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "INVALID_STATE", "message": "Can only counter-offer requests that are under review"}},
+        )
+    if abs(float(payload.counter_price) - float(req.price)) < 0.01:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "SAME_PRICE", "message": "Counter price must differ from the current request price"}},
+        )
+    existing_pending = (
+        db.query(CounterOffer)
+        .filter(CounterOffer.request_id == req.id, CounterOffer.status == "pending")
+        .first()
+    )
+    if existing_pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "OFFER_EXISTS", "message": "A pending counter offer already exists for this request"}},
         )
 
     offer = CounterOffer(

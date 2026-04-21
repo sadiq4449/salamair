@@ -7,14 +7,19 @@ from fastapi.responses import Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import selectinload
+
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.attachment import Attachment
+from app.models.counter_offer import CounterOffer
 from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.tag import Tag
 from app.models.user import User
 from app.schemas.advanced_schema import RequestTagsBody, TagBrief
 from app.schemas.attachment import AttachmentRead
+from app.schemas.counter_offer_schema import CounterOfferRead
 from app.schemas.request import (
     RequestCreate,
     RequestListItem,
@@ -27,6 +32,8 @@ from app.services.request_codes import generate_request_code
 from app.services.upload_limits import get_max_upload_bytes
 from app.services.notification_service import (
     compute_sla,
+    notify_counter_accepted,
+    notify_counter_rejected,
     notify_request_created,
     format_notification,
 )
@@ -301,7 +308,12 @@ def get_request(
 ):
     req = (
         db.query(Request)
-        .options(joinedload(Request.agent), joinedload(Request.attachments), joinedload(Request.tags))
+        .options(
+            joinedload(Request.agent),
+            joinedload(Request.attachments),
+            joinedload(Request.tags),
+            selectinload(Request.counter_offers).joinedload(CounterOffer.creator),
+        )
         .filter(Request.id == request_id)
         .first()
     )
@@ -315,7 +327,30 @@ def get_request(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own requests"}},
         )
-    return req
+
+    counter_offers_sorted = sorted(
+        req.counter_offers or [],
+        key=lambda o: o.created_at,
+        reverse=True,
+    )
+    offers_out = [
+        CounterOfferRead(
+            id=o.id,
+            request_id=o.request_id,
+            original_price=float(o.original_price),
+            counter_price=float(o.counter_price),
+            message=o.message,
+            created_by=o.created_by,
+            creator_name=o.creator.name if o.creator else None,
+            status=o.status,
+            created_at=o.created_at,
+        )
+        for o in counter_offers_sorted
+    ]
+
+    out = RequestRead.model_validate(req)
+    out.counter_offers = offers_out
+    return out
 
 
 @router.put("/{request_id}", response_model=RequestRead)
@@ -475,3 +510,165 @@ def list_attachments(
             detail={"error": {"code": "FORBIDDEN", "message": "You can only view your own request attachments"}},
         )
     return db.query(Attachment).filter(Attachment.request_id == request_id).all()
+
+
+class CounterOfferRejectBody(BaseModel):
+    reason: str | None = Field(None, max_length=500)
+
+
+def _load_counter_offer_for_response(
+    db: Session,
+    request_id: uuid.UUID,
+    offer_id: uuid.UUID,
+    current_user: User,
+) -> tuple[Request, CounterOffer]:
+    """Shared guard for the agent accept/reject endpoints."""
+    req = db.query(Request).filter(Request.id == request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if current_user.role == "agent" and req.agent_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "You can only respond to counter offers on your own requests"}},
+        )
+    if req.status != "counter_offered":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_STATE", "message": f"Request is not awaiting a counter-offer response (status='{req.status}')"}},
+        )
+
+    offer = (
+        db.query(CounterOffer)
+        .filter(CounterOffer.id == offer_id, CounterOffer.request_id == request_id)
+        .first()
+    )
+    if not offer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Counter offer not found for this request"}},
+        )
+    if offer.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "OFFER_RESOLVED", "message": f"Counter offer is already '{offer.status}'"}},
+        )
+    return req, offer
+
+
+@router.post(
+    "/{request_id}/counter/{offer_id}/accept",
+    response_model=CounterOfferRead,
+)
+def accept_counter_offer(
+    request_id: uuid.UUID,
+    offer_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent", "admin")),
+):
+    req, offer = _load_counter_offer_for_response(db, request_id, offer_id, current_user)
+
+    offer.status = "accepted"
+    old_status = req.status
+    req.status = "approved"
+
+    _log_history(
+        db,
+        req.id,
+        "counter_accepted",
+        current_user.id,
+        from_status=old_status,
+        to_status="approved",
+        details=f"Agent accepted counter offer of {float(offer.counter_price)} (original {float(offer.original_price)})",
+    )
+    try:
+        sync_sla_for_request(db, req)
+    except Exception as e:
+        logger.warning("SLA sync on counter_accepted failed: %s", e)
+    db.commit()
+    db.refresh(offer)
+
+    try:
+        notifications = notify_counter_accepted(db, req, offer)
+        for n in notifications:
+            manager.push_to_user_threadsafe(str(n.user_id), {
+                "event": "notification",
+                "data": format_notification(n),
+            })
+    except Exception as e:
+        logger.warning("Failed to send counter-accepted notifications: %s", e)
+
+    return CounterOfferRead(
+        id=offer.id,
+        request_id=offer.request_id,
+        original_price=float(offer.original_price),
+        counter_price=float(offer.counter_price),
+        message=offer.message,
+        created_by=offer.created_by,
+        creator_name=offer.creator.name if offer.creator else None,
+        status=offer.status,
+        created_at=offer.created_at,
+    )
+
+
+@router.post(
+    "/{request_id}/counter/{offer_id}/reject",
+    response_model=CounterOfferRead,
+)
+def reject_counter_offer(
+    request_id: uuid.UUID,
+    offer_id: uuid.UUID,
+    payload: CounterOfferRejectBody | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent", "admin")),
+):
+    req, offer = _load_counter_offer_for_response(db, request_id, offer_id, current_user)
+
+    reason = (payload.reason if payload else None) or None
+
+    offer.status = "rejected"
+    old_status = req.status
+    req.status = "submitted"
+
+    detail_parts = [f"Agent rejected counter offer of {float(offer.counter_price)}"]
+    if reason:
+        detail_parts.append(f"reason: {reason}")
+    _log_history(
+        db,
+        req.id,
+        "counter_rejected",
+        current_user.id,
+        from_status=old_status,
+        to_status="submitted",
+        details=" — ".join(detail_parts),
+    )
+    try:
+        sync_sla_for_request(db, req)
+    except Exception as e:
+        logger.warning("SLA sync on counter_rejected failed: %s", e)
+    db.commit()
+    db.refresh(offer)
+
+    try:
+        notifications = notify_counter_rejected(db, req, offer, reason)
+        for n in notifications:
+            manager.push_to_user_threadsafe(str(n.user_id), {
+                "event": "notification",
+                "data": format_notification(n),
+            })
+    except Exception as e:
+        logger.warning("Failed to send counter-rejected notifications: %s", e)
+
+    return CounterOfferRead(
+        id=offer.id,
+        request_id=offer.request_id,
+        original_price=float(offer.original_price),
+        counter_price=float(offer.counter_price),
+        message=offer.message,
+        created_by=offer.created_by,
+        creator_name=offer.creator.name if offer.creator else None,
+        status=offer.status,
+        created_at=offer.created_at,
+    )
