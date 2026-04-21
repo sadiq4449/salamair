@@ -3,6 +3,7 @@ import { X, Upload } from 'lucide-react';
 import Button from './ui/Button';
 import { useAuth } from '../hooks/useAuth';
 import { useRequestStore } from '../store/requestStore';
+import { useToastStore } from '../store/toastStore';
 import { requestService } from '../services/requestService';
 import { listAdminAgents } from '../services/adminService';
 
@@ -88,9 +89,23 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
       });
 
       if (files.length > 0) {
-        await Promise.all(
-          files.map((file) => requestService.uploadAttachment(created.id, file))
+        const { addToast } = useToastStore.getState();
+        const results = await Promise.allSettled(
+          files.map((file) => requestService.uploadAttachment(created.id, file)),
         );
+        const failures = results
+          .map((r, i) => ({ r, name: files[i]?.name ?? 'file' }))
+          .filter((x) => x.r.status === 'rejected');
+        if (failures.length > 0) {
+          addToast(
+            'error',
+            `Failed to upload ${failures.length} of ${files.length} attachment${files.length === 1 ? '' : 's'}: ${failures
+              .map((f) => f.name)
+              .join(', ')}`,
+          );
+        } else {
+          addToast('success', `Uploaded ${files.length} attachment${files.length === 1 ? '' : 's'}`);
+        }
       }
 
       onCreated?.();

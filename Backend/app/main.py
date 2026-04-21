@@ -156,8 +156,8 @@ def health_check():
     return {"status": "healthy", "service": "Salam Air SmartDeal API"}
 
 
-if UPLOAD_DIR.exists():
-    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 if STATIC_DIR.exists():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")

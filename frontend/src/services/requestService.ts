@@ -80,8 +80,9 @@ export const requestService = {
   async uploadAttachment(id: string, file: File): Promise<Attachment> {
     const formData = new FormData();
     formData.append('file', file);
+    // Do NOT set Content-Type manually; the browser must set the multipart boundary.
     const { data } = await api.post<Attachment>(`/requests/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
     return data;
   },

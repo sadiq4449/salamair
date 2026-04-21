@@ -218,6 +218,17 @@ def list_requests(
         .all()
     )
 
+    request_ids = [r.id for r in requests]
+    counts_by_request: dict[uuid.UUID, int] = {}
+    if request_ids:
+        rows = (
+            db.query(Attachment.request_id, func.count(Attachment.id))
+            .filter(Attachment.request_id.in_(request_ids))
+            .group_by(Attachment.request_id)
+            .all()
+        )
+        counts_by_request = {rid: int(c) for rid, c in rows}
+
     items = []
     for r in requests:
         items.append(
@@ -233,6 +244,7 @@ def list_requests(
                 priority=r.priority,
                 travel_date=r.travel_date,
                 tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
+                attachments_count=counts_by_request.get(r.id, 0),
                 created_at=r.created_at,
             )
         )

@@ -3,11 +3,13 @@ import { Loader2, ArrowDown, MessageSquare, Wifi, WifiOff } from 'lucide-react';
 import { useMessageStore } from '../../store/messageStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuth } from '../../hooks/useAuth';
+import { useToastStore } from '../../store/toastStore';
+import { messageService } from '../../services/messageService';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import OnlineUsers from './OnlineUsers';
-import type { ChatMessage, TypingUser } from '../../types';
+import type { ChatMessage, TypingUser, MessageAttachmentItem } from '../../types';
 
 interface Props {
   requestId: string;
@@ -110,6 +112,51 @@ export default function UnifiedTimeline({ requestId }: Props) {
     [requestId],
   );
 
+  const handleFileSelect = useCallback(
+    async (selected: File[]) => {
+      if (!selected.length) return;
+      const { addToast } = useToastStore.getState();
+      setIsSending(true);
+      try {
+        const { sendMessage } = useMessageStore.getState();
+        // Create a carrier chat message so the attachments have something to hang off.
+        const carrier = await sendMessage(
+          requestId,
+          selected.length === 1 ? `📎 ${selected[0].name}` : `📎 ${selected.length} attachments`,
+        );
+        if (!carrier) {
+          addToast('error', 'Failed to send attachment');
+          return;
+        }
+        const uploaded: MessageAttachmentItem[] = [];
+        for (const file of selected) {
+          try {
+            const att = (await messageService.uploadAttachment(
+              requestId,
+              carrier.id,
+              file,
+            )) as unknown as MessageAttachmentItem;
+            uploaded.push(att);
+          } catch {
+            addToast('error', `Failed to upload ${file.name}`);
+          }
+        }
+        if (uploaded.length > 0) {
+          // Patch the carrier message in local state so the bubble renders the files immediately.
+          useMessageStore.setState((state) => ({
+            messages: state.messages.map((m) =>
+              m.id === carrier.id ? { ...m, attachments: [...(m.attachments ?? []), ...uploaded] } : m,
+            ),
+          }));
+        }
+      } finally {
+        setIsSending(false);
+        setTimeout(scrollToBottom, 100);
+      }
+    },
+    [requestId],
+  );
+
   const handleTypingInput = useCallback(
     (typing: boolean) => {
       sendTyping(typing);
@@ -191,6 +238,7 @@ export default function UnifiedTimeline({ requestId }: Props) {
       {/* Input */}
       <ChatInput
         onSend={handleSend}
+        onFileSelect={handleFileSelect}
         onTyping={handleTypingInput}
         isSending={isSending}
         disabled={false}

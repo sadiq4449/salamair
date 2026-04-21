@@ -27,9 +27,10 @@ export const messageService = {
   async uploadAttachment(requestId: string, messageId: string, file: File): Promise<Record<string, unknown>> {
     const form = new FormData();
     form.append('file', file);
+    // Do NOT set Content-Type manually; the browser must set the multipart boundary.
     const { data } = await api.post('/messages/attachment', form, {
       params: { request_id: requestId, message_id: messageId },
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
     return data;
   },

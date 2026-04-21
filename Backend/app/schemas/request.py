@@ -75,6 +75,7 @@ class RequestListItem(BaseModel):
     priority: str
     travel_date: date | None = None
     tags: list[TagBrief] = Field(default_factory=list)
+    attachments_count: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

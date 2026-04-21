@@ -18,6 +18,7 @@ from app.services.message_service import (
     mark_messages_read,
 )
 from app.services.request_access import user_can_access_request
+from app.services.upload_limits import get_max_upload_bytes
 
 router = APIRouter()
 

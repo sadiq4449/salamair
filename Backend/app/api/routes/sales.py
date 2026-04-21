@@ -3,9 +3,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, require_role
+from app.models.attachment import Attachment
 from app.models.counter_offer import CounterOffer
 from app.models.request import Request
 from app.models.request_history import RequestHistory
@@ -103,6 +105,17 @@ def sales_queue(
         .all()
     )
 
+    request_ids = [r.id for r in requests]
+    counts_by_request: dict[uuid.UUID, int] = {}
+    if request_ids:
+        rows = (
+            db.query(Attachment.request_id, func.count(Attachment.id))
+            .filter(Attachment.request_id.in_(request_ids))
+            .group_by(Attachment.request_id)
+            .all()
+        )
+        counts_by_request = {rid: int(c) for rid, c in rows}
+
     items = [
         RequestListItem(
             id=r.id,
@@ -116,6 +129,7 @@ def sales_queue(
             priority=r.priority,
             travel_date=r.travel_date,
             tags=[TagBrief.model_validate(t) for t in (r.tags or [])],
+            attachments_count=counts_by_request.get(r.id, 0),
             created_at=r.created_at,
         )
         for r in requests

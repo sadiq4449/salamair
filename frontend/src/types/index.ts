@@ -64,6 +64,7 @@ export interface RequestItem {
   status: RequestStatus;
   priority: Priority;
   tags?: TagBrief[];
+  attachments_count?: number;
   created_at: string;
 }
 

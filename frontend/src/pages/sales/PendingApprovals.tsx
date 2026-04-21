@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Eye, FileText, RotateCcw } from 'lucide-react';
+import { Search, Eye, FileText, RotateCcw, Paperclip } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityDot from '../../components/ui/PriorityDot';
@@ -129,7 +129,20 @@ export default function PendingApprovals() {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {requests.map((req) => (
                   <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
+                    <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">
+                      <span className="inline-flex items-center gap-1.5">
+                        {req.request_code}
+                        {(req.attachments_count ?? 0) > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 dark:text-teal-400"
+                            title={`${req.attachments_count} attachment${req.attachments_count === 1 ? '' : 's'}`}
+                          >
+                            <Paperclip size={12} />
+                            {req.attachments_count}
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.agent_name ?? '—'}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
                     <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
