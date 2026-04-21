@@ -291,15 +291,10 @@ def send_email_to_rm(
 def get_email_thread(
     request_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("sales", "admin", "agent")),
+    current_user: User = Depends(require_role("sales", "admin")),
 ):
+    """Sales ↔ RM email thread. Agents use portal chat only; they must not see RM correspondence."""
     req = _get_request_or_404(db, request_id)
-
-    if current_user.role == "agent" and req.agent_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
-        )
 
     thread = (
         db.query(EmailThread)

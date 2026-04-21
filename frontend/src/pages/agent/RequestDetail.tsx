@@ -1,16 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Paperclip, Loader2, Mail, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Paperclip, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import AdminRequestControls from '../../components/admin/AdminRequestControls';
-import { useEmailStore } from '../../store/emailStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
 import RequestTagsEditor from '../../components/RequestTagsEditor';
-import EmailThreadView from '../../components/EmailThreadView';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
@@ -27,16 +25,14 @@ export default function RequestDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentRequest, isDetailLoading, fetchRequest, fetchHistory, clearCurrent } = useRequestStore();
-  const { clearThread } = useEmailStore();
-  const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
 
   useEffect(() => {
     if (id) {
       fetchRequest(id);
       fetchHistory(id);
     }
-    return () => { clearCurrent(); clearThread(); };
-  }, [id, fetchRequest, fetchHistory, clearCurrent, clearThread]);
+    return () => { clearCurrent(); };
+  }, [id, fetchRequest, fetchHistory, clearCurrent]);
 
   // Refetch when returning to the tab (agent may have missed a counter-offer while away).
   useEffect(() => {
@@ -130,40 +126,16 @@ export default function RequestDetail() {
             </div>
           </div>
 
-          {/* Communication Card */}
+          {/* Communication: agent ↔ sales portal chat only (Sales ↔ RM email is sales/admin only). */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
-              <div className="flex border-b-2 border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => setActiveTab('agent-sales')}
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
-                    activeTab === 'agent-sales'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  Agent ↔ Sales
-                </button>
-                <button
-                  onClick={() => setActiveTab('sales-rm')}
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-2 ${
-                    activeTab === 'sales-rm'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  <Mail size={14} />
-                  Sales ↔ RM (Email)
-                </button>
-              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Agent ↔ Sales</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Chat with the sales team in the portal. Revenue Management email is handled internally by sales and is not shown here.
+              </p>
             </div>
             <div className="p-6">
-              {activeTab === 'agent-sales' ? (
-                <UnifiedTimeline requestId={id!} />
-              ) : (
-                <EmailThreadView requestId={id!} />
-              )}
+              <UnifiedTimeline requestId={id!} />
             </div>
           </div>
         </div>
