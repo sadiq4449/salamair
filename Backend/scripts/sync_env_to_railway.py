@@ -39,6 +39,12 @@ SYNC_KEYS = frozenset(
         "EMAIL_POLL_SECRET",
         "GROQ_API_KEY",
         "GROQ_MODEL",
+        # Gmail API (sales ↔ agent thread); same keys as local .env
+        "GOOGLE_OAUTH_CLIENT_ID",
+        "GOOGLE_OAUTH_CLIENT_SECRET",
+        "GOOGLE_OAUTH_REDIRECT_URI",
+        "GOOGLE_OAUTH_SUCCESS_REDIRECT",
+        "GMAIL_AGENT_THREAD_REFRESH_TOKEN",
     }
 )
 
@@ -87,6 +93,15 @@ def main() -> int:
             return r.returncode
         print(f"OK {key}")
     print(f"Done: {len(to_set)} variable(s) set on Railway (--skip-deploys). Redeploy once from Railway dashboard.")
+    if any(
+        k in ("GOOGLE_OAUTH_REDIRECT_URI", "GOOGLE_OAUTH_SUCCESS_REDIRECT")
+        for k, _ in to_set
+    ):
+        print(
+            "Hint: If GOOGLE_OAUTH_* still point to localhost, update them on Railway to your live API/SPA URLs "
+            "and add the same redirect URI in Google Cloud → OAuth client.",
+            file=sys.stderr,
+        )
     return 0
 
 
