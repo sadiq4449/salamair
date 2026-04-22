@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw, Bell } from 'lucide-react';
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
@@ -16,6 +16,8 @@ interface Props {
   canSimulate?: boolean;
   requestStatus?: RequestStatus;
   autoSyncInbox?: boolean;
+  /** Shown in default email subject (Sales ↔ Agent tab). */
+  requestRoute?: string;
 }
 
 function formatTime(iso: string) {
@@ -81,10 +83,20 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
         {deliveryFailed && (
           <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
             <strong className="font-semibold">Not delivered.</strong> The portal saved this draft, but the mail server did not accept the message.
-            On the server, set valid <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
-            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_PASSWORD</code>, and{' '}
-            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password). Do not set{' '}
-            <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=false</code> unless you intend to disable sending.
+            {channel === 'rm' ? (
+              <>
+                On the server, set valid <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_PASSWORD</code>, and{' '}
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password). Do not set{' '}
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=false</code> unless you intend to disable sending.
+              </>
+            ) : (
+              <>
+                For the Sales ↔ Agent tab, prefer the <strong>Gmail API</strong>: set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> (and
+                client id/secret) on the server, or use <strong>Connect Gmail</strong>. Outbound tries SMTP/Resend only if Gmail is not
+                configured for this thread and may be blocked on Railway.
+              </>
+            )}
           </div>
         )}
         {deliveryOk && (
@@ -162,6 +174,7 @@ export default function EmailThreadView({
   canSimulate = false,
   requestStatus,
   autoSyncInbox = true,
+  requestRoute,
 }: Props) {
   const { thread, isLoading, isSending, fetchThread, reply, sendToAgent, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
@@ -169,7 +182,10 @@ export default function EmailThreadView({
   const isAgentViewer = isAgent;
   const canPollInbox = isSales || isAdmin;
   const [replyText, setReplyText] = useState('');
+  const [replySubject, setReplySubject] = useState('');
   const [firstToAgentText, setFirstToAgentText] = useState('');
+  const [firstToAgentSubject, setFirstToAgentSubject] = useState('');
+  const lastThreadIdForReply = useRef<string | null>(null);
   const [gmailStatus, setGmailStatus] = useState<{
     connected: boolean;
     configured: boolean;
@@ -212,6 +228,40 @@ export default function EmailThreadView({
       cancelled = true;
     };
   }, [channel, canReply, requestId]);
+
+  const firstSubjSeedKey = useRef<string>('');
+
+  useEffect(() => {
+    setFirstToAgentText('');
+    setFirstToAgentSubject('');
+    setReplyText('');
+    setReplySubject('');
+    lastThreadIdForReply.current = null;
+    firstSubjSeedKey.current = '';
+  }, [requestId]);
+
+  useEffect(() => {
+    if (channel !== 'agent_sales' || !thread?.request_code) return;
+    const stub =
+      !thread.thread_id ||
+      thread.thread_id === EMPTY_THREAD_ID ||
+      thread.status === 'empty';
+    if (!stub) return;
+    const key = `${requestId}:stub:${thread.request_code}`;
+    if (firstSubjSeedKey.current === key) return;
+    firstSubjSeedKey.current = key;
+    const r = (requestRoute || '…').trim();
+    setFirstToAgentSubject(`[${thread.request_code}] ${r} — Message from sales`);
+  }, [channel, thread?.request_code, thread?.thread_id, thread?.status, requestRoute, requestId]);
+
+  useEffect(() => {
+    if (channel !== 'agent_sales' || !thread?.thread_id || thread.thread_id === EMPTY_THREAD_ID) return;
+    if (thread.status === 'empty') return;
+    if (lastThreadIdForReply.current !== thread.thread_id) {
+      lastThreadIdForReply.current = thread.thread_id;
+      setReplySubject(`Re: ${thread.subject || ''}`.trim());
+    }
+  }, [channel, thread?.thread_id, thread?.subject, thread?.status, requestId]);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -270,7 +320,16 @@ export default function EmailThreadView({
   async function handleReply() {
     if (!replyText.trim() || !thread || isStubThread) return;
     try {
-      await reply({ request_id: requestId, thread_id: thread.thread_id, message: replyText.trim() });
+      const base = {
+        request_id: requestId,
+        thread_id: thread.thread_id,
+        message: replyText.trim(),
+      };
+      if (channel === 'agent_sales') {
+        await reply({ ...base, subject: replySubject.trim() || undefined });
+      } else {
+        await reply(base);
+      }
       setReplyText('');
     } catch {
       /* store */
@@ -280,7 +339,11 @@ export default function EmailThreadView({
   async function handleFirstToAgent() {
     if (!firstToAgentText.trim() || channel !== 'agent_sales') return;
     try {
-      await sendToAgent({ request_id: requestId, message: firstToAgentText.trim() });
+      await sendToAgent({
+        request_id: requestId,
+        message: firstToAgentText.trim(),
+        subject: firstToAgentSubject.trim() || undefined,
+      });
       setFirstToAgentText('');
       addToast('success', 'Email sent to the agent’s mailbox.');
     } catch {
@@ -455,8 +518,18 @@ export default function EmailThreadView({
         <div className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
           <Mail className="shrink-0 mt-0.5" size={14} />
           <span>
-            At least one outgoing message was <strong>not</strong> accepted by the mail server. Configure production SMTP (e.g. Railway) or
-            resend after fixing credentials.
+            {channel === 'agent_sales' && gmailStatus && !gmailStatus.agentThreadUsesGmail ? (
+              <>
+                Outbound on this tab failed: Gmail API is <strong>not</strong> active yet. Set <code className="font-mono">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> (and Google client
+                id/secret) on the server, or use <strong>Connect Gmail</strong>. Until then, the app may try SMTP, which is often blocked on
+                production hosts.
+              </>
+            ) : (
+              <>
+                At least one outgoing message was <strong>not</strong> accepted by the mail server. Configure production SMTP (e.g. Railway) or
+                Resend after fixing credentials.
+              </>
+            )}
           </span>
         </div>
       )}
@@ -491,18 +564,30 @@ export default function EmailThreadView({
       </div>
 
       {channel === 'agent_sales' && canReply && (isSales || isAdmin) && isStubThread && (
-        <div className="mb-6 space-y-2 rounded-lg border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Start the email thread to the agent</p>
+        <div className="mb-6 space-y-3 rounded-lg border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Compose — email to the agent</p>
           <p className="text-xs text-gray-600 dark:text-gray-400">
-            Sends to the address on the agent’s user profile. They will also see <strong>Portal chat</strong> for instant messages.
+            Sends to the address on the agent’s profile. You can change the <strong>Subject</strong> and body below. They also see <strong>Portal chat</strong>.
           </p>
-          <textarea
-            value={firstToAgentText}
-            onChange={(e) => setFirstToAgentText(e.target.value)}
-            rows={3}
-            placeholder="Write your first email to the agent…"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-          />
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">Subject</label>
+            <input
+              type="text"
+              value={firstToAgentSubject}
+              onChange={(e) => setFirstToAgentSubject(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">Message</label>
+            <textarea
+              value={firstToAgentText}
+              onChange={(e) => setFirstToAgentText(e.target.value)}
+              rows={5}
+              placeholder="Write your first email to the agent…"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            />
+          </div>
           <button
             type="button"
             onClick={handleFirstToAgent}
@@ -535,24 +620,60 @@ export default function EmailThreadView({
 
       {canReply && hasThreadRecord && hasMessages && (
         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder={channel === 'rm' ? 'Type a reply to RM…' : 'Reply in this email thread…'}
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleReply()}
-              className="flex-1 px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
-            />
-            <button
-              type="button"
-              onClick={handleReply}
-              disabled={isSending || !replyText.trim()}
-              className="p-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            </button>
-          </div>
+          {channel === 'agent_sales' ? (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Compose reply (sales or agent)</p>
+              <div className="space-y-1.5">
+                <label className="block text-xs text-gray-500 dark:text-gray-400">Subject</label>
+                <input
+                  type="text"
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  className="w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs text-gray-500 dark:text-gray-400">Message</label>
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={4}
+                  placeholder="Type your reply…"
+                  className="w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 outline-none resize-y min-h-[100px]"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleReply}
+                  disabled={isSending || !replyText.trim()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  Send
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Type a reply to RM…"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+                className="flex-1 px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
+              />
+              <button
+                type="button"
+                onClick={handleReply}
+                disabled={isSending || !replyText.trim()}
+                className="p-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              </button>
+            </div>
+          )}
           <div className="mt-2 flex flex-col gap-2">
             {canSimulate && channel === 'rm' && (
               <button

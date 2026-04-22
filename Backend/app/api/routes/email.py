@@ -358,7 +358,11 @@ def send_email_to_agent(
     if not req.assigned_to:
         req.assigned_to = current_user.id
         db.flush()
-    subject = f"[{req.request_code}] {req.route} — Message from sales"
+    custom_subj = (payload.subject or "").strip()
+    if custom_subj:
+        subject = custom_subj[:500]
+    else:
+        subject = f"[{req.request_code}] {req.route} — Message from sales"
     contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
     plain_body = build_thread_reply_plain(
         req.request_code, req.route, payload.message, current_user.name, contact_email,
@@ -570,7 +574,10 @@ def reply_email(
             detail={"error": {"code": "FORBIDDEN", "message": "Agents cannot post on the RM email thread."}},
         )
 
-    subject = f"Re: {thread.subject}"
+    if ch == THREAD_CHANNEL_AGENT_SALES and (payload.subject or "").strip():
+        subject = (payload.subject or "").strip()[:500]
+    else:
+        subject = f"Re: {thread.subject}"
     contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
     plain_body = build_thread_reply_plain(
         req.request_code, req.route, payload.message, current_user.name, contact_email,

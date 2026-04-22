@@ -193,6 +193,7 @@ export default function RequestDetail() {
                   key="agent-smtp"
                   requestId={id!}
                   channel="agent_sales"
+                  requestRoute={req.route}
                   requestStatus={req.status}
                   canReply
                   canSimulate={false}

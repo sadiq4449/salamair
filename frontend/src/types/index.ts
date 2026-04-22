@@ -188,12 +188,16 @@ export interface SendToAgentEmailPayload {
   request_id: string;
   message: string;
   include_attachments?: boolean;
+  /** If omitted, the API uses [REQ-…] route — Message from sales */
+  subject?: string;
 }
 
 export interface ReplyEmailPayload {
   request_id: string;
   thread_id: string;
   message: string;
+  /** agent_sales only; if omitted, API uses Re: {thread subject} */
+  subject?: string;
 }
 
 export interface SendEmailResponse {

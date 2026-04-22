@@ -16,12 +16,16 @@ class SendToAgentEmailRequest(BaseModel):
     request_id: UUID
     message: str = Field(min_length=1, max_length=20_000)
     include_attachments: bool = False
+    # If empty, the API uses a default subject with request code and route.
+    subject: str | None = Field(None, max_length=500)
 
 
 class ReplyEmailRequest(BaseModel):
     request_id: UUID
     thread_id: UUID
     message: str
+    # Only for thread_channel agent_sales. Ignored for RM (always "Re: …").
+    subject: str | None = None
 
 
 class SimulateReplyRequest(BaseModel):
