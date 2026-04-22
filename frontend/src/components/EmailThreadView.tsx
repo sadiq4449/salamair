@@ -82,20 +82,25 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
         </div>
         {deliveryFailed && (
           <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-            <strong className="font-semibold">Not delivered.</strong> The portal saved this draft, but the mail server did not accept the message.
             {channel === 'rm' ? (
-              <>
-                On the server, set valid <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
+              <p>
+                <strong className="font-semibold">Not delivered.</strong> The portal kept a copy, but the message was not accepted. On the
+                server, set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
                 <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_PASSWORD</code>, and{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password). Do not set{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED=false</code> unless you intend to disable sending.
-              </>
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password), and ensure{' '}
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED</code> is not off unless you mean to disable
+                sending.
+              </p>
             ) : (
-              <>
-                For the Sales ↔ Agent tab, prefer the <strong>Gmail API</strong>: set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> (and
-                client id/secret) on the server, or use <strong>Connect Gmail</strong>. Outbound tries SMTP/Resend only if Gmail is not
-                configured for this thread and may be blocked on Railway.
-              </>
+              <p>
+                <strong className="font-semibold">Not delivered.</strong> The portal kept a copy, but nothing was sent. This tab is meant to use{' '}
+                <strong className="font-semibold">Gmail (API)</strong>. Set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> and
+                the same <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GOOGLE_OAUTH_CLIENT_ID</code> and{' '}
+                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GOOGLE_OAUTH_CLIENT_SECRET</code> on the server, or use{' '}
+                <strong>Connect Gmail</strong>{' '}
+                here. If Gmail is not set up, the app falls back to SMTP/Resend, which many hosts (including some Railway plans) do not
+                allow for outbound mail.
+              </p>
             )}
           </div>
         )}
