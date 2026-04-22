@@ -241,6 +241,7 @@ def admin_update_user(
 
     old_role = target.role
     role_changed = False
+    password_changed = False
     if payload.name is not None:
         target.name = payload.name
     if payload.email is not None:
@@ -253,6 +254,9 @@ def admin_update_user(
         target.email = str(payload.email)
     if payload.city is not None:
         target.city = payload.city
+    if payload.new_password is not None:
+        target.password = get_password_hash(payload.new_password)
+        password_changed = True
     if payload.role is not None:
         new_role = _ensure_role(payload.role)
         if old_role == "admin" and new_role != "admin" and target.is_active:
@@ -268,13 +272,16 @@ def admin_update_user(
         if old_role == "agent" and new_role != "agent" and target.agent_profile:
             db.delete(target.agent_profile)
 
+    detail_bits = f"Updated user {target.email}"
+    if password_changed:
+        detail_bits += "; login password set by admin"
     log_admin_action(
         db,
         action="role_changed" if role_changed else "user_updated",
         actor_id=actor.id,
         target_type="user",
         target_id=target.id,
-        details=f"Updated user {target.email}",
+        details=detail_bits,
         ip_address=_client_ip(http_request),
         user_agent=http_request.headers.get("user-agent"),
     )

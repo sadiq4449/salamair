@@ -141,6 +141,58 @@ export async function adminListEmailThreads(params: {
   return data;
 }
 
+function _filenameFromContentDisposition(cd: string | undefined, fallback: string): string {
+  if (!cd) return fallback;
+  const star = /filename\*=(?:UTF-8'')?([^;\n]+)/i.exec(cd);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim().replace(/^["']|["']$/g, ''));
+    } catch {
+      /* fall through */
+    }
+  }
+  const q = /filename="([^"]+)"/i.exec(cd);
+  if (q) return q[1];
+  const u = /filename=([^;\s]+)/i.exec(cd);
+  return u ? u[1].replace(/^["']|["']$/g, '') : fallback;
+}
+
+function _triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Admin: download all Sales ↔ RM email threads (ZIP = one .txt per request, or single TXT). */
+export async function adminDownloadAllEmailThreads(format: 'zip' | 'txt' = 'zip'): Promise<void> {
+  const fallback = format === 'zip' ? 'rm-email-threads-all.zip' : 'rm-email-threads-all.txt';
+  const res = await api.get('/admin/email-threads/export', {
+    params: { format },
+    responseType: 'blob',
+  });
+  const name = _filenameFromContentDisposition(
+    res.headers['content-disposition'] as string | undefined,
+    fallback
+  );
+  _triggerBlobDownload(res.data as Blob, name);
+}
+
+/** Admin: download one thread as plain text. */
+export async function adminDownloadEmailThread(threadId: string): Promise<void> {
+  const res = await api.get(`/admin/email-threads/${threadId}/export`, { responseType: 'blob' });
+  const name = _filenameFromContentDisposition(
+    res.headers['content-disposition'] as string | undefined,
+    `thread-${threadId}.txt`
+  );
+  _triggerBlobDownload(res.data as Blob, name);
+}
+
 export async function adminGetEmailThread(threadId: string): Promise<AdminEmailThreadDetailResponse> {
   const { data } = await api.get<AdminEmailThreadDetailResponse>(`/admin/email-threads/${threadId}`);
   return data;

@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import io
+import re
 import uuid
+import zipfile
 from datetime import datetime, timezone
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, status
+from fastapi.responses import Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -33,6 +38,68 @@ from app.services.admin_audit import log_admin_action
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 
 router = APIRouter()
+
+_EXPORT_FILENAME_SAFE = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def _message_plain_for_export(m: EmailMessage) -> str:
+    b = (m.body or "").strip()
+    if b:
+        return b
+    h = (m.html_body or "").strip()
+    if h:
+        return re.sub(r"<[^>]+>", " ", h).replace("&nbsp;", " ")
+    return "(no body)"
+
+
+def _format_one_thread_text(db: Session, t: EmailThread) -> str:
+    req = t.request
+    if req is None:
+        req = db.query(Request).filter(Request.id == t.request_id).first()
+    code = req.request_code if req else "unknown"
+    lines = [
+        "Salam Air SmartDeal — Sales ↔ RM email thread export",
+        "=" * 80,
+        f"Request code:    {code}",
+        f"Route:           {req.route if req else '—'}",
+        f"Request status:  {req.status if req else '—'}",
+        f"Thread subject:  {t.subject}",
+        f"RM email:        {t.rm_email}",
+        f"Thread status:  {t.status}",
+        f"Thread created:  {t.created_at.isoformat() if t.created_at else '—'}",
+        f"Thread updated:  {t.updated_at.isoformat() if t.updated_at else '—'}",
+        "",
+    ]
+    msgs = (
+        db.query(EmailMessage)
+        .options(joinedload(EmailMessage.attachments))
+        .filter(EmailMessage.thread_id == t.id)
+        .order_by(EmailMessage.sent_at.asc(), EmailMessage.created_at.asc())
+        .all()
+    )
+    if not msgs:
+        lines.append("(No messages in this thread.)")
+        return "\n".join(lines) + "\n"
+    for i, m in enumerate(msgs, 1):
+        ts = m.sent_at or m.received_at or m.created_at
+        ts_utc = ts.isoformat() if ts else "—"
+        lines.append("-" * 80)
+        lines.append(f"Message {i}  |  {m.direction}  |  {ts_utc}")
+        lines.append(f"From: {m.from_email}   To: {m.to_email}")
+        lines.append(f"Subject: {m.subject}")
+        lines.append(f"Delivery status: {m.status}")
+        atts = m.attachments or []
+        if atts:
+            lines.append("Attachments: " + ", ".join(a.filename for a in atts))
+        lines.append("")
+        lines.append(_message_plain_for_export(m))
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _safe_zip_entry_name(request_code: str) -> str:
+    s = _EXPORT_FILENAME_SAFE.sub("_", (request_code or "thread").strip())[:80]
+    return s or "thread"
 
 
 def _build_thread_detail(db: Session, thread_id: uuid.UUID) -> AdminEmailThreadDetailResponse:
@@ -161,6 +228,111 @@ def admin_list_email_threads(
             )
         )
     return AdminEmailThreadListResponse(items=items, total=total, page=page, limit=limit)
+
+
+@router.get("/email-threads/export")
+def admin_export_all_email_threads(
+    http_request: FastAPIRequest,
+    format: Literal["zip", "txt"] = Query("zip", description="zip = one .txt per request in an archive; txt = single file"),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    """Download all stored Sales ↔ RM email threads (portal DB). Admin audit logged."""
+    threads = (
+        db.query(EmailThread)
+        .options(joinedload(EmailThread.request))
+        .join(Request, Request.id == EmailThread.request_id)
+        .order_by(Request.request_code.asc())
+        .all()
+    )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    log_admin_action(
+        db,
+        action="email_threads_exported",
+        actor_id=actor.id,
+        target_type="export",
+        target_id=None,
+        details=f"format={format}; thread_count={len(threads)}",
+        ip_address=_client_ip(http_request),
+    )
+    db.commit()
+    if not threads:
+        empty = b"No email threads in the database."
+        if format == "zip":
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("README.txt", empty.decode("utf-8"))
+            buf.seek(0)
+            return Response(
+                content=buf.getvalue(),
+                media_type="application/zip",
+                headers={"Content-Disposition": f'attachment; filename="rm-email-threads-empty-{stamp}.zip"'},
+            )
+        return Response(
+            content=empty,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="rm-email-threads-empty-{stamp}.txt"'},
+        )
+    if format == "txt":
+        parts: list[str] = []
+        for t in threads:
+            parts.append(_format_one_thread_text(db, t))
+            parts.append("\n\n")
+        blob = "\n".join(parts).encode("utf-8")
+        return Response(
+            content=blob,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="rm-email-threads-all-{stamp}.txt"'},
+        )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for t in threads:
+            req = t.request
+            code = _safe_zip_entry_name(req.request_code if req else str(t.id))
+            text = _format_one_thread_text(db, t)
+            zf.writestr(f"{code}_rm_email.txt", text)
+    buf.seek(0)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="rm-email-threads-all-{stamp}.zip"'},
+    )
+
+
+@router.get("/email-threads/{thread_id}/export")
+def admin_export_one_email_thread(
+    thread_id: uuid.UUID,
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    """Download one Sales ↔ RM thread as a plain-text file."""
+    t = (
+        db.query(EmailThread)
+        .options(joinedload(EmailThread.request))
+        .filter(EmailThread.id == thread_id)
+        .first()
+    )
+    if not t:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "Thread not found"}})
+    log_admin_action(
+        db,
+        action="email_thread_exported",
+        actor_id=actor.id,
+        target_type="email_thread",
+        target_id=thread_id,
+        details="single thread text export",
+        ip_address=_client_ip(http_request),
+    )
+    db.commit()
+    code = _safe_zip_entry_name(t.request.request_code if t.request else str(t.id))
+    text = _format_one_thread_text(db, t)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return Response(
+        content=text.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{code}-rm-email-{stamp}.txt"'},
+    )
 
 
 @router.get("/email-threads/{thread_id}", response_model=AdminEmailThreadDetailResponse)

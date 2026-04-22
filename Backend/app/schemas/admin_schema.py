@@ -54,6 +54,12 @@ class AdminUpdateUserRequest(BaseModel):
     email: EmailStr | None = None
     role: str | None = Field(None, description="agent | sales | admin")
     city: str | None = Field(None, max_length=100)
+    new_password: str | None = Field(
+        default=None,
+        min_length=6,
+        max_length=128,
+        description="When set, replaces the user login password. Omit to leave unchanged.",
+    )
 
 
 class AdminUpdateUserResponse(BaseModel):

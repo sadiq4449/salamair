@@ -9,6 +9,7 @@ import {
   Trash2,
   X,
   FileText,
+  Download,
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -24,6 +25,8 @@ import {
   adminListRequestAttachments,
   adminUpdateRequestAttachment,
   adminDeleteRequestAttachment,
+  adminDownloadAllEmailThreads,
+  adminDownloadEmailThread,
 } from '../../services/adminService';
 import type {
   AdminEmailThreadDetailResponse,
@@ -31,6 +34,7 @@ import type {
   AdminRequestAttachmentListItem,
   RequestStatus,
 } from '../../types';
+import { useToastStore } from '../../store/toastStore';
 
 function formatDt(iso: string) {
   try {
@@ -45,7 +49,14 @@ function kb(n: number) {
   return `${(n / 1024).toFixed(1)} KB`;
 }
 
+function apiErr(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: { message?: string } } } };
+  return ax.response?.data?.error?.message ?? 'Request failed';
+}
+
 export default function AdminMailDataPage() {
+  const addToast = useToastStore((s) => s.addToast);
+  const [exportBusy, setExportBusy] = useState(false);
   const [tab, setTab] = useState<'rm_mail' | 'request_files'>('rm_mail');
 
   const [search, setSearch] = useState('');
@@ -226,7 +237,9 @@ export default function AdminMailDataPage() {
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-3xl">
           Browse RM email threads, message bodies, and email attachments, plus request file uploads — in normal form (not raw
-          SQL). Edit or delete rows when you need to correct data.
+          SQL). Edit or delete rows when you need to correct data. Use <strong className="font-medium">Download all</strong>{' '}
+          to export every Sales ↔ RM thread stored in the portal (ZIP with one text file per request, or a single TXT). Binary
+          email attachments are listed by filename only — download files from the thread detail if needed.
         </p>
       </div>
 
@@ -276,6 +289,40 @@ export default function AdminMailDataPage() {
           <RefreshCw size={16} />
           Refresh
         </Button>
+        {tab === 'rm_mail' && (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={exportBusy}
+              onClick={() => {
+                setExportBusy(true);
+                void adminDownloadAllEmailThreads('zip')
+                  .then(() => addToast('success', 'Download started (ZIP)'))
+                  .catch((e) => addToast('error', apiErr(e)))
+                  .finally(() => setExportBusy(false));
+              }}
+            >
+              {exportBusy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              All threads (ZIP)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exportBusy}
+              onClick={() => {
+                setExportBusy(true);
+                void adminDownloadAllEmailThreads('txt')
+                  .then(() => addToast('success', 'Download started (single TXT)'))
+                  .catch((e) => addToast('error', apiErr(e)))
+                  .finally(() => setExportBusy(false));
+              }}
+            >
+              <FileText size={16} />
+              All threads (TXT)
+            </Button>
+          </>
+        )}
       </div>
 
       {tab === 'rm_mail' && (
@@ -489,6 +536,20 @@ export default function AdminMailDataPage() {
               {!detailLoading && detail && (
                 <>
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        if (!detail) return;
+                        void adminDownloadEmailThread(detail.thread_id)
+                          .then(() => addToast('success', 'Thread downloaded'))
+                          .catch((e) => addToast('error', apiErr(e)));
+                      }}
+                    >
+                      <Download size={14} />
+                      Download thread (.txt)
+                    </Button>
                     <Button type="button" variant="secondary" size="sm" onClick={() => setThreadEdit((v) => !v)}>
                       <Pencil size={14} />
                       {threadEdit ? 'Cancel edit' : 'Edit thread'}

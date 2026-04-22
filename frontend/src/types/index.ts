@@ -411,6 +411,8 @@ export interface AdminUpdateUserPayload {
   email?: string;
   role?: UserRole;
   city?: string | null;
+  /** When set, replaces login password (min 6 chars). Omit to leave unchanged. */
+  new_password?: string;
 }
 
 export interface AdminUpdateUserResponse {

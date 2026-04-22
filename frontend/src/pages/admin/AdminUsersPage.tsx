@@ -8,7 +8,7 @@ import {
   activateAdminUser,
   resetAdminUserPassword,
 } from '../../services/adminService';
-import type { AdminUserRow, UserRole } from '../../types';
+import type { AdminUpdateUserPayload, AdminUserRow, UserRole } from '../../types';
 import RoleBadge from '../../components/admin/RoleBadge';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -40,7 +40,14 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(emptyCreate);
   const [editRow, setEditRow] = useState<AdminUserRow | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', role: 'agent' as UserRole, city: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    role: 'agent' as UserRole,
+    city: '',
+    newPassword: '',
+    newPasswordConfirm: '',
+  });
   const addToast = useToastStore((s) => s.addToast);
 
   const load = useCallback(async () => {
@@ -99,19 +106,37 @@ export default function AdminUsersPage() {
       email: u.email,
       role: u.role,
       city: u.city ?? '',
+      newPassword: '',
+      newPasswordConfirm: '',
     });
   }
 
   async function onEditSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editRow) return;
+    const np = editForm.newPassword.trim();
+    const nc = editForm.newPasswordConfirm.trim();
+    if (np || nc) {
+      if (np.length < 6) {
+        addToast('error', 'New password must be at least 6 characters');
+        return;
+      }
+      if (np !== nc) {
+        addToast('error', 'New password and confirmation do not match');
+        return;
+      }
+    }
     try {
-      await updateAdminUser(editRow.id, {
+      const payload: AdminUpdateUserPayload = {
         name: editForm.name,
         email: editForm.email,
         role: editForm.role,
         city: editForm.city || null,
-      });
+      };
+      if (np) {
+        payload.new_password = np;
+      }
+      await updateAdminUser(editRow.id, payload);
       addToast('success', 'User updated');
       setEditRow(null);
       void load();
@@ -409,6 +434,24 @@ export default function AdminUsersPage() {
               placeholder="City"
               value={editForm.city}
               onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2">
+              Login password — leave blank to keep the current password. Use &quot;Reset password&quot; in the table to
+              generate a temporary password and email.
+            </p>
+            <Input
+              type="password"
+              autoComplete="new-password"
+              placeholder="New password (optional, min 6 characters)"
+              value={editForm.newPassword}
+              onChange={(e) => setEditForm((f) => ({ ...f, newPassword: e.target.value }))}
+            />
+            <Input
+              type="password"
+              autoComplete="new-password"
+              placeholder="Confirm new password"
+              value={editForm.newPasswordConfirm}
+              onChange={(e) => setEditForm((f) => ({ ...f, newPasswordConfirm: e.target.value }))}
             />
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setEditRow(null)}>
