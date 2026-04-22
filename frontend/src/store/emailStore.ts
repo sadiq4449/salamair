@@ -4,10 +4,12 @@ import { emailService } from '../services/emailService';
 import type {
   EmailThread,
   SendEmailPayload,
+  SendToAgentEmailPayload,
   ReplyEmailPayload,
   SendEmailResponse,
   ReplyEmailResponse,
   PollInboxResponse,
+  EmailThreadChannel,
 } from '../types';
 
 function apiErrorMessage(err: unknown): string {
@@ -31,14 +33,15 @@ interface EmailState {
   isSending: boolean;
   error: string | null;
 
-  fetchThread: (requestId: string) => Promise<void>;
+  fetchThread: (requestId: string, channel?: EmailThreadChannel) => Promise<void>;
+  sendToAgent: (payload: SendToAgentEmailPayload) => Promise<SendEmailResponse>;
   clearError: () => void;
   sendEmail: (payload: SendEmailPayload) => Promise<SendEmailResponse>;
   reply: (payload: ReplyEmailPayload) => Promise<ReplyEmailResponse>;
   simulateReply: (requestId: string, message?: string) => Promise<void>;
   pollInbox: (
     requestId?: string,
-    opts?: { silent?: boolean },
+    opts?: { silent?: boolean; channel?: EmailThreadChannel },
   ) => Promise<PollInboxResponse | null>;
   clearThread: () => void;
 }
@@ -49,13 +52,26 @@ export const useEmailStore = create<EmailState>((set, get) => ({
   isSending: false,
   error: null,
 
-  fetchThread: async (requestId) => {
+  fetchThread: async (requestId, channel = 'rm') => {
     set({ isLoading: true, error: null });
     try {
-      const thread = await emailService.getThread(requestId);
+      const thread = await emailService.getThread(requestId, channel);
       set({ thread, isLoading: false });
     } catch {
       set({ error: 'Failed to load email thread', isLoading: false });
+    }
+  },
+
+  sendToAgent: async (payload) => {
+    set({ isSending: true, error: null });
+    try {
+      const data = await emailService.sendToAgent(payload);
+      await get().fetchThread(payload.request_id, 'agent_sales');
+      set({ isSending: false });
+      return data;
+    } catch (e) {
+      set({ error: apiErrorMessage(e), isSending: false });
+      throw e;
     }
   },
 
@@ -65,7 +81,7 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     set({ isSending: true, error: null });
     try {
       const data = await emailService.sendEmail(payload);
-      await get().fetchThread(payload.request_id);
+      await get().fetchThread(payload.request_id, 'rm');
       set({ isSending: false });
       return data;
     } catch (e) {
@@ -78,7 +94,8 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     set({ isSending: true, error: null });
     try {
       const data = await emailService.reply(payload);
-      await get().fetchThread(payload.request_id);
+      const ch = get().thread?.thread_channel ?? 'rm';
+      await get().fetchThread(payload.request_id, ch);
       set({ isSending: false });
       return data;
     } catch (e) {
@@ -91,7 +108,7 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     set({ isSending: true, error: null });
     try {
       await emailService.simulateReply(requestId, message);
-      await get().fetchThread(requestId);
+      await get().fetchThread(requestId, 'rm');
       set({ isSending: false });
     } catch {
       set({ error: 'Failed to simulate reply', isSending: false });
@@ -100,13 +117,14 @@ export const useEmailStore = create<EmailState>((set, get) => ({
 
   pollInbox: async (requestId, opts) => {
     const silent = opts?.silent ?? false;
+    const channel = opts?.channel ?? 'rm';
     if (!silent) {
       set({ isSending: true, error: null });
     }
     try {
       const r = await emailService.pollInbox();
       if (requestId) {
-        await get().fetchThread(requestId);
+        await get().fetchThread(requestId, channel);
       }
       if (!silent) {
         set({ isSending: false });

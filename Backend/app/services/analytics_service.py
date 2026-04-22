@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.types import Date as SA_Date, Numeric
 
 from app.models.email_message import EmailMessage
+from app.models.email_thread import EmailThread, THREAD_CHANNEL_RM
 from app.models.request import Request
 from app.models.user import User
 
@@ -484,7 +485,9 @@ def count_outgoing_rm_emails(db: Session, d_from: date, d_to: date) -> int:
     start_dt, end_dt = _dt_range(d_from, d_to)
     n = (
         db.query(func.count(EmailMessage.id))
+        .join(EmailThread, EmailMessage.thread_id == EmailThread.id)
         .filter(
+            EmailThread.thread_channel == THREAD_CHANNEL_RM,
             EmailMessage.direction == "outgoing",
             EmailMessage.created_at >= start_dt,
             EmailMessage.created_at <= end_dt,

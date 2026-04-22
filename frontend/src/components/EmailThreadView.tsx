@@ -3,17 +3,19 @@ import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDow
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
 import { useAuth } from '../hooks/useAuth';
-import type { EmailMessageItem, RequestStatus } from '../types';
+import type { EmailMessageItem, RequestStatus, EmailThreadChannel } from '../types';
+
+const EMPTY_THREAD_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Props {
   requestId: string;
+  /** rm = Revenue Management; agent_sales = formal SMTP with the agent. */
+  channel?: EmailThreadChannel;
   canReply?: boolean;
   canSimulate?: boolean;
   requestStatus?: RequestStatus;
-  /** Fetch IMAP once when this tab opens so RM email replies show without tapping Sync (default: true) */
   autoSyncInbox?: boolean;
 }
-
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -39,11 +41,13 @@ function formatFullDate(iso: string) {
   });
 }
 
-function EmailBubble({ email }: { email: EmailMessageItem }) {
+function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: EmailThreadChannel }) {
   const isOutgoing = email.direction === 'outgoing';
   const deliveryFailed = isOutgoing && email.status === 'failed';
   const deliveryOk = isOutgoing && email.status === 'sent';
   const showHtml = isOutgoing && Boolean(email.html_body?.trim());
+  const outgoingLabel = channel === 'rm' ? 'Sales (portal)' : 'Outbound (email)';
+  const incomingLabel = channel === 'rm' ? 'RM / inbox' : 'Inbound (email)';
 
   return (
     <div className="flex gap-3">
@@ -57,7 +61,7 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
-            {isOutgoing ? 'Sales (portal)' : 'RM / inbox'}
+            {isOutgoing ? outgoingLabel : incomingLabel}
           </span>
           <span
             className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold uppercase ${
@@ -84,7 +88,8 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
         )}
         {deliveryOk && (
           <p className="mb-2 text-[0.7rem] text-gray-500 dark:text-gray-400">
-            Delivered to <span className="font-medium">{email.to_email}</span>. If RM sees nothing, check spam.
+            Delivered to <span className="font-medium">{email.to_email}</span>.
+            {channel === 'rm' ? ' If RM sees nothing, check spam.' : ' If the agent sees nothing, check spam.'}
           </p>
         )}
 
@@ -151,32 +156,36 @@ function EmailBubble({ email }: { email: EmailMessageItem }) {
 
 export default function EmailThreadView({
   requestId,
+  channel = 'rm',
   canReply = false,
   canSimulate = false,
   requestStatus,
   autoSyncInbox = true,
 }: Props) {
-  const { thread, isLoading, isSending, fetchThread, reply, simulateReply, pollInbox } = useEmailStore();
+  const { thread, isLoading, isSending, fetchThread, reply, sendToAgent, simulateReply, pollInbox } = useEmailStore();
   const { addToast } = useToastStore();
-  const { isSales, isAdmin } = useAuth();
+  const { isSales, isAdmin, isAgent } = useAuth();
+  const isAgentViewer = isAgent;
   const canPollInbox = isSales || isAdmin;
   const [replyText, setReplyText] = useState('');
+  const [firstToAgentText, setFirstToAgentText] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await fetchThread(requestId);
+      await fetchThread(requestId, channel);
       if (cancelled || !autoSyncInbox || !canPollInbox) return;
-      const r = await pollInbox(requestId, { silent: true });
+      const r = await pollInbox(requestId, { silent: true, channel });
       if (cancelled || !r) return;
       if (r.stored > 0) {
-        addToast('success', `Imported ${r.stored} RM reply email(s) from inbox.`);
+        addToast('success', `Imported ${r.stored} email(s) from inbox.`);
+        await fetchThread(requestId, channel);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [requestId, autoSyncInbox, canPollInbox, fetchThread, pollInbox, addToast]);
+  }, [requestId, channel, autoSyncInbox, canPollInbox, fetchThread, pollInbox, addToast]);
 
   if (isLoading) {
     return (
@@ -187,15 +196,31 @@ export default function EmailThreadView({
   }
 
   const emails = thread?.emails ?? [];
-  const hasThread = thread && thread.status !== 'empty' && emails.length > 0;
+  const hasMessages = emails.length > 0;
+  const isStubThread =
+    !thread || thread.status === 'empty' || !thread.thread_id || thread.thread_id === EMPTY_THREAD_ID;
+  const hasThreadRecord = !isStubThread;
   const hasOutgoingFailed = emails.some((e) => e.direction === 'outgoing' && e.status === 'failed');
 
   async function handleReply() {
-    if (!replyText.trim() || !thread || thread.status === 'empty') return;
+    if (!replyText.trim() || !thread || isStubThread) return;
     try {
       await reply({ request_id: requestId, thread_id: thread.thread_id, message: replyText.trim() });
       setReplyText('');
-    } catch { /* handled in store */ }
+    } catch {
+      /* store */
+    }
+  }
+
+  async function handleFirstToAgent() {
+    if (!firstToAgentText.trim() || channel !== 'agent_sales') return;
+    try {
+      await sendToAgent({ request_id: requestId, message: firstToAgentText.trim() });
+      setFirstToAgentText('');
+      addToast('success', 'Email sent to the agent’s mailbox.');
+    } catch {
+      /* store */
+    }
   }
 
   async function handleSimulate() {
@@ -203,19 +228,18 @@ export default function EmailThreadView({
   }
 
   async function handleNudgeRm() {
-    if (!thread || thread.status === 'empty') return;
-    const text =
-      'Reminder: Pending fare approval for this request. Please respond at your earliest convenience.';
+    if (!thread || isStubThread) return;
+    const text = 'Reminder: Pending fare approval for this request. Please respond at your earliest convenience.';
     try {
       await reply({ request_id: requestId, thread_id: thread.thread_id, message: text });
       addToast('success', 'Reminder sent on the RM email thread.');
     } catch {
-      /* store shows error */
+      /* store */
     }
   }
 
   async function handlePollInbox() {
-    const r = await pollInbox(requestId);
+    const r = await pollInbox(requestId, { channel: channel === 'agent_sales' ? 'agent_sales' : 'rm' });
     if (r === null) return;
     if (r.skipped) {
       addToast('info', 'IMAP sync is disabled on the server. Set IMAP_USER and IMAP_PASSWORD (or remove IMAP_ENABLED=false).');
@@ -223,53 +247,78 @@ export default function EmailThreadView({
       addToast('success', `Imported ${r.stored} new email(s) from inbox.`);
     } else {
       const scanned = typeof r.processed === 'number' && r.processed > 0 ? ` Scanned ${r.processed} message(s).` : '';
-      const errHint =
-        r.errors?.length && r.errors[0]
-          ? ` ${r.errors[0]}`
-          : '';
-      addToast(
-        'info',
-        `No new replies imported for this deal.${scanned} Replies need [REQ-…] in the subject.${errHint}`,
-      );
+      const errHint = r.errors?.length && r.errors[0] ? ` ${r.errors[0]}` : '';
+      addToast('info', `No new replies imported for this deal.${scanned} Replies need [REQ-…] in the subject.${errHint}`);
     }
   }
 
+  const showRmIntro = channel === 'rm' && isAgentViewer;
+  const showAgentSalesIntro = channel === 'agent_sales' && isAgentViewer;
+  const showSalesIntroRm = channel === 'rm' && !isAgentViewer;
+  const showSalesIntroAgent = channel === 'agent_sales' && !isAgentViewer;
+  const threadTitle = channel === 'rm' ? 'RM email thread' : 'Sales ↔ Agent (email)';
+  const subEmail = thread?.rm_email ?? (channel === 'rm' ? 'rm@…' : '…');
+
   return (
     <div>
-      <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-        Thread order is oldest → newest. RM replies from email are pulled when you open this tab (same mailbox as{' '}
-        <code className="font-mono text-[0.65rem]">IMAP_USER</code> on the server). Use{' '}
-        <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong> to refresh. Replies must keep{' '}
-        <code className="font-mono text-[0.65rem]">[REQ-…]</code> in the subject line. RM:{' '}
-        <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong>.
-      </p>
+      {showAgentSalesIntro && (
+        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
+          <strong className="text-gray-700 dark:text-gray-300">Formal email</strong> between you and <strong>sales</strong> (in addition
+          to <strong>Portal chat</strong>). Replies from your email client appear here when the mailbox is synced. Your profile email must
+          match the address you send from.
+        </p>
+      )}
+      {showRmIntro && (
+        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
+          <strong className="text-gray-700 dark:text-gray-300">Read-only.</strong> This is the email between <strong>Sales</strong> and{' '}
+          <strong>Revenue Management (RM)</strong> for this request. Message sales in <strong>Portal chat</strong> or the{' '}
+          <strong>Sales ↔ Agent (email)</strong> tab.
+        </p>
+      )}
+      {showSalesIntroAgent && (
+        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
+          Formal SMTP to the <strong>agent’s email on file</strong> (in addition to portal chat). IMAP <strong>Sync inbox</strong> pulls the
+          agent’s replies on this thread. Subjects should include the request code.
+        </p>
+      )}
+      {showSalesIntroRm && (
+        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
+          Thread order is oldest → newest. RM replies are pulled when you open this tab (same mailbox as{' '}
+          <code className="font-mono text-[0.65rem]">IMAP_USER</code>). Use <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong>{' '}
+          to refresh. <code className="font-mono text-[0.65rem]">[REQ-…]</code> in the subject. RM:{' '}
+          <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong>.
+        </p>
+      )}
       {hasOutgoingFailed && (
         <div className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
           <Mail className="shrink-0 mt-0.5" size={14} />
           <span>
-            At least one outgoing message was <strong>not</strong> accepted by the mail server (status failed). Configure production SMTP on the host (e.g. Railway variables) or resend after fixing credentials.
+            At least one outgoing message was <strong>not</strong> accepted by the mail server. Configure production SMTP (e.g. Railway) or
+            resend after fixing credentials.
           </span>
         </div>
       )}
-      {/* Email Header */}
+
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
           <Mail size={16} className="text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">RM Email Thread</p>
-          <p className="text-xs text-gray-400">{thread?.rm_email ?? 'rm@salamair.com'}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">{threadTitle}</p>
+          <p className="text-xs text-gray-400 break-all">{subEmail}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {hasThread && (
-            <span className="text-xs text-gray-400">{emails.length} email{emails.length > 1 ? 's' : ''}</span>
+          {hasMessages && (
+            <span className="text-xs text-gray-400">
+              {emails.length} email{emails.length > 1 ? 's' : ''}
+            </span>
           )}
           {canReply && canPollInbox && (
             <button
               type="button"
               onClick={handlePollInbox}
               disabled={isSending}
-              title="Fetch new replies from the mailbox (IMAP)"
+              title="Fetch new messages from the mailbox (IMAP)"
               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/40 disabled:opacity-50"
             >
               {isSending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
@@ -279,35 +328,62 @@ export default function EmailThreadView({
         </div>
       </div>
 
-      {!hasThread ? (
+      {channel === 'agent_sales' && canReply && (isSales || isAdmin) && isStubThread && (
+        <div className="mb-6 space-y-2 rounded-lg border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Start the email thread to the agent</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            Sends to the address on the agent’s user profile. They will also see <strong>Portal chat</strong> for instant messages.
+          </p>
+          <textarea
+            value={firstToAgentText}
+            onChange={(e) => setFirstToAgentText(e.target.value)}
+            rows={3}
+            placeholder="Write your first email to the agent…"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          />
+          <button
+            type="button"
+            onClick={handleFirstToAgent}
+            disabled={isSending || !firstToAgentText.trim()}
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+          >
+            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send to agent’s email
+          </button>
+        </div>
+      )}
+
+      {!hasMessages && !(channel === 'agent_sales' && canReply && (isSales || isAdmin) && isStubThread) ? (
         <div className="text-center py-8">
           <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
             <Mail size={24} className="text-gray-400" />
           </div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No emails yet</p>
-          <p className="text-xs text-gray-400 mt-1">Send a request to RM to start the email thread</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No messages yet</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {channel === 'rm' ? 'Send to RM to start the RM thread' : isStubThread && (isSales || isAdmin) ? 'Use the form above to email the agent' : '—'}
+          </p>
         </div>
-      ) : (
+      ) : hasMessages ? (
         <div className="space-y-5 max-h-[min(520px,70vh)] overflow-y-auto pr-1">
           {emails.map((email) => (
-            <EmailBubble key={email.id} email={email} />
+            <EmailBubble key={email.id} email={email} channel={channel} />
           ))}
         </div>
-      )}
+      ) : null}
 
-      {/* Reply / Simulate */}
-      {canReply && hasThread && (
+      {canReply && hasThreadRecord && hasMessages && (
         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Type a reply to RM..."
+              placeholder={channel === 'rm' ? 'Type a reply to RM…' : 'Reply in this email thread…'}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleReply()}
               className="flex-1 px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
             />
             <button
+              type="button"
               onClick={handleReply}
               disabled={isSending || !replyText.trim()}
               className="p-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -316,7 +392,7 @@ export default function EmailThreadView({
             </button>
           </div>
           <div className="mt-2 flex flex-col gap-2">
-            {canSimulate && (
+            {canSimulate && channel === 'rm' && (
               <button
                 type="button"
                 onClick={handleSimulate}
@@ -327,7 +403,7 @@ export default function EmailThreadView({
                 Simulate RM Reply
               </button>
             )}
-            {canReply && requestStatus === 'rm_pending' && hasThread && (
+            {canReply && requestStatus === 'rm_pending' && hasMessages && channel === 'rm' && (
               <button
                 type="button"
                 onClick={handleNudgeRm}

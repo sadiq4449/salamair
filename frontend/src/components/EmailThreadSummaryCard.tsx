@@ -29,11 +29,15 @@ export default function EmailThreadSummaryCard({ request }: Props) {
     setLoading(true);
     setChatTotal(0);
     setEmailCount(0);
-    Promise.all([messageService.getMessages(requestId, 'all', 1, 50), emailService.getThread(requestId)])
-      .then(([msgRes, thread]) => {
+    Promise.all([
+      messageService.getMessages(requestId, 'all', 1, 50),
+      emailService.getThread(requestId, 'rm'),
+      emailService.getThread(requestId, 'agent_sales'),
+    ])
+      .then(([msgRes, thRm, thAg]) => {
         if (cancelled) return;
         setChatTotal(msgRes.total);
-        setEmailCount(thread.emails?.length ?? 0);
+        setEmailCount((thRm.emails?.length ?? 0) + (thAg.emails?.length ?? 0));
       })
       .catch(() => {
         if (!cancelled) {

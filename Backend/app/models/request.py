@@ -49,3 +49,4 @@ class Request(Base):
     counter_offers = relationship("CounterOffer", back_populates="request", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary=request_tags, back_populates="requests")
     sla_segments = relationship("SlaTracking", back_populates="request", cascade="all, delete-orphan")
+    email_threads = relationship("EmailThread", back_populates="request", cascade="all, delete-orphan")

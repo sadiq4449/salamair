@@ -11,6 +11,13 @@ class SendEmailRequest(BaseModel):
     include_attachments: bool = True
 
 
+class SendToAgentEmailRequest(BaseModel):
+    """First / ongoing formal email to the agent’s mailbox (separate from RM thread)."""
+    request_id: UUID
+    message: str = Field(min_length=1, max_length=20_000)
+    include_attachments: bool = False
+
+
 class ReplyEmailRequest(BaseModel):
     request_id: UUID
     thread_id: UUID
@@ -57,6 +64,10 @@ class EmailThreadRead(BaseModel):
     rm_email: str
     status: str
     emails: list[EmailMessageRead] = []
+    thread_channel: str = Field(
+        default="rm",
+        description="rm = Revenue Management; agent_sales = sales ↔ agent (SMTP).",
+    )
 
     model_config = {"from_attributes": True}
 

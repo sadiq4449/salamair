@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.counter_offer import CounterOffer
 from app.models.email_message import EmailMessage
-from app.models.email_thread import EmailThread
+from app.models.email_thread import EmailThread, THREAD_CHANNEL_AGENT_SALES, THREAD_CHANNEL_RM
 from app.models.message import Message
 from app.models.request import Request
 from app.models.request_history import RequestHistory
@@ -144,7 +144,11 @@ def build_portal_chat_text(db: Session, request_id: uuid.UUID) -> str:
 
 
 def build_rm_email_text(db: Session, request_id: uuid.UUID) -> str | None:
-    t = db.query(EmailThread).filter(EmailThread.request_id == request_id).first()
+    t = (
+        db.query(EmailThread)
+        .filter(EmailThread.request_id == request_id, EmailThread.thread_channel == THREAD_CHANNEL_RM)
+        .first()
+    )
     if not t:
         return None
     req = db.query(Request).filter(Request.id == request_id).first()
@@ -181,6 +185,48 @@ def build_rm_email_text(db: Session, request_id: uuid.UUID) -> str | None:
     return "\n".join(lines) + "\n"
 
 
+def build_agent_sales_email_text(db: Session, request_id: uuid.UUID) -> str | None:
+    t = (
+        db.query(EmailThread)
+        .filter(EmailThread.request_id == request_id, EmailThread.thread_channel == THREAD_CHANNEL_AGENT_SALES)
+        .first()
+    )
+    if not t:
+        return None
+    req = db.query(Request).filter(Request.id == request_id).first()
+    code = req.request_code if req else "unknown"
+    lines: list[str] = [
+        "Sales ↔ Agent email (portal-stored copy)",
+        "=" * 72,
+        f"Request code:   {code}",
+        f"Thread subject: {t.subject}",
+        f"Agent mailbox:  {t.rm_email}",
+        "",
+    ]
+    msgs = (
+        db.query(EmailMessage)
+        .options(joinedload(EmailMessage.attachments))
+        .filter(EmailMessage.thread_id == t.id)
+        .order_by(EmailMessage.sent_at.asc(), EmailMessage.created_at.asc())
+        .all()
+    )
+    if not msgs:
+        lines.append("(No email messages in thread.)")
+        return "\n".join(lines) + "\n"
+    for i, m in enumerate(msgs, 1):
+        ts = m.sent_at or m.received_at or m.created_at
+        lines.append("-" * 40)
+        lines.append(f"#{i} | {m.direction} | {_ts(ts)}")
+        lines.append(f"From: {m.from_email}  To: {m.to_email}")
+        lines.append(f"Subject: {m.subject}")
+        if m.attachments:
+            lines.append("Attachments: " + ", ".join(a.filename for a in m.attachments))
+        lines.append("")
+        lines.append(_email_message_plain(m))
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def build_combined_text(db: Session, req: Request, user: User) -> str:
     deal = build_request_deal_text(db, req)
     act = build_activity_log_text(db, req.id)
@@ -190,6 +236,13 @@ def build_combined_text(db: Session, req: Request, user: User) -> str:
         rm = build_rm_email_text(db, req.id)
         if rm:
             parts.append("\n" + rm)
+        sa = build_agent_sales_email_text(db, req.id)
+        if sa:
+            parts.append("\n" + sa)
+    if user.role == "agent":
+        sa = build_agent_sales_email_text(db, req.id)
+        if sa:
+            parts.append("\n" + sa)
     return "\n".join(parts)
 
 
@@ -268,6 +321,13 @@ def build_export_bytes(db: Session, req: Request, user: User, format: str) -> tu
             rm = build_rm_email_text(db, req.id)
             if rm:
                 zf.writestr("04_sales_rm_email.txt", rm)
+            sa = build_agent_sales_email_text(db, req.id)
+            if sa:
+                zf.writestr("05_sales_agent_email.txt", sa)
+        if user.role == "agent":
+            sa = build_agent_sales_email_text(db, req.id)
+            if sa:
+                zf.writestr("04_sales_agent_email.txt", sa)
     buf.seek(0)
     fn = f"{code_safe}-deal-export-{stamp}.zip"
     return buf.getvalue(), "application/zip", fn

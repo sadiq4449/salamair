@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Paperclip, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Paperclip, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useEmailStore } from '../../store/emailStore';
 import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
@@ -11,6 +12,7 @@ import SlaIndicator from '../../components/SlaIndicator';
 import RequestTagsEditor from '../../components/RequestTagsEditor';
 import RequestHistoryPanel from '../../components/RequestHistoryPanel';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
+import EmailThreadView from '../../components/EmailThreadView';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
 import Button from '../../components/ui/Button';
@@ -27,13 +29,18 @@ export default function RequestDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentRequest, isDetailLoading, history, fetchRequest, clearCurrent } = useRequestStore();
+  const { clearThread } = useEmailStore();
+  const [commTab, setCommTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
 
   useEffect(() => {
     if (id) {
       void fetchRequest(id);
     }
-    return () => { clearCurrent(); };
-  }, [id, fetchRequest, clearCurrent]);
+    return () => {
+      clearCurrent();
+      clearThread();
+    };
+  }, [id, fetchRequest, clearCurrent, clearThread]);
 
   // Refetch when returning to the tab (agent may have missed a counter-offer while away).
   useEffect(() => {
@@ -132,16 +139,75 @@ export default function RequestDetail() {
 
           <RequestHistoryPanel events={history} />
 
-          {/* Communication: agent ↔ sales portal chat only (Sales ↔ RM email is sales/admin only). */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Agent ↔ Sales</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Chat with the sales team in the portal. Revenue Management email is handled internally by sales and is not shown here.
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Use <strong className="text-gray-600 dark:text-gray-300">Portal chat</strong> for quick messages,{' '}
+                <strong className="text-gray-600 dark:text-gray-300">email to / from sales</strong> for formal copies, and
+                read the <strong className="text-gray-600 dark:text-gray-300">RM thread</strong> (read-only).
               </p>
+              <div className="flex flex-wrap border-b-2 border-gray-200 dark:border-gray-700 gap-x-1">
+                <button
+                  type="button"
+                  onClick={() => setCommTab('chat')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
+                    commTab === 'chat'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Portal chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommTab('agentEmail')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                    commTab === 'agentEmail'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Mail size={14} aria-hidden />
+                  Email with sales
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommTab('rmEmail')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                    commTab === 'rmEmail'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Mail size={14} aria-hidden />
+                  Sales &amp; RM
+                </button>
+              </div>
             </div>
             <div className="p-6">
-              <UnifiedTimeline requestId={id!} />
+              {commTab === 'chat' ? (
+                <UnifiedTimeline requestId={id!} />
+              ) : commTab === 'agentEmail' ? (
+                <EmailThreadView
+                  key="agent-smtp"
+                  requestId={id!}
+                  channel="agent_sales"
+                  requestStatus={req.status}
+                  canReply
+                  canSimulate={false}
+                />
+              ) : (
+                <EmailThreadView
+                  key="rm-smtp"
+                  requestId={id!}
+                  channel="rm"
+                  requestStatus={req.status}
+                  canReply={false}
+                  canSimulate={false}
+                  autoSyncInbox={false}
+                />
+              )}
             </div>
           </div>
         </div>

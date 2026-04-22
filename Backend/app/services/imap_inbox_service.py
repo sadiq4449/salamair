@@ -18,14 +18,14 @@ from email.header import decode_header
 from email.message import Message
 from email.utils import parseaddr, parsedate_to_datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.services.email_service import RESEND_PUBLIC_SENDER
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.notification_service import notify_email_received
 from app.models.email_message import EmailMessage
-from app.models.email_thread import EmailThread
+from app.models.email_thread import EmailThread, THREAD_CHANNEL_AGENT_SALES, THREAD_CHANNEL_RM
 from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.user import User
@@ -328,23 +328,43 @@ def poll_inbox_once(db: Session) -> dict:
                     mail.store(num, "+FLAGS", "\\Seen")
                     continue
 
-                req = db.query(Request).filter(Request.request_code == request_code).first()
+                req = (
+                    db.query(Request)
+                    .options(joinedload(Request.agent))
+                    .filter(Request.request_code == request_code)
+                    .first()
+                )
                 if not req:
                     errors.append(f"Unknown request code: {request_code}")
                     mail.store(num, "+FLAGS", "\\Seen")
                     continue
 
+                from_norm = (from_email or "").strip().lower()
+                agent_em = (req.agent.email or "").strip().lower() if req.agent else ""
+                is_from_agent = bool(agent_em and from_norm == agent_em)
+                channel = THREAD_CHANNEL_AGENT_SALES if is_from_agent else THREAD_CHANNEL_RM
+
                 thread = (
                     db.query(EmailThread)
-                    .filter(EmailThread.request_id == req.id)
+                    .filter(EmailThread.request_id == req.id, EmailThread.thread_channel == channel)
                     .first()
                 )
                 if not thread:
-                    thread = EmailThread(
-                        request_id=req.id,
-                        subject=f"[{request_code}] Fare Approval Request - {req.route}",
-                        rm_email=from_email or settings.RM_DEFAULT_EMAIL,
-                    )
+                    if channel == THREAD_CHANNEL_AGENT_SALES:
+                        subj = (subject or "")[:500] or f"[{request_code}] {req.route} — Sales / Agent"
+                        thread = EmailThread(
+                            request_id=req.id,
+                            subject=subj,
+                            rm_email=agent_em or from_email or "unknown",
+                            thread_channel=THREAD_CHANNEL_AGENT_SALES,
+                        )
+                    else:
+                        thread = EmailThread(
+                            request_id=req.id,
+                            subject=f"[{request_code}] Fare Approval Request - {req.route}",
+                            rm_email=from_email or settings.RM_DEFAULT_EMAIL,
+                            thread_channel=THREAD_CHANNEL_RM,
+                        )
                     db.add(thread)
                     db.flush()
 
@@ -385,11 +405,14 @@ def poll_inbox_once(db: Session) -> dict:
 
                 sales = db.query(User).filter(User.role == "sales", User.is_active.is_(True)).first()
                 actor = sales.id if sales else req.agent_id
+                hist_action = (
+                    "agent_reply_received_imap" if channel == THREAD_CHANNEL_AGENT_SALES else "rm_reply_received_imap"
+                )
                 db.add(RequestHistory(
                     request_id=req.id,
-                    action="rm_reply_received_imap",
+                    action=hist_action,
                     actor_id=actor,
-                    details=f"IMAP: reply from {from_email}",
+                    details=f"IMAP: reply from {from_email} ({channel})",
                 ))
 
                 db.commit()

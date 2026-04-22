@@ -165,6 +165,8 @@ export interface EmailMessageItem {
   created_at: string;
 }
 
+export type EmailThreadChannel = 'rm' | 'agent_sales';
+
 export interface EmailThread {
   request_code: string;
   thread_id: string;
@@ -172,11 +174,18 @@ export interface EmailThread {
   rm_email: string;
   status: string;
   emails: EmailMessageItem[];
+  thread_channel?: EmailThreadChannel;
 }
 
 export interface SendEmailPayload {
   request_id: string;
   to?: string;
+  message: string;
+  include_attachments?: boolean;
+}
+
+export interface SendToAgentEmailPayload {
+  request_id: string;
   message: string;
   include_attachments?: boolean;
 }

@@ -27,7 +27,7 @@ export default function SalesRequestDetail() {
   const navigate = useNavigate();
   const { currentRequest, isDetailLoading, isLoading, history, fetchRequest, updateStatus, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
-  const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
+  const [activeTab, setActiveTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
   const [showCounter, setShowCounter] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
 
@@ -124,36 +124,66 @@ export default function SalesRequestDetail() {
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
-              <div className="flex border-b-2 border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                <strong className="text-gray-600 dark:text-gray-300">Portal chat</strong> (instant),{' '}
+                <strong className="text-gray-600 dark:text-gray-300">formal email to the agent</strong> (copied in the
+                portal), and <strong className="text-gray-600 dark:text-gray-300">email to RM</strong>.
+              </p>
+              <div className="flex flex-wrap border-b-2 border-gray-200 dark:border-gray-700 gap-x-1">
                 <button
-                  onClick={() => setActiveTab('agent-sales')}
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
-                    activeTab === 'agent-sales'
+                  type="button"
+                  onClick={() => setActiveTab('chat')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
+                    activeTab === 'chat'
                       ? 'border-teal-600 text-teal-700 dark:text-teal-400'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
-                  Agent ↔ Sales
+                  Portal chat
                 </button>
                 <button
-                  onClick={() => setActiveTab('sales-rm')}
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-2 ${
-                    activeTab === 'sales-rm'
+                  type="button"
+                  onClick={() => setActiveTab('agentEmail')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'agentEmail'
                       ? 'border-teal-600 text-teal-700 dark:text-teal-400'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
                   <Mail size={14} />
-                  Sales ↔ RM (Email)
+                  Email to agent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rmEmail')}
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'rmEmail'
+                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Mail size={14} />
+                  Email to RM
                 </button>
               </div>
             </div>
             <div className="p-6">
-              {activeTab === 'agent-sales' ? (
+              {activeTab === 'chat' ? (
                 <UnifiedTimeline requestId={id!} />
+              ) : activeTab === 'agentEmail' ? (
+                <EmailThreadView
+                  key="agent-smtp"
+                  requestId={id!}
+                  channel="agent_sales"
+                  requestStatus={req.status}
+                  canReply
+                  canSimulate={false}
+                />
               ) : (
                 <EmailThreadView
+                  key="rm-smtp"
                   requestId={id!}
+                  channel="rm"
                   requestStatus={req.status}
                   canReply
                   canSimulate

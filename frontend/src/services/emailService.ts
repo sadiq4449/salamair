@@ -2,10 +2,12 @@ import api from './api';
 import type {
   EmailThread,
   SendEmailPayload,
+  SendToAgentEmailPayload,
   SendEmailResponse,
   ReplyEmailPayload,
   ReplyEmailResponse,
   PollInboxResponse,
+  EmailThreadChannel,
 } from '../types';
 
 export const emailService = {
@@ -14,8 +16,15 @@ export const emailService = {
     return data;
   },
 
-  async getThread(requestId: string): Promise<EmailThread> {
-    const { data } = await api.get<EmailThread>(`/email/thread/${requestId}`);
+  async getThread(requestId: string, channel: EmailThreadChannel = 'rm'): Promise<EmailThread> {
+    const { data } = await api.get<EmailThread>(`/email/thread/${requestId}`, {
+      params: { channel },
+    });
+    return { ...data, thread_channel: (data as EmailThread).thread_channel ?? channel };
+  },
+
+  async sendToAgent(payload: SendToAgentEmailPayload): Promise<SendEmailResponse> {
+    const { data } = await api.post<SendEmailResponse>('/email/send-to-agent', payload);
     return data;
   },
 

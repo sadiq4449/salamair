@@ -5,11 +5,15 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user_optional, get_db, require_role
+from app.api.deps import get_current_user, get_current_user_optional, get_db, require_role
 from app.core.config import settings
 from app.models.email_attachment import EmailAttachment
 from app.models.email_message import EmailMessage
-from app.models.email_thread import EmailThread
+from app.models.email_thread import (
+    EmailThread,
+    THREAD_CHANNEL_AGENT_SALES,
+    THREAD_CHANNEL_RM,
+)
 from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.user import User
@@ -24,6 +28,7 @@ from app.schemas.email_schema import (
     ReplyEmailResponse,
     SendEmailRequest,
     SendEmailResponse,
+    SendToAgentEmailRequest,
     SimulateReplyRequest,
 )
 from app.services.email_service import (
@@ -37,6 +42,7 @@ from app.services.email_service import (
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
+from app.services.request_access import user_can_access_request
 
 router = APIRouter()
 
@@ -54,6 +60,7 @@ def list_email_inbox(
         db.query(EmailThread)
         .join(Request, Request.id == EmailThread.request_id)
         .options(joinedload(EmailThread.request).joinedload(Request.agent))
+        .filter(EmailThread.thread_channel == THREAD_CHANNEL_RM)
     )
     if search:
         term = f"%{search.strip()}%"
@@ -160,6 +167,30 @@ def _log_history(db: Session, request_id: uuid.UUID, action: str, actor_id: uuid
     ))
 
 
+def _thread_by_channel(db: Session, request_id: uuid.UUID, channel: str) -> EmailThread | None:
+    return (
+        db.query(EmailThread)
+        .filter(EmailThread.request_id == request_id, EmailThread.thread_channel == channel)
+        .first()
+    )
+
+
+def _sales_inbox_for_request(db: Session, req: Request) -> str:
+    if req.assigned_to:
+        u = db.query(User).filter(User.id == req.assigned_to).first()
+        if u and (u.email or "").strip():
+            return u.email.strip()
+    u = (
+        db.query(User)
+        .filter(User.role == "sales", User.is_active.is_(True))
+        .order_by(User.created_at.asc())
+        .first()
+    )
+    if u and (u.email or "").strip():
+        return u.email.strip()
+    return (settings.SMTP_FROM_EMAIL or "noreply@salamair.com").strip()
+
+
 @router.post("/send", response_model=SendEmailResponse)
 def send_email_to_rm(
     payload: SendEmailRequest,
@@ -211,12 +242,13 @@ def send_email_to_rm(
 
     message_id, smtp_err = send_smtp_email(rm_email, subject, plain_body, html_body)
 
-    thread = db.query(EmailThread).filter(EmailThread.request_id == req.id).first()
+    thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
     if not thread:
         thread = EmailThread(
             request_id=req.id,
             subject=subject,
             rm_email=rm_email,
+            thread_channel=THREAD_CHANNEL_RM,
         )
         db.add(thread)
         db.flush()
@@ -287,30 +319,174 @@ def send_email_to_rm(
     )
 
 
-@router.get("/thread/{request_id}", response_model=EmailThreadRead)
-def get_email_thread(
-    request_id: uuid.UUID,
+@router.post("/send-to-agent", response_model=SendEmailResponse)
+def send_email_to_agent(
+    payload: SendToAgentEmailRequest,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
-    """Sales ↔ RM email thread. Agents use portal chat only; they must not see RM correspondence."""
-    req = _get_request_or_404(db, request_id)
+    """Formal SMTP email to the agent’s address (in addition to portal chat and RM email)."""
+    req = (
+        db.query(Request)
+        .options(joinedload(Request.agent), joinedload(Request.attachments))
+        .filter(Request.id == payload.request_id)
+        .first()
+    )
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if not req.agent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "NO_AGENT", "message": "Request has no agent."}},
+        )
+    agent_email = (req.agent.email or "").strip()
+    if not agent_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "NO_AGENT_EMAIL",
+                    "message": "Agent has no email on their profile. Update the user, then try again.",
+                }
+            },
+        )
+    if not req.assigned_to:
+        req.assigned_to = current_user.id
+        db.flush()
+    subject = f"[{req.request_code}] {req.route} — Message from sales"
+    contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
+    plain_body = build_thread_reply_plain(
+        req.request_code, req.route, payload.message, current_user.name, contact_email,
+    )
+    html_body = build_thread_reply_html(
+        req.request_code, req.route, payload.message, current_user.name, contact_email,
+    )
+    message_id, smtp_err = send_smtp_email(agent_email, subject, plain_body, html_body)
+
+    thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_AGENT_SALES)
+    if not thread:
+        thread = EmailThread(
+            request_id=req.id,
+            subject=subject[:500],
+            rm_email=agent_email,
+            thread_channel=THREAD_CHANNEL_AGENT_SALES,
+        )
+        db.add(thread)
+        db.flush()
+
+    now = datetime.now(timezone.utc)
+    email_msg = EmailMessage(
+        thread_id=thread.id,
+        direction="outgoing",
+        from_email=settings.SMTP_FROM_EMAIL or (current_user.email or ""),
+        to_email=agent_email,
+        subject=subject,
+        body=plain_body,
+        html_body=html_body,
+        message_id=message_id,
+        status="sent" if message_id else "failed",
+        sent_at=now,
+    )
+    db.add(email_msg)
+    db.flush()
+    if payload.include_attachments and req.attachments:
+        for att in req.attachments:
+            db.add(
+                EmailAttachment(
+                    email_id=email_msg.id,
+                    filename=att.filename,
+                    file_url=att.file_url,
+                    file_type=att.file_type,
+                    file_size=att.file_size,
+                )
+            )
+    _log_history(
+        db,
+        req.id,
+        "email_sent_to_agent",
+        current_user.id,
+        details=f"Email to agent {agent_email}" if message_id else f"SMTP error: {smtp_err or 'unknown'}",
+    )
+    sync_sla_for_request(db, req)
+    db.commit()
+    db.refresh(email_msg)
+
+    delivered = message_id is not None
+    response.headers["X-Email-Delivered"] = "true" if delivered else "false"
+    msg = "Email to agent sent" if delivered else (
+        "Request saved, but the message to the agent was not delivered. Check SMTP/Resend."
+    )
+    return SendEmailResponse(
+        message=msg,
+        email_id=email_msg.id,
+        request_code=req.request_code,
+        status=req.status,
+        sent_at=email_msg.sent_at,
+        smtp_delivered=delivered,
+        smtp_error=smtp_err,
+    )
+
+
+@router.get("/thread/{request_id}", response_model=EmailThreadRead)
+def get_email_thread(
+    request_id: uuid.UUID,
+    channel: str = Query(THREAD_CHANNEL_RM, description="rm or agent_sales"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """View RM thread or the sales↔agent SMTP thread. Agents: own request only, read (and reply for agent thread)."""
+    if channel not in (THREAD_CHANNEL_RM, THREAD_CHANNEL_AGENT_SALES):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_CHANNEL", "message": "channel must be 'rm' or 'agent_sales'."}},
+        )
+    if current_user.role not in ("agent", "sales", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "INSUFFICIENT_PERMISSIONS", "message": "Not allowed to view this thread."}},
+        )
+    req = (
+        db.query(Request)
+        .options(joinedload(Request.agent))
+        .filter(Request.id == request_id)
+        .first()
+    )
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if not user_can_access_request(current_user, req):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Access denied."}},
+        )
 
     thread = (
         db.query(EmailThread)
         .options(joinedload(EmailThread.messages).joinedload(EmailMessage.attachments))
-        .filter(EmailThread.request_id == request_id)
+        .filter(EmailThread.request_id == request_id, EmailThread.thread_channel == channel)
         .first()
     )
 
     if not thread:
+        peer = settings.RM_DEFAULT_EMAIL
+        subj = build_subject(req.request_code, req.route)
+        if channel == THREAD_CHANNEL_AGENT_SALES and req.agent:
+            peer = (req.agent.email or "").strip() or "agent@…"
+            subj = f"[{req.request_code}] {req.route} — Sales / Agent (email)"
         return EmailThreadRead(
             request_code=req.request_code,
             thread_id=uuid.UUID(int=0),
-            subject=build_subject(req.request_code, req.route),
-            rm_email=settings.RM_DEFAULT_EMAIL,
+            subject=subj,
+            rm_email=peer,
             status="empty",
             emails=[],
+            thread_channel=channel,
         )
 
     msgs = sorted(thread.messages, key=lambda m: (m.sent_at, m.created_at))
@@ -339,26 +515,57 @@ def get_email_thread(
         rm_email=thread.rm_email,
         status=thread.status,
         emails=emails,
+        thread_channel=thread.thread_channel,
     )
 
 
 @router.post("/reply", response_model=ReplyEmailResponse)
-def reply_to_rm(
+def reply_email(
     payload: ReplyEmailRequest,
     response: Response,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("sales", "admin")),
+    current_user: User = Depends(get_current_user),
 ):
     req = _get_request_or_404(db, payload.request_id)
-    thread = db.query(EmailThread).filter(EmailThread.id == payload.thread_id).first()
-    if not thread:
+    if not user_can_access_request(current_user, req):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Access denied."}},
+        )
+    thread = (
+        db.query(EmailThread)
+        .filter(EmailThread.id == payload.thread_id)
+        .first()
+    )
+    if not thread or thread.request_id != req.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "Email thread not found"}},
         )
+    ch = (thread.thread_channel or THREAD_CHANNEL_RM)
+    to_addr: str
+    if ch == THREAD_CHANNEL_AGENT_SALES and current_user.role == "agent":
+        if req.agent_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": "Not your request."}},
+            )
+        to_addr = _sales_inbox_for_request(db, req)
+    elif current_user.role in ("sales", "admin"):
+        to_addr = thread.rm_email
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Only sales or the assigned agent can reply on this thread."}},
+        )
+    is_agent_on_agent_thread = ch == THREAD_CHANNEL_AGENT_SALES and current_user.role == "agent"
+    if ch == THREAD_CHANNEL_RM and current_user.role == "agent":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Agents cannot post on the RM email thread."}},
+        )
 
     subject = f"Re: {thread.subject}"
-    # Thread replies: only the typed text + short signature (full fare template is for POST /send only).
     contact_email = (settings.SMTP_FROM_EMAIL or "").strip() or (current_user.email or "")
     plain_body = build_thread_reply_plain(
         req.request_code, req.route, payload.message, current_user.name, contact_email,
@@ -376,19 +583,23 @@ def reply_to_rm(
     in_reply_to = last_msg.message_id if last_msg and last_msg.message_id else None
 
     message_id, smtp_err = send_smtp_email(
-        thread.rm_email,
+        to_addr,
         subject,
         plain_body,
         html_body,
         in_reply_to=in_reply_to,
     )
 
+    if is_agent_on_agent_thread:
+        from_hdr = (current_user.email or settings.SMTP_FROM_EMAIL or "").strip() or to_addr
+    else:
+        from_hdr = (settings.SMTP_FROM_EMAIL or current_user.email or "").strip() or to_addr
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
         thread_id=thread.id,
         direction="outgoing",
-        from_email=settings.SMTP_FROM_EMAIL,
-        to_email=thread.rm_email,
+        from_email=from_hdr,
+        to_email=to_addr,
         subject=subject,
         body=plain_body,
         html_body=html_body,
@@ -398,28 +609,21 @@ def reply_to_rm(
         sent_at=now,
     )
     db.add(email_msg)
-
     _log_history(
-        db, req.id, "email_reply_sent", current_user.id,
-        details=(
-            f"Reply sent to {thread.rm_email}"
-            if message_id
-            else f"SMTP reply failed to {thread.rm_email}: {smtp_err or 'unknown error'}"
-        ),
+        db,
+        req.id,
+        "email_reply_sent" if ch == THREAD_CHANNEL_RM else "email_reply_agent_thread",
+        current_user.id,
+        details=(f"Reply to {to_addr}" if message_id else f"SMTP failed: {smtp_err}"),
     )
-
     db.commit()
     db.refresh(email_msg)
-
     delivered = message_id is not None
     response.headers["X-Email-Delivered"] = "true" if delivered else "false"
     msg = (
         "Reply sent successfully"
         if delivered
-        else (
-            "Reply saved, but delivery failed. "
-            "Set RESEND_API_KEY on Railway Hobby or full SMTP credentials where SMTP is allowed."
-        )
+        else "Reply not delivered. Set RESEND_API_KEY or SMTP for outbound email."
     )
     return ReplyEmailResponse(
         message=msg,
@@ -459,7 +663,7 @@ def simulate_rm_reply(
 ):
     """Dev/demo endpoint: simulate an incoming RM reply."""
     req = _get_request_or_404(db, payload.request_id)
-    thread = db.query(EmailThread).filter(EmailThread.request_id == req.id).first()
+    thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
     if not thread:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
