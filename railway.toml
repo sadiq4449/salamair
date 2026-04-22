@@ -18,6 +18,7 @@
 #    - GROQ_MODEL         Optional; default llama-3.3-70b-versatile. Or sync from local .env: python Backend/scripts/sync_env_to_railway.py
 #    - GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI  Optional; sales↔agent Gmail API (callback URL = https://<your-railway-host>/api/v1/integrations/gmail/callback).
 #    - GOOGLE_OAUTH_SUCCESS_REDIRECT  Optional; SPA after OAuth, e.g. https://<your-railway-host>/
+#    - GMAIL_AGENT_THREAD_REFRESH_TOKEN  Optional; sales↔agent tab sends via Gmail API without per-user Connect (RM unchanged).
 # 4. Settings → Networking → Generate domain (open / for SPA; API under /api/v1/...).
 #
 # Health: GET /api/health — used below; no DB round-trip (DB still required at startup for schema).

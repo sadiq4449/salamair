@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_REDIRECT_URI: str = "http://127.0.0.1:8000/api/v1/integrations/gmail/callback"
     # Browser redirect after successful OAuth (SPA origin + path).
     GOOGLE_OAUTH_SUCCESS_REDIRECT: str = "http://localhost:5173/"
+    # Optional: one Google **refresh token** (sales ↔ agent thread only) so sends use Gmail API (HTTPS) without
+    # each user clicking "Connect Gmail". Use the same Web client id/secret. RM email is not affected; still SMTP.
+    GMAIL_AGENT_THREAD_REFRESH_TOKEN: str = ""
 
     # Fallback for admin dashboard if app.state.started_at_utc is missing (should not happen in normal runs)
     REPORTED_SYSTEM_UPTIME: str = "99.9%"

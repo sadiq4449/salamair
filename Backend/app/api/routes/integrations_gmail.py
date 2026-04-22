@@ -10,7 +10,13 @@ from app.api.deps import get_current_user, get_db, require_role
 from app.core.config import settings
 from app.models.user import User
 from app.models.user_gmail_credential import UserGmailCredential
-from app.services.gmail_api_service import GMAIL_SCOPES, build_flow, google_oauth_configured
+from app.services.gmail_api_service import (
+    GMAIL_SCOPES,
+    build_flow,
+    gmail_client_id_secret_configured,
+    google_oauth_configured,
+    shared_gmail_agent_thread_configured,
+)
 
 router = APIRouter()
 
@@ -27,7 +33,19 @@ def gmail_status(
         .filter(UserGmailCredential.user_id == current_user.id)
         .first()
     )
-    return {"gmail_connected": row is not None, "gmail_configured": google_oauth_configured()}
+    shared = shared_gmail_agent_thread_configured()
+    u_conn = row is not None
+    client_ok = gmail_client_id_secret_configured()
+    # Gmail API can send this thread: personal token OR GMAIL_AGENT_THREAD_REFRESH_TOKEN in env.
+    agent_thread_uses_gmail = bool(client_ok and (u_conn or shared))
+    return {
+        "gmail_connected": u_conn,
+        "gmail_configured": google_oauth_configured(),  # Connect (browser) needs redirect in Google + env
+        "gmail_client_configured": client_ok,  # id + secret: required for any Gmail API send
+        "shared_gmail_for_agent_thread": shared,
+        "connect_gmail_available": google_oauth_configured(),
+        "agent_thread_uses_gmail": agent_thread_uses_gmail,
+    }
 
 
 @router.get("/gmail/authorize", response_model=dict)

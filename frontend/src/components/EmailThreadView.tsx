@@ -173,6 +173,9 @@ export default function EmailThreadView({
   const [gmailStatus, setGmailStatus] = useState<{
     connected: boolean;
     configured: boolean;
+    clientConfigured: boolean;
+    sharedMailbox: boolean;
+    agentThreadUsesGmail: boolean;
   } | null>(null);
   const [gmailActionLoading, setGmailActionLoading] = useState(false);
 
@@ -185,11 +188,23 @@ export default function EmailThreadView({
       try {
         const s = await integrationService.getGmailStatus();
         if (!cancelled) {
-          setGmailStatus({ connected: s.gmail_connected, configured: s.gmail_configured });
+          setGmailStatus({
+            connected: s.gmail_connected,
+            configured: s.gmail_configured,
+            clientConfigured: s.gmail_client_configured ?? false,
+            sharedMailbox: s.shared_gmail_for_agent_thread ?? false,
+            agentThreadUsesGmail: s.agent_thread_uses_gmail ?? false,
+          });
         }
       } catch {
         if (!cancelled) {
-          setGmailStatus({ connected: false, configured: false });
+          setGmailStatus({
+            connected: false,
+            configured: false,
+            clientConfigured: false,
+            sharedMailbox: false,
+            agentThreadUsesGmail: false,
+          });
         }
       }
     })();
@@ -207,7 +222,17 @@ export default function EmailThreadView({
     const qs = p.toString();
     u.search = qs ? `?${qs}` : '';
     window.history.replaceState({}, '', u.toString());
-    setGmailStatus((prev) => (prev ? { ...prev, connected: true } : { connected: true, configured: true }));
+    setGmailStatus((prev) =>
+      prev
+        ? { ...prev, connected: true, agentThreadUsesGmail: true }
+        : {
+            connected: true,
+            configured: true,
+            clientConfigured: true,
+            sharedMailbox: false,
+            agentThreadUsesGmail: true,
+          }
+    );
   }, [addToast]);
 
   useEffect(() => {
@@ -280,7 +305,10 @@ export default function EmailThreadView({
     try {
       await integrationService.disconnectGmail();
       setGmailStatus((s) => (s ? { ...s, connected: false } : s));
-      addToast('success', 'Gmail disconnected. This thread will use the server’s SMTP or Resend for outbound mail.');
+      addToast(
+        'success',
+        'Personal Gmail disconnected. This tab can still use the app Gmail (if configured on the server) or SMTP/Resend.'
+      );
     } catch {
       addToast('error', 'Could not disconnect Gmail.');
     } finally {
@@ -348,15 +376,39 @@ export default function EmailThreadView({
       )}
       {channel === 'agent_sales' && canReply && (isSales || isAdmin || isAgent) && gmailStatus && (
         <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-xs dark:border-slate-600 dark:bg-slate-900/50">
-          {!gmailStatus.configured ? (
+          {!gmailStatus.clientConfigured ? (
             <p className="text-gray-600 dark:text-gray-400">
-              Optional: send this thread from your personal Gmail after an admin sets <code className="text-[0.65rem]">GOOGLE_OAUTH_*</code> on the
-              API. Until then, mail uses the server’s SMTP/Resend.
+              Set <code className="text-[0.65rem]">GOOGLE_OAUTH_CLIENT_ID</code> and{' '}
+              <code className="text-[0.65rem]">GOOGLE_OAUTH_CLIENT_SECRET</code> on the API so this tab can use Gmail (or add a server refresh
+              token for the app mailbox). Until then, outbound may use SMTP/Resend, which can fail on some hosts.
             </p>
-          ) : gmailStatus.connected ? (
+          ) : gmailStatus.agentThreadUsesGmail && gmailStatus.sharedMailbox && !gmailStatus.connected ? (
+            <div className="space-y-2">
+              <p className="text-emerald-800 dark:text-emerald-200/90">
+                <strong className="font-semibold">Gmail (API) is on</strong> for this tab: messages send over HTTPS from the app mailbox. RM
+                email is unchanged (still SMTP).
+              </p>
+              {gmailStatus.configured && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  Optional: <strong className="text-gray-700 dark:text-gray-300">Connect Gmail</strong> to send this thread from your own Google
+                  address instead.
+                </p>
+              )}
+              {gmailStatus.configured && (
+                <button
+                  type="button"
+                  onClick={handleConnectGmail}
+                  disabled={gmailActionLoading}
+                  className="shrink-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[0.7rem] font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {gmailActionLoading ? '…' : 'Connect my Gmail'}
+                </button>
+              )}
+            </div>
+          ) : gmailStatus.agentThreadUsesGmail && gmailStatus.connected ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-gray-700 dark:text-gray-300">
-                <strong className="font-semibold">Gmail</strong> is connected for this account. Outbound messages on this tab use the Gmail API.
+                <strong className="font-semibold">Gmail</strong> is connected for you. This tab sends through the Gmail API.
               </span>
               <button
                 type="button"
@@ -364,14 +416,15 @@ export default function EmailThreadView({
                 disabled={gmailActionLoading}
                 className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[0.7rem] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
               >
-                {gmailActionLoading ? '…' : 'Disconnect Gmail'}
+                {gmailActionLoading ? '…' : 'Disconnect my Gmail'}
               </button>
             </div>
-          ) : (
+          ) : !gmailStatus.agentThreadUsesGmail && gmailStatus.configured ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-gray-700 dark:text-gray-300">
-                <strong className="font-semibold">Connect Gmail</strong> to send the sales ↔ agent thread from your Google address instead of
-                the shared app mailbox.
+                <strong className="font-semibold">Connect Gmail</strong> to send the sales ↔ agent thread via Gmail, or set{' '}
+                <code className="text-[0.65rem]">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> on the server for a shared app mailbox. Otherwise
+                delivery uses SMTP/Resend and may not work.
               </span>
               <button
                 type="button"
@@ -382,7 +435,12 @@ export default function EmailThreadView({
                 {gmailActionLoading ? '…' : 'Connect Gmail'}
               </button>
             </div>
-          )}
+          ) : !gmailStatus.agentThreadUsesGmail && !gmailStatus.configured ? (
+            <p className="text-gray-600 dark:text-gray-400">
+              Gmail API: add <code className="text-[0.65rem]">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> to the server (with the same client id/secret) so
+              this tab can send on HTTPS, or set <code className="text-[0.65rem]">GOOGLE_OAUTH_REDIRECT_URI</code> and use <strong>Connect Gmail</strong>.
+            </p>
+          ) : null}
         </div>
       )}
       {showSalesIntroRm && (

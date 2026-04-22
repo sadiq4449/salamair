@@ -41,6 +41,19 @@ def google_oauth_configured() -> bool:
     return bool(c["client_id"] and c["client_secret"] and c["redirect_uris"][0])
 
 
+def gmail_client_id_secret_configured() -> bool:
+    """Client id+secret (required to refresh any token)."""
+    c = _oauth_client_config()["web"]
+    return bool(c["client_id"] and c["client_secret"])
+
+
+def shared_gmail_agent_thread_configured() -> bool:
+    """Server env: send sales↔agent via Gmail as one shared mailbox (no per-user Connect)."""
+    if not (settings.GMAIL_AGENT_THREAD_REFRESH_TOKEN or "").strip():
+        return False
+    return gmail_client_id_secret_configured()
+
+
 def build_flow(redirect_uri: str | None = None):
     from google_auth_oauthlib.flow import Flow
 
@@ -52,22 +65,34 @@ def build_flow(redirect_uri: str | None = None):
     )
 
 
-def credentials_for_user(db: Session, user_id) -> Credentials | None:
-    row = db.query(UserGmailCredential).filter(UserGmailCredential.user_id == user_id).first()
-    if not row:
-        return None
+def _make_credentials(refresh_token: str) -> Credentials | None:
     cid = (settings.GOOGLE_OAUTH_CLIENT_ID or "").strip()
     csec = (settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip()
-    if not cid or not csec:
+    if not cid or not csec or not (refresh_token or "").strip():
         return None
     return Credentials(
         token=None,
-        refresh_token=row.refresh_token,
+        refresh_token=refresh_token.strip(),
         token_uri="https://oauth2.googleapis.com/token",
         client_id=cid,
         client_secret=csec,
         scopes=GMAIL_SCOPES,
     )
+
+
+def credentials_for_user(db: Session, user_id) -> Credentials | None:
+    row = db.query(UserGmailCredential).filter(UserGmailCredential.user_id == user_id).first()
+    if not row:
+        return None
+    return _make_credentials(row.refresh_token)
+
+
+def credentials_for_agent_sales_send(db: Session, user_id) -> Credentials | None:
+    """Per-user Connect wins; else optional shared env token (agent↔sales thread only; not RM)."""
+    u = credentials_for_user(db, user_id)
+    if u is not None:
+        return u
+    return _make_credentials((settings.GMAIL_AGENT_THREAD_REFRESH_TOKEN or ""))
 
 
 def _rfc_message_id_from_gmail_message(service, gmail_id: str) -> str | None:
@@ -143,7 +168,7 @@ def send_outgoing_agent_sales(
     smtp_user_email_first: for SMTP only, when True (e.g. agent replying) prefer the user's email for display.
     Returns (message_id, smtp/gmail error string or None, from_email for storage).
     """
-    creds = credentials_for_user(db, user.id)
+    creds = credentials_for_agent_sales_send(db, user.id)
     if creds is not None:
         mid, err, from_addr = send_via_gmail(
             creds, to_email, subject, plain_body, html_body, in_reply_to=in_reply_to
