@@ -14,6 +14,7 @@ import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
 import Button from '../../components/ui/Button';
+import RequestDealExportButtons from '../../components/RequestDealExportButtons';
 
 /** Backend may omit status on legacy rows; treat as pending when awaiting agent action. */
 function isPendingOfferStatus(status: string | undefined | null): boolean {
@@ -82,13 +83,16 @@ export default function RequestDetail() {
 
   return (
     <div className="space-y-5">
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back to Requests
-      </button>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors shrink-0"
+        >
+          <ArrowLeft size={16} />
+          Back to Requests
+        </button>
+        {id && <RequestDealExportButtons requestId={id} />}
+      </div>
 
       {user?.role === 'admin' && id && <AdminRequestControls request={req} requestId={id} />}
 

@@ -170,6 +170,16 @@ function _triggerBlobDownload(blob: Blob, filename: string) {
 }
 
 /** Admin: download all Sales ↔ RM email threads (ZIP = one .txt per request, or single TXT). */
+/** Admin: one PDF of users, all requests (deal+chat+RM), and system audit log — for text backup. */
+export async function adminDownloadFullPortalBackupPdf(): Promise<void> {
+  const res = await api.get('/admin/backup/full-pdf', { responseType: 'blob' });
+  const name = _filenameFromContentDisposition(
+    res.headers['content-disposition'] as string | undefined,
+    'smartdeal-full-backup.pdf'
+  );
+  _triggerBlobDownload(res.data as Blob, name);
+}
+
 export async function adminDownloadAllEmailThreads(format: 'zip' | 'txt' = 'zip'): Promise<void> {
   const fallback = format === 'zip' ? 'rm-email-threads-all.zip' : 'rm-email-threads-all.txt';
   const res = await api.get('/admin/email-threads/export', {

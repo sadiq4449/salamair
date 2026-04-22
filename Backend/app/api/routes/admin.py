@@ -4,6 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, status
+from fastapi.responses import Response
 from sqlalchemy import exists, func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -45,9 +46,11 @@ from app.schemas.admin_schema import (
 )
 from app.schemas.email_schema import PollInboxResponse
 from app.services.admin_audit import ADMIN_CONFIG_KEYS, ensure_default_system_config, log_admin_action
+from app.services.admin_full_backup import build_full_portal_backup_text
 from app.services.email_service import resend_outbound_summary, resend_test_sender_mode, send_smtp_email
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.reminder_runner import ensure_default_reminder_rules, run_reminder_scan
+from app.services.request_export_service import _stamp as _export_stamp, build_pdf_from_plain_text
 
 router = APIRouter()
 
@@ -147,6 +150,41 @@ def admin_stats(
         pending_requests=pending_requests,
         emails_sent_today=emails_sent_today,
         system_uptime=uptime_str,
+    )
+
+
+@router.get("/backup/full-pdf")
+def admin_full_portal_backup_pdf(
+    http_request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_role("admin")),
+):
+    """
+    Download a single PDF snapshot of the portal database for backup: all user rows (no passwords),
+    every request export (deal, history, chat, Sales↔RM), and the full system / admin audit log.
+    Large sites may be slow; binary files and secrets are not included—only what is stored in text fields.
+    """
+    log_admin_action(
+        db,
+        action="full_portal_backup_pdf",
+        actor_id=actor.id,
+        target_type="export",
+        target_id=None,
+        details="admin full PDF backup",
+        ip_address=_client_ip(http_request),
+    )
+    db.commit()
+    text = build_full_portal_backup_text(db, actor)
+    pdf = build_pdf_from_plain_text(
+        text,
+        "Salam Air SmartDeal — full portal backup (admin PDF)",
+    )
+    stamp = _export_stamp()
+    filename = f"smartdeal-full-backup-{stamp}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

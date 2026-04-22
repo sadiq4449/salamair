@@ -66,6 +66,26 @@ export interface NoteData {
   content: string;
 }
 
+function _filenameFromContentDisposition(cd: string | undefined, fallback: string): string {
+  if (!cd) return fallback;
+  const q = /filename="([^"]+)"/i.exec(cd);
+  if (q) return q[1];
+  const u = /filename=([^;\s]+)/i.exec(cd);
+  return u ? u[1].replace(/^["']|["']$/g, '') : fallback;
+}
+
+function _triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export const requestService = {
   async getRequests(params: RequestFilters = {}): Promise<RequestListResponse> {
     const { data } = await api.get<RequestListResponse>('/requests', { params });
@@ -150,5 +170,21 @@ export const requestService = {
 
   async addNote(id: string, payload: NoteData): Promise<void> {
     await api.post(`/sales/requests/${id}/notes`, { note: payload.content });
+  },
+
+  /**
+   * Export request deal, activity log, portal chat; sales/admin also get Sales↔RM email when present.
+   * ZIP = separate text files; TXT = one combined UTF-8 text; PDF = same content as a PDF.
+   */
+  async downloadExport(id: string, format: 'zip' | 'txt' | 'pdf' = 'zip'): Promise<void> {
+    const fallback =
+      format === 'zip'
+        ? 'request-deal-export.zip'
+        : format === 'pdf'
+          ? 'request-deal-export.pdf'
+          : 'request-deal-export.txt';
+    const res = await api.get(`/requests/${id}/export`, { params: { format }, responseType: 'blob' });
+    const name = _filenameFromContentDisposition(res.headers['content-disposition'] as string | undefined, fallback);
+    _triggerBlobDownload(res.data as Blob, name);
   },
 };

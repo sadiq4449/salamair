@@ -13,12 +13,14 @@ import {
   Send,
   Inbox,
   Database,
+  FileType,
 } from 'lucide-react';
 import {
   getAdminStats,
   getAdminEmailStatus,
   postAdminEmailTestSend,
   postAdminEmailTestInbox,
+  adminDownloadFullPortalBackupPdf,
 } from '../../services/adminService';
 import type { AdminEmailStatus, AdminStats } from '../../types';
 import { useToastStore } from '../../store/toastStore';
@@ -33,6 +35,7 @@ export default function AdminDashboardPage() {
   const [emailStatus, setEmailStatus] = useState<AdminEmailStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailBusy, setEmailBusy] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
@@ -103,6 +106,18 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function runFullBackupPdf() {
+    setBackupBusy(true);
+    try {
+      await adminDownloadFullPortalBackupPdf();
+      addToast('success', 'Full backup PDF download started. Large portals may take a short while.');
+    } catch (e) {
+      addToast('error', apiErr(e));
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
   async function runTestInbox() {
     setEmailBusy(true);
     try {
@@ -126,19 +141,41 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <Link
-        to="/admin/data-hub"
-        className="flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/90 dark:bg-purple-950/40 px-4 py-3 text-sm text-purple-900 dark:text-purple-100 hover:bg-purple-100/90 dark:hover:bg-purple-950/60 transition-colors"
-      >
-        <Database className="h-5 w-5 shrink-0" />
-        <span>
-          <span className="font-semibold">All database data</span>
-          <span className="block text-xs opacity-90 mt-0.5">
-            View and edit requests, chat messages, history, notifications, counter offers, SLA, chat files — without SQL or
-            Railway tables.
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Link
+          to="/admin/data-hub"
+          className="flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/90 dark:bg-purple-950/40 px-4 py-3 text-sm text-purple-900 dark:text-purple-100 hover:bg-purple-100/90 dark:hover:bg-purple-950/60 transition-colors"
+        >
+          <Database className="h-5 w-5 shrink-0" />
+          <span>
+            <span className="font-semibold">All database data</span>
+            <span className="block text-xs opacity-90 mt-0.5">
+              View and edit requests, chat messages, history, notifications, counter offers, SLA, chat files — without
+              SQL or Railway tables.
+            </span>
           </span>
-        </span>
-      </Link>
+        </Link>
+        <div className="flex flex-col gap-1.5 rounded-xl border border-teal-200/80 dark:border-teal-900/50 bg-teal-50/80 dark:bg-teal-950/30 px-4 py-3 text-sm text-teal-900 dark:text-teal-100">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <span className="font-semibold">Full portal backup (PDF)</span>
+              <span className="block text-xs opacity-90 mt-0.5 text-teal-800/90 dark:text-teal-200/80">
+                One file: all users, every request (deal, activity, chat, Sales↔RM copy), and the full audit log. Text
+                only—no binary attachments. For large databases the download may take a moment.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void runFullBackupPdf()}
+              disabled={backupBusy}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-wait"
+            >
+              {backupBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileType className="h-4 w-4" />}
+              Download PDF
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map(({ label, value, icon: Icon }) => (

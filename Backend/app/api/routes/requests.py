@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -28,6 +29,8 @@ from app.schemas.request import (
 )
 from app.services.bulk_request_excel import build_template_workbook, commit_bulk_upload, preview_bulk
 from app.services.request_codes import generate_request_code
+from app.services.request_access import user_can_access_request
+from app.services.request_export_service import build_export_bytes
 from app.services.upload_limits import get_max_upload_bytes
 from app.services.notification_service import (
     compute_sla,
@@ -359,6 +362,45 @@ def get_request(
     out = RequestRead.model_validate(req)
     out.counter_offers = offers_out
     return out
+
+
+@router.get("/{request_id}/export")
+def download_request_export(
+    request_id: uuid.UUID,
+    format: Literal["zip", "txt", "pdf"] = Query(
+        "zip",
+        description="zip: separate files; txt or pdf: one combined file (plain text or PDF)",
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent", "sales", "admin")),
+):
+    """Download this request's deal, activity log, and portal chat; sales/admin also get RM email copy when present."""
+    req = (
+        db.query(Request)
+        .options(
+            joinedload(Request.agent),
+            joinedload(Request.attachments),
+            joinedload(Request.tags),
+        )
+        .filter(Request.id == request_id)
+        .first()
+    )
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if not user_can_access_request(current_user, req):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
+        )
+    content, media_type, filename = build_export_bytes(db, req, current_user, format)
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.put("/{request_id}", response_model=RequestRead)
