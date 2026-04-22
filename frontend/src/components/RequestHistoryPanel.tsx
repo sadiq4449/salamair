@@ -8,11 +8,11 @@ function formatStatusLabel(raw: string) {
 }
 
 function formatTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-  } catch {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
     return iso;
   }
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function actionLabel(action: string) {

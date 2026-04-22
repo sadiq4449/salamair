@@ -14,12 +14,17 @@ export default function SalesInternalNoteForm({ requestId }: { requestId: string
     const t = text.trim();
     if (!t || saving) return;
     setSaving(true);
-    const ok = await addNote(requestId, { content: t });
-    if (ok) {
-      setText('');
-      void fetchRequest(requestId);
+    try {
+      const ok = await addNote(requestId, { content: t });
+      if (ok) {
+        setText('');
+        void fetchRequest(requestId);
+      }
+    } catch (err) {
+      console.error('addNote failed', err);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   return (

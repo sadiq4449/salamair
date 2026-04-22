@@ -186,15 +186,24 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   },
 
   addNote: async (id, data) => {
+    set({ isLoading: true, error: null });
+    let added = false;
     try {
       await requestService.addNote(id, data);
-      const events = await requestService.getHistory(id);
-      set({ history: events });
-      return true;
+      added = true;
+      try {
+        const events = await requestService.getHistory(id);
+        set({ history: events, error: null });
+      } catch {
+        set({ error: 'Failed to refresh history after note' });
+      }
     } catch {
       set({ error: 'Failed to add note' });
-      return false;
+      added = false;
+    } finally {
+      set({ isLoading: false });
     }
+    return added;
   },
 
   clearCurrent: () => set({ currentRequest: null, history: [] }),

@@ -4,18 +4,42 @@ from __future__ import annotations
 
 from typing import Any
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return float(int(value))
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if out != out:  # NaN
+        return default
+    return out
+
 
 def fallback_email_thread_points(p: dict[str, Any]) -> list[str]:
     points: list[str] = []
     tag_names = [str(t).lower() for t in (p.get("tag_names") or [])]
     priority = str(p.get("priority") or "")
-    pax = int(p.get("pax") or 0)
-    price = float(p.get("price") or 0)
+    pax = _safe_int(p.get("pax"), 0)
+    price = _safe_float(p.get("price"), 0.0)
     status = str(p.get("status") or "")
-    notes = p.get("notes")
-    notes_s = (notes or "").strip() if notes is not None else ""
-    chat_n = int(p.get("chat_message_count") or 0)
-    email_n = int(p.get("email_message_count") or 0)
+    raw_notes = p.get("notes")
+    notes_s = (str(raw_notes) if raw_notes is not None else "").strip()
+    chat_n = _safe_int(p.get("chat_message_count"), 0)
+    email_n = _safe_int(p.get("email_message_count"), 0)
     if chat_n or email_n:
         points.append(
             f"Message volume: {chat_n} portal chat message(s), {email_n} RM email message(s) in this request."

@@ -10,6 +10,11 @@ interface Props {
   request: RequestDetail;
 }
 
+function safeRequestPrice(p: string | number | null | undefined): number {
+  const n = Number(p ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export default function EmailThreadSummaryCard({ request }: Props) {
   const requestId = request.id;
   const [loading, setLoading] = useState(true);
@@ -62,7 +67,7 @@ export default function EmailThreadSummaryCard({ request }: Props) {
         request_code: request.request_code,
         route: request.route,
         pax: request.pax,
-        price: Number(request.price),
+        price: safeRequestPrice(request.price),
         priority: request.priority,
         status: request.status,
         tag_names: tagNames,
@@ -84,7 +89,7 @@ export default function EmailThreadSummaryCard({ request }: Props) {
             request_code: request.request_code,
             route: request.route,
             pax: request.pax,
-            price: Number(request.price),
+            price: safeRequestPrice(request.price),
             priority: request.priority,
             status: request.status,
             tagNames,
