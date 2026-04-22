@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.models.user_gmail_credential import UserGmailCredential
 from app.models.agent_profile import AgentProfile
 from app.models.request import Request
 from app.models.attachment import Attachment
@@ -21,6 +22,7 @@ from app.models.reminder_config import ReminderConfig
 
 __all__ = [
     "User",
+    "UserGmailCredential",
     "AgentProfile",
     "Request",
     "Attachment",

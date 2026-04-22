@@ -39,6 +39,7 @@ from app.services.email_service import (
     build_thread_reply_plain,
     send_smtp_email,
 )
+from app.services.gmail_api_service import send_outgoing_agent_sales
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
@@ -326,7 +327,7 @@ def send_email_to_agent(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
-    """Formal SMTP email to the agent’s address (in addition to portal chat and RM email)."""
+    """Email the agent on the sales↔agent thread (Gmail API if the sender connected Google, else SMTP/Resend)."""
     req = (
         db.query(Request)
         .options(joinedload(Request.agent), joinedload(Request.attachments))
@@ -365,7 +366,11 @@ def send_email_to_agent(
     html_body = build_thread_reply_html(
         req.request_code, req.route, payload.message, current_user.name, contact_email,
     )
-    message_id, smtp_err = send_smtp_email(agent_email, subject, plain_body, html_body)
+    message_id, smtp_err, from_hdr = send_outgoing_agent_sales(
+        db, current_user, agent_email, subject, plain_body, html_body,
+        in_reply_to=None,
+        smtp_user_email_first=False,
+    )
 
     thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_AGENT_SALES)
     if not thread:
@@ -382,7 +387,7 @@ def send_email_to_agent(
     email_msg = EmailMessage(
         thread_id=thread.id,
         direction="outgoing",
-        from_email=settings.SMTP_FROM_EMAIL or (current_user.email or ""),
+        from_email=from_hdr,
         to_email=agent_email,
         subject=subject,
         body=plain_body,
@@ -438,7 +443,7 @@ def get_email_thread(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """View RM thread or the sales↔agent SMTP thread. Agents: own request only, read (and reply for agent thread)."""
+    """View RM thread or the sales↔agent email thread (Gmail or SMTP). Agents: own request only, read (and reply for agent thread)."""
     if channel not in (THREAD_CHANNEL_RM, THREAD_CHANNEL_AGENT_SALES):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -582,18 +587,29 @@ def reply_email(
     )
     in_reply_to = last_msg.message_id if last_msg and last_msg.message_id else None
 
-    message_id, smtp_err = send_smtp_email(
-        to_addr,
-        subject,
-        plain_body,
-        html_body,
-        in_reply_to=in_reply_to,
-    )
-
-    if is_agent_on_agent_thread:
-        from_hdr = (current_user.email or settings.SMTP_FROM_EMAIL or "").strip() or to_addr
+    if ch == THREAD_CHANNEL_AGENT_SALES:
+        message_id, smtp_err, from_hdr = send_outgoing_agent_sales(
+            db,
+            current_user,
+            to_addr,
+            subject,
+            plain_body,
+            html_body,
+            in_reply_to=in_reply_to,
+            smtp_user_email_first=is_agent_on_agent_thread,
+        )
     else:
-        from_hdr = (settings.SMTP_FROM_EMAIL or current_user.email or "").strip() or to_addr
+        message_id, smtp_err = send_smtp_email(
+            to_addr,
+            subject,
+            plain_body,
+            html_body,
+            in_reply_to=in_reply_to,
+        )
+        if is_agent_on_agent_thread:
+            from_hdr = (current_user.email or settings.SMTP_FROM_EMAIL or "").strip() or to_addr
+        else:
+            from_hdr = (settings.SMTP_FROM_EMAIL or current_user.email or "").strip() or to_addr
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
         thread_id=thread.id,

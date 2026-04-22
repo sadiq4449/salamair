@@ -28,6 +28,7 @@ from app.api.routes.ws import router as ws_router
 from app.api.routes.proxy import router as proxy_router
 from app.api.routes.salamair_api_proxy import router as salamair_api_proxy_router
 from app.api.routes.ai import router as ai_router
+from app.api.routes.integrations_gmail import router as integrations_gmail_router
 from app.core.config import settings, validate_production_settings
 from app.core.rate_limit import limiter
 from app.core.logging_filters import install_sensitive_log_redaction
@@ -56,6 +57,7 @@ from app.models import (  # noqa: F401
     Tag,
     SlaTracking,
     ReminderConfig,
+    UserGmailCredential,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -152,6 +154,11 @@ app.include_router(
     tags=["SalamAir API proxy"],
 )
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(
+    integrations_gmail_router,
+    prefix="/api/v1/integrations",
+    tags=["Integrations"],
+)
 
 
 @app.get("/api/health", tags=["Health"])

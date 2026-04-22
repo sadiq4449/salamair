@@ -3,6 +3,7 @@ import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDow
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
 import { useAuth } from '../hooks/useAuth';
+import { integrationService } from '../services/integrationService';
 import type { EmailMessageItem, RequestStatus, EmailThreadChannel } from '../types';
 
 const EMPTY_THREAD_ID = '00000000-0000-0000-0000-000000000000';
@@ -169,6 +170,45 @@ export default function EmailThreadView({
   const canPollInbox = isSales || isAdmin;
   const [replyText, setReplyText] = useState('');
   const [firstToAgentText, setFirstToAgentText] = useState('');
+  const [gmailStatus, setGmailStatus] = useState<{
+    connected: boolean;
+    configured: boolean;
+  } | null>(null);
+  const [gmailActionLoading, setGmailActionLoading] = useState(false);
+
+  useEffect(() => {
+    if (channel !== 'agent_sales' || !canReply) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await integrationService.getGmailStatus();
+        if (!cancelled) {
+          setGmailStatus({ connected: s.gmail_connected, configured: s.gmail_configured });
+        }
+      } catch {
+        if (!cancelled) {
+          setGmailStatus({ connected: false, configured: false });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [channel, canReply, requestId]);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('gmail_connected') !== '1') return;
+    addToast('success', 'Gmail connected. This thread can send from your Google account (when the server is configured).');
+    p.delete('gmail_connected');
+    const u = new URL(window.location.href);
+    const qs = p.toString();
+    u.search = qs ? `?${qs}` : '';
+    window.history.replaceState({}, '', u.toString());
+    setGmailStatus((prev) => (prev ? { ...prev, connected: true } : { connected: true, configured: true }));
+  }, [addToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,6 +260,31 @@ export default function EmailThreadView({
       addToast('success', 'Email sent to the agent’s mailbox.');
     } catch {
       /* store */
+    }
+  }
+
+  async function handleConnectGmail() {
+    setGmailActionLoading(true);
+    try {
+      const url = await integrationService.getGmailAuthorizeUrl();
+      window.location.href = url;
+    } catch {
+      addToast('error', 'Could not start Gmail connection. Is Google OAuth configured on the server?');
+    } finally {
+      setGmailActionLoading(false);
+    }
+  }
+
+  async function handleDisconnectGmail() {
+    setGmailActionLoading(true);
+    try {
+      await integrationService.disconnectGmail();
+      setGmailStatus((s) => (s ? { ...s, connected: false } : s));
+      addToast('success', 'Gmail disconnected. This thread will use the server’s SMTP or Resend for outbound mail.');
+    } catch {
+      addToast('error', 'Could not disconnect Gmail.');
+    } finally {
+      setGmailActionLoading(false);
     }
   }
 
@@ -277,9 +342,48 @@ export default function EmailThreadView({
       )}
       {showSalesIntroAgent && (
         <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-          Formal SMTP to the <strong>agent’s email on file</strong> (in addition to portal chat). IMAP <strong>Sync inbox</strong> pulls the
-          agent’s replies on this thread. Subjects should include the request code.
+          Outbound email to the <strong>agent’s email on file</strong> (in addition to portal chat). You can use your <strong>own Gmail</strong> via
+          Connect below, or the server’s SMTP. IMAP <strong>Sync inbox</strong> imports replies; subjects should include the request code.
         </p>
+      )}
+      {channel === 'agent_sales' && canReply && (isSales || isAdmin || isAgent) && gmailStatus && (
+        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-xs dark:border-slate-600 dark:bg-slate-900/50">
+          {!gmailStatus.configured ? (
+            <p className="text-gray-600 dark:text-gray-400">
+              Optional: send this thread from your personal Gmail after an admin sets <code className="text-[0.65rem]">GOOGLE_OAUTH_*</code> on the
+              API. Until then, mail uses the server’s SMTP/Resend.
+            </p>
+          ) : gmailStatus.connected ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-gray-700 dark:text-gray-300">
+                <strong className="font-semibold">Gmail</strong> is connected for this account. Outbound messages on this tab use the Gmail API.
+              </span>
+              <button
+                type="button"
+                onClick={handleDisconnectGmail}
+                disabled={gmailActionLoading}
+                className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[0.7rem] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                {gmailActionLoading ? '…' : 'Disconnect Gmail'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-gray-700 dark:text-gray-300">
+                <strong className="font-semibold">Connect Gmail</strong> to send the sales ↔ agent thread from your Google address instead of
+                the shared app mailbox.
+              </span>
+              <button
+                type="button"
+                onClick={handleConnectGmail}
+                disabled={gmailActionLoading}
+                className="shrink-0 rounded-md bg-slate-800 px-2.5 py-1.5 text-[0.7rem] font-semibold text-white hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white disabled:opacity-50"
+              >
+                {gmailActionLoading ? '…' : 'Connect Gmail'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
       {showSalesIntroRm && (
         <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">

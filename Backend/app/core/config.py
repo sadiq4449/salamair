@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
+    # Gmail API (optional): sales ↔ agent email thread only. RM email stays on SMTP/IMAP.
+    # Create OAuth 2.0 Web client in Google Cloud Console; redirect URI must match exactly.
+    GOOGLE_OAUTH_CLIENT_ID: str = ""
+    GOOGLE_OAUTH_CLIENT_SECRET: str = ""
+    GOOGLE_OAUTH_REDIRECT_URI: str = "http://127.0.0.1:8000/api/v1/integrations/gmail/callback"
+    # Browser redirect after successful OAuth (SPA origin + path).
+    GOOGLE_OAUTH_SUCCESS_REDIRECT: str = "http://localhost:5173/"
+
     # Fallback for admin dashboard if app.state.started_at_utc is missing (should not happen in normal runs)
     REPORTED_SYSTEM_UPTIME: str = "99.9%"
 
