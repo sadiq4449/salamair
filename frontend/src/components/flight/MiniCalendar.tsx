@@ -33,6 +33,10 @@ type Props = {
   minDate?: string;
   maxDate?: string;
   className?: string;
+  /** Show previous-month control (Salam Air–style: hide on left calendar if only “forward” is needed). */
+  showNavPrev?: boolean;
+  /** Show next-month control. */
+  showNavNext?: boolean;
 };
 
 export default function MiniCalendar({
@@ -42,6 +46,8 @@ export default function MiniCalendar({
   minDate,
   maxDate,
   className = '',
+  showNavPrev = true,
+  showNavNext = true,
 }: Props) {
   const selected = value ? parseISODate(value) : null;
 
@@ -100,30 +106,40 @@ export default function MiniCalendar({
     minMonth && (viewYear < minMonth.y || (viewYear === minMonth.y && viewMonth0 <= minMonth.m0));
 
   return (
-    <div className={`rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 overflow-hidden ${className}`}>
-      {/* Month header — green bar like SalamAir */}
-      <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-3 py-2">
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={!!prevDisabled}
-          className="p-1 rounded text-gray-500 dark:text-gray-400 hover:text-[#7ab929] disabled:opacity-30 disabled:cursor-not-allowed"
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-wider">
+    <div
+      className={`overflow-hidden rounded border border-[#E0E0E0] bg-white dark:border-gray-600 dark:bg-gray-900 ${className}`}
+    >
+      {/* Month header — green controls like Salam Air main site */}
+      <div className="flex items-center justify-between bg-gray-100 px-2 py-2 dark:bg-gray-800 sm:px-3">
+        {showNavPrev ? (
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!!prevDisabled}
+            className="rounded p-1 text-gray-500 hover:text-[#76B82A] disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-400"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        ) : (
+          <span className="w-7" aria-hidden />
+        )}
+        <span className="text-[11px] font-bold tracking-wider text-gray-800 dark:text-gray-200 sm:text-xs">
           {monthLabel}
         </span>
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={!!nextDisabled}
-          className="p-1.5 rounded-md bg-[#7ab929] text-white hover:bg-[#6aa823] disabled:opacity-30 disabled:cursor-not-allowed"
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {showNavNext ? (
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!!nextDisabled}
+            className="rounded-md bg-[#76B82A] p-1.5 text-white hover:bg-[#6aa823] disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <span className="w-7" aria-hidden />
+        )}
       </div>
 
       <div className="p-2.5">
@@ -154,16 +170,14 @@ export default function MiniCalendar({
                 disabled={disabled}
                 onClick={() => !disabled && onChange(iso)}
                 className={[
-                  'aspect-square min-h-[30px] text-xs flex items-center justify-center transition-colors rounded-sm',
+                  'flex aspect-square min-h-[30px] items-center justify-center rounded-sm text-xs transition-colors',
                   disabled
-                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-[#7ab929]/10',
+                    ? 'cursor-not-allowed text-gray-300 dark:text-gray-600'
+                    : 'text-gray-800 hover:bg-[#00A9C1]/10 dark:text-gray-200',
                   isSel
-                    ? 'bg-[#5b9bd5] text-white font-bold hover:bg-[#5b9bd5]'
+                    ? 'bg-[#00A9C1] font-bold text-white hover:bg-[#00A9C1]'
                     : '',
-                  today && !isSel
-                    ? 'bg-[#7ab929]/15 font-bold text-[#7ab929]'
-                    : '',
+                  today && !isSel ? 'font-bold text-[#76B82A]' : '',
                 ].join(' ')}
               >
                 {d}

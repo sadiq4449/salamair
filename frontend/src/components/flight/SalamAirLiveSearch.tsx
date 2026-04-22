@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -12,23 +13,34 @@ import axios from 'axios';
 import Button from '../ui/Button';
 import { AIRPORT_OPTIONS } from '../../data/flightMock';
 import { salamairCreateSession, salamairSearchFlights } from '../../services/salamairApi';
+import MiniCalendar from './MiniCalendar';
 
-type TripKind = 'oneway' | 'round';
-
-/** "MCT — Muscat" → show city first so Origin vs Destination reads clearly. */
-function formatAirportOption(opt: { code: string; label: string }): string {
-  const sep = ' — ';
-  if (opt.label.includes(sep)) {
-    const city = opt.label.split(sep)[1]?.trim() ?? opt.code;
-    return `${city} (${opt.code})`;
-  }
-  return opt.label;
-}
+type TripKind = 'oneway' | 'round' | 'multi';
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + 'T12:00:00');
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/** e.g. "30 Apr, 2026" — matches Salam Air booking copy. */
+function formatBookDisplayDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  const mon = d.toLocaleString('en-GB', { month: 'short' });
+  return `${d.getDate()} ${mon}, ${d.getFullYear()}`;
+}
+
+function airportNameLine(opt: { code: string; label: string } | undefined): string {
+  if (!opt) return '';
+  const city = opt.label.includes(' — ') ? opt.label.split(' — ')[1]?.trim() : opt.label;
+  return city ? `${city} International Airport` : opt.code;
+}
+
+function defaultMonthFor(iso: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return { year: new Date().getFullYear(), month0: new Date().getMonth() };
+  return { year: Number(m[1]), month0: Number(m[2]) - 1 };
 }
 
 function defaultOutbound(): string {
@@ -185,7 +197,56 @@ interface FlightsPayload {
 const BOOKING_SALAMAIR = 'https://booking.salamair.com/en/search';
 
 const fieldClass =
-  'h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-teal-400 dark:focus:ring-teal-500/25';
+  'h-10 w-full rounded-lg border border-[#E0E0E0] bg-white px-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-[#00A9C1] focus:outline-none focus:ring-2 focus:ring-[#00A9C1]/20 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+
+function AirportPillSelect({
+  label,
+  'aria-label': aria,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  'aria-label': string;
+  value: string;
+  onChange: (code: string) => void;
+  options: { code: string; label: string }[];
+}) {
+  const opt = options.find((o) => o.code === value) ?? options[0];
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        {label}
+      </span>
+      <div className="relative min-h-[5.5rem] rounded border border-[#E0E0E0] bg-white px-4 py-3 pr-11 shadow-sm dark:border-gray-600 dark:bg-gray-900">
+        <select
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={aria}
+        >
+          {options.map((o) => (
+            <option key={o.code} value={o.code}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <div className="pointer-events-none flex min-h-[4.25rem] flex-col justify-center">
+          <span className="text-2xl font-bold tracking-tight text-[#00A9C1] sm:text-3xl">
+            {value}
+          </span>
+          <span className="mt-0.5 line-clamp-2 text-sm text-slate-800 dark:text-slate-200">
+            {airportNameLine(opt)}
+          </span>
+        </div>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
 
 function formatFareDisplay(amount: number, currencyCode: string | undefined): string {
   if (amount <= 0) return '';
@@ -460,13 +521,18 @@ function DepartingFlightBlock({
 export default function SalamAirLiveSearch() {
   const [from, setFrom] = useState('MCT');
   const [to, setTo] = useState('DXB');
-  const [tripKind, setTripKind] = useState<TripKind>('oneway');
+  const [tripKind, setTripKind] = useState<TripKind>('round');
+  const [from2, setFrom2] = useState('DXB');
+  const [to2, setTo2] = useState('MCT');
   const [depart, setDepart] = useState(defaultOutbound);
   const [returnDate, setReturnDate] = useState(() => addDays(defaultOutbound(), 7));
+  const [depart2, setDepart2] = useState(() => addDays(defaultOutbound(), 7));
   const [adults, setAdults] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<FlightsPayload | null>(null);
+
+  const [minIso] = useState(() => new Date().toISOString().slice(0, 10));
 
   const fromOptions = useMemo(
     () => AIRPORT_OPTIONS.filter((a) => a.code !== to),
@@ -476,6 +542,14 @@ export default function SalamAirLiveSearch() {
     () => AIRPORT_OPTIONS.filter((a) => a.code !== from),
     [from]
   );
+  const from2Options = useMemo(
+    () => AIRPORT_OPTIONS.filter((a) => a.code !== to2),
+    [to2]
+  );
+  const to2Options = useMemo(
+    () => AIRPORT_OPTIONS.filter((a) => a.code !== from2),
+    [from2]
+  );
 
   useEffect(() => {
     if (from !== to || AIRPORT_OPTIONS.length < 2) return;
@@ -483,14 +557,39 @@ export default function SalamAirLiveSearch() {
     if (next) setTo(next.code);
   }, [from, to]);
 
-  const datesStr =
-    tripKind === 'round' ? `${depart}|${returnDate}` : depart;
+  useEffect(() => {
+    if (from2 !== to2 || AIRPORT_OPTIONS.length < 2) return;
+    const next = AIRPORT_OPTIONS.find((a) => a.code !== from2);
+    if (next) setTo2(next.code);
+  }, [from2, to2]);
+
+  useEffect(() => {
+    if (tripKind !== 'round') return;
+    if (returnDate < depart) setReturnDate(depart);
+  }, [depart, returnDate, tripKind]);
+
+  useEffect(() => {
+    if (tripKind !== 'multi') return;
+    if (depart2 < depart) setDepart2(depart);
+  }, [depart, depart2, tripKind]);
 
   async function runSearch() {
     if (from === to) {
       setError('Choose different origin and destination.');
       return;
     }
+    if (tripKind === 'multi') {
+      if (from2 === to2) {
+        setError('Second leg: choose different origin and destination.');
+        return;
+      }
+    }
+    const datesStr =
+      tripKind === 'round' ? `${depart}|${returnDate}` : tripKind === 'multi' ? `${depart}|${depart2}` : depart;
+    const routeStr = tripKind === 'multi' ? `${from}-${to}|${from2}-${to2}` : `${from}-${to}`;
+    const flightType: 'oneway' | 'round' | 'multi' =
+      tripKind === 'oneway' ? 'oneway' : tripKind === 'round' ? 'round' : 'multi';
+
     setError(null);
     setPayload(null);
     setLoading(true);
@@ -502,10 +601,10 @@ export default function SalamAirLiveSearch() {
       }
       const res = await salamairSearchFlights(
         {
-          route: `${from}-${to}`,
+          route: routeStr,
           counts: `${adults}-0-0-0`,
           dates: datesStr,
-          flightType: tripKind === 'round' ? 'round' : 'oneway',
+          flightType,
           days: 7,
         },
         token
@@ -532,120 +631,161 @@ export default function SalamAirLiveSearch() {
         id="find-flights"
         className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5 scroll-mt-4"
       >
-        <div className="h-1.5 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
-        <div className="border-b border-gray-100 px-4 py-3.5 dark:border-gray-800 sm:px-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-teal-800 dark:text-teal-300">
-              Find flights
-            </h2>
-            <details className="group text-xs text-gray-500 dark:text-gray-400">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
-                <Info className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden />
-                How this works
-              </summary>
-              <p className="mt-2 max-w-md rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/80 dark:text-gray-400">
-                Availability is loaded from SalamAir through this portal (not an embedded iframe). Complete booking
-                and payment on{' '}
-                <a
-                  href={BOOKING_SALAMAIR}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-teal-600 hover:underline dark:text-teal-400"
-                >
-                  booking.salamair.com
-                </a>
-                .
-              </p>
-            </details>
+        <div className="px-4 pb-0 pt-5 dark:border-gray-800 sm:px-6 sm:pt-6">
+          <div className="border-b-4 border-[#00A9C1]">
+            <div className="flex flex-wrap items-end justify-between gap-3 pb-2">
+              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900 sm:text-lg dark:text-slate-100">
+                Book your flight
+              </h2>
+              <details className="group text-xs text-gray-500 dark:text-gray-400">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
+                  <Info className="h-3.5 w-3.5 text-[#00A9C1] dark:text-teal-400" aria-hidden />
+                  How this works
+                </summary>
+                <p className="mt-2 max-w-md rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/80 dark:text-gray-400">
+                  Availability is loaded from SalamAir through this portal (not an embedded iframe). Complete booking
+                  and payment on{' '}
+                  <a
+                    href={BOOKING_SALAMAIR}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-[#00A9C1] hover:underline dark:text-teal-400"
+                  >
+                    booking.salamair.com
+                  </a>
+                  .
+                </p>
+              </details>
+            </div>
           </div>
         </div>
 
-        <div className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end lg:gap-x-3 lg:gap-y-3">
-            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">From</span>
-              <select
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                aria-label="Origin airport"
-                className={fieldClass}
+        <div className="p-4 sm:p-6">
+          <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2">
+            {(
+              [
+                { id: 'round' as const, label: 'Round trip' },
+                { id: 'oneway' as const, label: 'One way' },
+                { id: 'multi' as const, label: 'Multicity' },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.id}
+                className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400"
               >
-                {fromOptions.map((opt) => (
-                  <option key={opt.code} value={opt.code}>
-                    {formatAirportOption(opt)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">To</span>
-              <select
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                aria-label="Destination airport"
-                className={fieldClass}
-              >
-                {toOptions.map((opt) => (
-                  <option key={opt.code} value={opt.code}>
-                    {formatAirportOption(opt)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Trip</span>
-              <div className="flex h-11 rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-600 dark:bg-gray-800/50">
-                <button
-                  type="button"
-                  onClick={() => setTripKind('oneway')}
-                  className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
-                    tripKind === 'oneway'
-                      ? 'bg-white text-teal-700 shadow-sm dark:bg-gray-700 dark:text-teal-300'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  One way
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTripKind('round')}
-                  className={`flex-1 rounded-md text-xs font-semibold transition-colors ${
-                    tripKind === 'round'
-                      ? 'bg-white text-teal-700 shadow-sm dark:bg-gray-700 dark:text-teal-300'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  Return
-                </button>
-              </div>
-            </div>
-
-            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Depart</span>
-              <input
-                type="date"
-                value={depart}
-                onChange={(e) => setDepart(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-
-            {tripKind === 'round' && (
-              <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Return</span>
                 <input
-                  type="date"
-                  value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  min={depart}
-                  className={fieldClass}
+                  type="radio"
+                  name="book-trip"
+                  className="h-4 w-4 border-gray-300 text-[#00A9C1] focus:ring-[#00A9C1]"
+                  checked={tripKind === opt.id}
+                  onChange={() => setTripKind(opt.id)}
                 />
+                {opt.label}
               </label>
-            )}
+            ))}
+          </div>
 
-            <label className="sm:col-span-1 lg:col-span-2 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Adults</span>
+          {tripKind === 'multi' && (
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Leg 1</p>
+          )}
+          <div
+            className={`grid grid-cols-1 gap-4 ${tripKind === 'multi' ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}
+          >
+            <AirportPillSelect
+              label="From"
+              aria-label="Origin airport"
+              value={from}
+              onChange={setFrom}
+              options={fromOptions}
+            />
+            <AirportPillSelect
+              label="To"
+              aria-label="Destination airport"
+              value={to}
+              onChange={setTo}
+              options={toOptions}
+            />
+          </div>
+
+          {tripKind === 'multi' && (
+            <>
+              <p className="mb-2 mt-6 text-[11px] font-bold uppercase tracking-wider text-gray-500">Leg 2</p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <AirportPillSelect
+                  label="From"
+                  aria-label="Second leg origin"
+                  value={from2}
+                  onChange={setFrom2}
+                  options={from2Options}
+                />
+                <AirportPillSelect
+                  label="To"
+                  aria-label="Second leg destination"
+                  value={to2}
+                  onChange={setTo2}
+                  options={to2Options}
+                />
+              </div>
+            </>
+          )}
+
+          <div
+            className={`mt-5 grid grid-cols-1 gap-4 ${
+              tripKind === 'oneway' ? '' : 'md:grid-cols-2'
+            }`}
+          >
+            <div>
+              <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                {tripKind === 'multi' ? 'Leg 1 ' : null}
+                <span>Departing</span>{' '}
+                <span className="font-semibold text-[#00A9C1] tabular-nums">
+                  {formatBookDisplayDate(depart)}
+                </span>
+              </div>
+              <MiniCalendar
+                value={depart}
+                onChange={setDepart}
+                minDate={minIso}
+                defaultMonth={defaultMonthFor(depart)}
+              />
+            </div>
+            {tripKind === 'round' && (
+              <div>
+                <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span>Returning</span>{' '}
+                  <span className="font-semibold text-[#00A9C1] tabular-nums">
+                    {formatBookDisplayDate(returnDate)}
+                  </span>
+                </div>
+                <MiniCalendar
+                  value={returnDate}
+                  onChange={setReturnDate}
+                  minDate={depart}
+                  defaultMonth={defaultMonthFor(returnDate)}
+                />
+              </div>
+            )}
+            {tripKind === 'multi' && (
+              <div>
+                <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span>Leg 2 departing</span>{' '}
+                  <span className="font-semibold text-[#00A9C1] tabular-nums">
+                    {formatBookDisplayDate(depart2)}
+                  </span>
+                </div>
+                <MiniCalendar
+                  value={depart2}
+                  onChange={setDepart2}
+                  minDate={depart}
+                  defaultMonth={defaultMonthFor(depart2)}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 flex max-w-md flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-4">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-[8rem]">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Adults</span>
               <input
                 type="number"
                 min={1}
@@ -653,16 +793,17 @@ export default function SalamAirLiveSearch() {
                 value={adults}
                 onChange={(e) => setAdults(Math.min(9, Math.max(1, Number(e.target.value) || 1)))}
                 className={fieldClass}
+                aria-label="Adult passengers"
               />
             </label>
           </div>
 
-          <div className="mt-5 flex justify-stretch border-t border-gray-100 pt-4 dark:border-gray-800 sm:justify-end">
+          <div className="mt-6 flex justify-stretch border-t border-gray-100 pt-4 dark:border-gray-800 sm:justify-end">
             <Button
               type="button"
               variant="primary"
               size="md"
-              className="h-11 w-full min-w-[12.5rem] justify-center rounded-xl px-6 text-sm font-bold shadow-md sm:w-auto"
+              className="h-12 w-full min-w-[12.5rem] justify-center rounded-lg !bg-[#00A9C1] !text-white shadow-md !hover:bg-[#009aad] sm:w-auto text-sm font-bold uppercase tracking-wide"
               onClick={() => void runSearch()}
               disabled={loading}
               isLoading={loading}
