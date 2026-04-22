@@ -79,7 +79,7 @@ export default function AiPricingAssistant({
     ? 'Analyzing…'
     : insight?.source === 'groq'
       ? 'Powered by Groq'
-      : 'Smart pricing analysis';
+      : 'Heuristic (set GROQ_API_KEY on the server for full AI pricing)';
 
   async function submitFlightQuestion() {
     const q = flightQ.trim();

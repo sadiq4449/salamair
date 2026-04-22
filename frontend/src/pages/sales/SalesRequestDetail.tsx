@@ -9,6 +9,8 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
 import RequestTagsEditor from '../../components/RequestTagsEditor';
+import RequestHistoryPanel from '../../components/RequestHistoryPanel';
+import SalesInternalNoteForm from '../../components/SalesInternalNoteForm';
 import Button from '../../components/ui/Button';
 import CounterOfferModal from '../../components/CounterOfferModal';
 import EmailPreviewModal from '../../components/EmailPreviewModal';
@@ -22,7 +24,7 @@ export default function SalesRequestDetail() {
   const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentRequest, isDetailLoading, isLoading, fetchRequest, fetchHistory, updateStatus, clearCurrent } = useRequestStore();
+  const { currentRequest, isDetailLoading, isLoading, history, fetchRequest, updateStatus, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
   const [activeTab, setActiveTab] = useState<'agent-sales' | 'sales-rm'>('agent-sales');
   const [showCounter, setShowCounter] = useState(false);
@@ -30,11 +32,10 @@ export default function SalesRequestDetail() {
 
   useEffect(() => {
     if (id) {
-      fetchRequest(id);
-      fetchHistory(id);
+      void fetchRequest(id);
     }
     return () => { clearCurrent(); clearThread(); };
-  }, [id, fetchRequest, fetchHistory, clearCurrent, clearThread]);
+  }, [id, fetchRequest, clearCurrent, clearThread]);
 
   if (isDetailLoading) {
     return (
@@ -113,6 +114,8 @@ export default function SalesRequestDetail() {
             </div>
           </div>
 
+          <RequestHistoryPanel events={history} />
+
           {/* Communication Card */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -168,6 +171,8 @@ export default function SalesRequestDetail() {
             travelDate={req.travel_date}
           />
           <EmailThreadSummaryCard key={req.id} request={req} />
+
+          {(user?.role === 'sales' || user?.role === 'admin') && id && <SalesInternalNoteForm requestId={id} />}
 
           {!isTerminal && (
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">

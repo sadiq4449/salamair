@@ -4,34 +4,27 @@ import type { RequestDetail } from '../types';
 import { buildDemoEmailSummaryPoints } from '../utils/demoAiHelpers';
 import { messageService } from '../services/messageService';
 import { emailService } from '../services/emailService';
+import { fetchEmailThreadSummary } from '../services/aiService';
 
 interface Props {
   request: RequestDetail;
 }
 
-/** Demo-style “AI Summary” — message counts from API (stable when Agent ↔ Sales tab is hidden). */
 export default function EmailThreadSummaryCard({ request }: Props) {
   const requestId = request.id;
   const [loading, setLoading] = useState(true);
   const [chatTotal, setChatTotal] = useState(0);
   const [emailCount, setEmailCount] = useState(0);
-  const [showPoints, setShowPoints] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [points, setPoints] = useState<string[]>([]);
+  const [source, setSource] = useState<'groq' | 'fallback' | 'local' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.resolve()
-      .then(() => {
-        if (cancelled) return;
-        setLoading(true);
-        setChatTotal(0);
-        setEmailCount(0);
-      })
-      .then(() =>
-        Promise.all([
-          messageService.getMessages(requestId, 'all', 1, 50),
-          emailService.getThread(requestId),
-        ])
-      )
+    setLoading(true);
+    setChatTotal(0);
+    setEmailCount(0);
+    Promise.all([messageService.getMessages(requestId, 'all', 1, 50), emailService.getThread(requestId)])
       .then(([msgRes, thread]) => {
         if (cancelled) return;
         setChatTotal(msgRes.total);
@@ -55,35 +48,79 @@ export default function EmailThreadSummaryCard({ request }: Props) {
 
   useEffect(() => {
     if (loading || totalMsgs === 0) {
-      queueMicrotask(() => setShowPoints(false));
+      setPoints([]);
+      setSource(null);
       return;
     }
-    const t = window.setTimeout(() => setShowPoints(true), 600);
-    return () => {
-      window.clearTimeout(t);
-      queueMicrotask(() => setShowPoints(false));
-    };
+    const ac = new AbortController();
+    setSummaryLoading(true);
+    setPoints([]);
+    setSource(null);
+    const tagNames = (request.tags ?? []).map((t) => t.name);
+    fetchEmailThreadSummary(
+      {
+        request_code: request.request_code,
+        route: request.route,
+        pax: request.pax,
+        price: Number(request.price),
+        priority: request.priority,
+        status: request.status,
+        tag_names: tagNames,
+        notes: request.notes ?? null,
+        chat_message_count: chatTotal,
+        email_message_count: emailCount,
+      },
+      ac.signal
+    )
+      .then((res) => {
+        if (ac.signal.aborted) return;
+        setPoints(res.points);
+        setSource(res.source);
+      })
+      .catch(() => {
+        if (ac.signal.aborted) return;
+        setPoints(
+          buildDemoEmailSummaryPoints({
+            request_code: request.request_code,
+            route: request.route,
+            pax: request.pax,
+            price: Number(request.price),
+            priority: request.priority,
+            status: request.status,
+            tagNames,
+            notes: request.notes,
+          })
+        );
+        setSource('local');
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setSummaryLoading(false);
+      });
+    return () => ac.abort();
   }, [
     loading,
     totalMsgs,
-    request.id,
+    chatTotal,
+    emailCount,
+    requestId,
     request.status,
     request.priority,
     request.notes,
+    request.request_code,
+    request.route,
+    request.pax,
+    request.price,
     request.tags,
   ]);
 
-  const tagNames = (request.tags ?? []).map((t) => t.name);
-  const points = buildDemoEmailSummaryPoints({
-    request_code: request.request_code,
-    route: request.route,
-    pax: request.pax,
-    price: Number(request.price),
-    priority: request.priority,
-    status: request.status,
-    tagNames,
-    notes: request.notes,
-  });
+  const subtitle =
+    source === 'groq'
+      ? 'Powered by Groq'
+      : source === 'fallback'
+        ? 'Heuristic summary (configure Groq for LLM insights)'
+        : source === 'local'
+          ? 'Offline heuristics (API unavailable)'
+          : 'Thread summary';
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
@@ -93,7 +130,7 @@ export default function EmailThreadSummaryCard({ request }: Props) {
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-white">AI Summary</p>
-          <p className="text-[0.7rem] text-gray-500 dark:text-gray-400">Email thread summary</p>
+          <p className="text-[0.7rem] text-gray-500 dark:text-gray-400">{subtitle}</p>
         </div>
       </div>
       <div className="p-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -108,14 +145,14 @@ export default function EmailThreadSummaryCard({ request }: Props) {
             <p className="text-sm">No messages to summarize</p>
             <p className="text-xs mt-1">Start the Agent ↔ Sales chat or RM email thread to see insights.</p>
           </div>
-        ) : !showPoints ? (
+        ) : summaryLoading ? (
           <div className="flex items-center gap-2 text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
             <span>
               Analyzing {totalMsgs} message{totalMsgs === 1 ? '' : 's'}…
             </span>
           </div>
-        ) : (
+        ) : points.length > 0 ? (
           <div className="rounded-lg border-l-4 border-violet-500 bg-violet-50/60 dark:bg-violet-950/30 pl-3 py-2 pr-2">
             <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
               Key points ({totalMsgs} message{totalMsgs === 1 ? '' : 's'} analyzed)
@@ -126,7 +163,7 @@ export default function EmailThreadSummaryCard({ request }: Props) {
               ))}
             </ul>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

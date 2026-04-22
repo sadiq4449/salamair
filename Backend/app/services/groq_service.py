@@ -10,7 +10,13 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
-from app.schemas.ai_schema import PricingAssistantRequest, PricingAssistantResponse
+from app.schemas.ai_schema import (
+    EmailThreadSummaryRequest,
+    EmailThreadSummaryResponse,
+    PricingAssistantRequest,
+    PricingAssistantResponse,
+)
+from app.services.email_summary_fallback import fallback_email_thread_points
 
 logger = logging.getLogger(__name__)
 
@@ -127,3 +133,61 @@ async def fetch_pricing_insight(body: PricingAssistantRequest) -> Optional[Prici
         recommendation=rec,
         source="groq",
     )
+
+
+async def fetch_email_thread_insight(
+    body: EmailThreadSummaryRequest,
+) -> Optional[EmailThreadSummaryResponse]:
+    """3–6 bullet points for the sales 'AI summary' card."""
+    data = {
+        "request_code": body.request_code,
+        "route": body.route,
+        "pax": body.pax,
+        "price": body.price,
+        "priority": body.priority,
+        "status": body.status,
+        "tag_names": body.tag_names,
+        "notes": body.notes,
+        "chat_message_count": body.chat_message_count,
+        "email_message_count": body.email_message_count,
+    }
+    system = (
+        "You summarize B2B charter/group flight deal threads for Salam Air sales. "
+        "Output ONLY valid JSON, no markdown: "
+        '{"points": ["bullet 1", "bullet 2", ...]}. '
+        "3 to 6 concise bullets. Mention message counts if useful. OMR. No fluff."
+    )
+    user_msg = json.dumps(data, ensure_ascii=False)
+    content = await groq_chat_text(system=system, user=user_msg, temperature=0.3, max_tokens=400)
+    if not content:
+        return None
+    parsed = parse_llm_json_object(content)
+    if not parsed:
+        return None
+    raw = parsed.get("points")
+    if not isinstance(raw, list):
+        return None
+    points: list[str] = []
+    for x in raw[:8]:
+        s = str(x).strip()
+        if s:
+            points.append(s)
+    if not points:
+        return None
+    return EmailThreadSummaryResponse(points=points[:6], source="groq")
+
+
+def email_thread_summary_fallback(body: EmailThreadSummaryRequest) -> EmailThreadSummaryResponse:
+    p = {
+        "request_code": body.request_code,
+        "route": body.route,
+        "pax": body.pax,
+        "price": body.price,
+        "priority": body.priority,
+        "status": body.status,
+        "tag_names": body.tag_names,
+        "notes": body.notes,
+        "chat_message_count": body.chat_message_count,
+        "email_message_count": body.email_message_count,
+    }
+    return EmailThreadSummaryResponse(points=fallback_email_thread_points(p), source="fallback")

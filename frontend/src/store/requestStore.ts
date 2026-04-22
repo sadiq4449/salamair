@@ -28,7 +28,7 @@ interface RequestState {
   rejectCounterOffer: (id: string, offerId: string, reason?: string) => Promise<void>;
   sendToRM: (id: string) => Promise<void>;
   fetchHistory: (id: string) => Promise<void>;
-  addNote: (id: string, data: NoteData) => Promise<void>;
+  addNote: (id: string, data: NoteData) => Promise<boolean>;
   clearCurrent: () => void;
 }
 
@@ -77,6 +77,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const detail = await requestService.getRequest(id);
       set({ currentRequest: detail, isDetailLoading: false });
+      void get().fetchHistory(id);
     } catch {
       set({ error: 'Failed to load request', isDetailLoading: false });
     }
@@ -110,6 +111,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const updated = await requestService.updateRequest(id, data);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch {
       set({ error: 'Failed to update request', isLoading: false });
     }
@@ -120,6 +122,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const updated = await requestService.updateStatus(id, data);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch {
       set({ error: 'Failed to update status', isLoading: false });
     }
@@ -131,6 +134,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       await requestService.createCounterOffer(id, data);
       const updated = await requestService.getRequest(id);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch (err) {
       set({ error: 'Failed to send counter offer', isLoading: false });
       throw err;
@@ -142,6 +146,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const updated = await requestService.acceptCounterOffer(id, offerId);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch (err) {
       set({ error: 'Failed to accept counter offer', isLoading: false });
       throw err;
@@ -153,6 +158,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const updated = await requestService.rejectCounterOffer(id, offerId, reason);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch (err) {
       set({ error: 'Failed to reject counter offer', isLoading: false });
       throw err;
@@ -164,6 +170,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     try {
       const updated = await requestService.sendToRM(id);
       set({ currentRequest: updated, isLoading: false });
+      void get().fetchHistory(id);
     } catch {
       set({ error: 'Failed to send to RM', isLoading: false });
     }
@@ -181,8 +188,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   addNote: async (id, data) => {
     try {
       await requestService.addNote(id, data);
+      const events = await requestService.getHistory(id);
+      set({ history: events });
+      return true;
     } catch {
       set({ error: 'Failed to add note' });
+      return false;
     }
   },
 

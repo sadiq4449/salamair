@@ -4,13 +4,19 @@ from app.api.deps import get_current_user
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.ai_schema import (
+    EmailThreadSummaryRequest,
+    EmailThreadSummaryResponse,
     FlightChatRequest,
     FlightChatResponse,
     PricingAssistantRequest,
     PricingAssistantResponse,
 )
 from app.services.flight_assistant_service import run_flight_chat
-from app.services.groq_service import fetch_pricing_insight
+from app.services.groq_service import (
+    email_thread_summary_fallback,
+    fetch_email_thread_insight,
+    fetch_pricing_insight,
+)
 
 router = APIRouter()
 
@@ -66,3 +72,17 @@ async def flight_chat(
 ) -> FlightChatResponse:
     """Answer availability-style questions using SalamAir live search + Groq."""
     return await run_flight_chat(message=body.message, context=body.context)
+
+
+@router.post("/email-thread-summary", response_model=EmailThreadSummaryResponse)
+@limiter.limit("30/minute")
+async def email_thread_summary(
+    request: Request,
+    body: EmailThreadSummaryRequest,
+    _user: User = Depends(get_current_user),
+) -> EmailThreadSummaryResponse:
+    """Bullet summary for the sales “AI summary” card; Groq when configured, else heuristics."""
+    insight = await fetch_email_thread_insight(body)
+    if insight:
+        return insight
+    return email_thread_summary_fallback(body)

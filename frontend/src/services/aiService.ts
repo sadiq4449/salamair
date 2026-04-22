@@ -49,3 +49,30 @@ export function postFlightChat(
     )
     .then((r) => r.data);
 }
+
+export interface EmailThreadSummaryBody {
+  request_code: string;
+  route: string;
+  pax: number;
+  price: number;
+  priority: string;
+  status: string;
+  tag_names: string[];
+  notes: string | null;
+  chat_message_count: number;
+  email_message_count: number;
+}
+
+export interface EmailThreadSummaryResult {
+  points: string[];
+  source: 'groq' | 'fallback';
+}
+
+export function fetchEmailThreadSummary(
+  body: EmailThreadSummaryBody,
+  signal?: AbortSignal
+): Promise<EmailThreadSummaryResult> {
+  return api
+    .post<EmailThreadSummaryResult>('/ai/email-thread-summary', body, { signal })
+    .then((r) => r.data);
+}

@@ -9,6 +9,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
 import RequestTagsEditor from '../../components/RequestTagsEditor';
+import RequestHistoryPanel from '../../components/RequestHistoryPanel';
 import UnifiedTimeline from '../../components/chat/UnifiedTimeline';
 import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
@@ -24,15 +25,14 @@ export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentRequest, isDetailLoading, fetchRequest, fetchHistory, clearCurrent } = useRequestStore();
+  const { currentRequest, isDetailLoading, history, fetchRequest, clearCurrent } = useRequestStore();
 
   useEffect(() => {
     if (id) {
-      fetchRequest(id);
-      fetchHistory(id);
+      void fetchRequest(id);
     }
     return () => { clearCurrent(); };
-  }, [id, fetchRequest, fetchHistory, clearCurrent]);
+  }, [id, fetchRequest, clearCurrent]);
 
   // Refetch when returning to the tab (agent may have missed a counter-offer while away).
   useEffect(() => {
@@ -125,6 +125,8 @@ export default function RequestDetail() {
               )}
             </div>
           </div>
+
+          <RequestHistoryPanel events={history} />
 
           {/* Communication: agent ↔ sales portal chat only (Sales ↔ RM email is sales/admin only). */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
