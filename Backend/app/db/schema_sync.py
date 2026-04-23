@@ -27,7 +27,10 @@ def apply_runtime_schema_fixes(engine: Engine) -> None:
         conn.execute(
             text("UPDATE email_threads SET thread_channel = 'rm' WHERE thread_channel IS NULL OR thread_channel = ''")
         )
+        # Drop both the named constraint AND the unique index that may exist under different names.
         conn.execute(text("ALTER TABLE email_threads DROP CONSTRAINT IF EXISTS email_threads_request_id_key"))
+        conn.execute(text("DROP INDEX IF EXISTS ix_email_threads_request_id"))
+        conn.execute(text("ALTER TABLE email_threads DROP CONSTRAINT IF EXISTS uq_email_threads_request_id"))
         conn.execute(
             text(
                 """

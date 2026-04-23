@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_current_user_optional, get_db, require_role
@@ -257,14 +258,22 @@ def send_email_to_rm(
 
     thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
     if not thread:
-        thread = EmailThread(
-            request_id=req.id,
-            subject=subject,
-            rm_email=rm_email,
-            thread_channel=THREAD_CHANNEL_RM,
-        )
-        db.add(thread)
-        db.flush()
+        try:
+            thread = EmailThread(
+                request_id=req.id,
+                subject=subject,
+                rm_email=rm_email,
+                thread_channel=THREAD_CHANNEL_RM,
+            )
+            db.add(thread)
+            db.flush()
+        except IntegrityError:
+            # Another concurrent request or a stale unique index — roll back the insert and
+            # re-fetch the thread that already exists.
+            db.rollback()
+            thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
+            if not thread:
+                raise
 
     now = datetime.now(timezone.utc)
     from_addr = _outbound_from_header()
