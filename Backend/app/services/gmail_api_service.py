@@ -1,4 +1,9 @@
-"""Gmail API send for the sales ↔ agent email thread only (not RM)."""
+"""Gmail API send for the sales ↔ agent and RM email threads.
+
+Gmail API sends over HTTPS (works on hosts where SMTP egress is blocked, e.g. Railway
+Hobby) and has no Resend-style sandbox recipient restrictions, so it is used as the
+preferred outbound path whenever refresh tokens are configured.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.user_gmail_credential import UserGmailCredential
-from app.services.email_service import _normalize_msg_id_header, send_smtp_email
+from app.services.email_service import (
+    _coerce_to_list,
+    _normalize_msg_id_header,
+    send_smtp_email,
+)
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -127,15 +136,24 @@ def _rfc_message_id_from_gmail_message(service, gmail_id: str) -> str | None:
 
 def send_via_gmail(
     creds: Credentials,
-    to_email: str,
+    to_email: str | list[str],
     subject: str,
     body_text: str,
     body_html: str,
     *,
     in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> tuple[str | None, str | None, str]:
-    """Returns (rfc Message-ID or None, error or None, from_email for display)."""
+    """Send via Gmail API. ``to_email`` may be a single address, a comma-separated
+    string, or a list; Gmail delivers the same message to every recipient.
+
+    Returns (rfc Message-ID or None, error or None, from_email for display).
+    """
     from email.message import EmailMessage
+
+    recipients = _coerce_to_list(to_email)
+    if not recipients:
+        return None, "No recipient email address provided.", ""
 
     try:
         creds.refresh(Request())
@@ -149,11 +167,11 @@ def send_via_gmail(
         msg = EmailMessage()
         msg["Subject"] = subject
         msg["From"] = from_addr
-        msg["To"] = to_email
+        msg["To"] = ", ".join(recipients)
         if in_reply_to:
             irt = _normalize_msg_id_header(in_reply_to)
             msg["In-Reply-To"] = irt
-            msg["References"] = irt
+            msg["References"] = (references or irt).strip()
         msg.set_content(body_text, charset="utf-8")
         msg.add_alternative(body_html, subtype="html", charset="utf-8")
         raw_b64 = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
@@ -178,6 +196,81 @@ def send_via_gmail(
         except Exception:
             pass
         return None, detail, ""
+
+
+def _rm_credential_chain_for_send(db: Session, user_id) -> list[Credentials]:
+    """RM outbound chain: prefer the shared Gmail app mailbox, then (optionally) the
+    sending user's personal Gmail if they connected it. RM is a shared thread so the
+    server token is the canonical sender; per-user credentials are a last fallback.
+    """
+    s = _make_credentials((settings.GMAIL_AGENT_THREAD_REFRESH_TOKEN or ""))
+    u = credentials_for_user(db, user_id)
+    out: list[Credentials] = []
+    if s is not None:
+        out.append(s)
+    if u is not None and (s is None or u.refresh_token != s.refresh_token):
+        out.append(u)
+    return out
+
+
+def send_outgoing_rm(
+    db: Session,
+    user: User,
+    to_email: str | list[str],
+    subject: str,
+    plain_body: str,
+    html_body: str,
+    *,
+    in_reply_to: str | None = None,
+    references: str | None = None,
+) -> tuple[str | None, str | None, str]:
+    """
+    Sales → RM outbound. Preference order:
+      1) Gmail API via shared server refresh token (no Resend sandbox, no SMTP egress need).
+      2) Gmail API via per-user refresh token (rare fallback).
+      3) Resend API / SMTP (``send_smtp_email`` picks based on env).
+
+    Returns (rfc Message-ID or None, error or None, from_email for storage).
+    ``to_email`` may be a single address, a comma-separated string, or a list.
+    """
+    gchain = _rm_credential_chain_for_send(db, user.id)
+    last_gmail_err: str | None = None
+    last_from = ""
+    for g in gchain:
+        mid, err, from_addr = send_via_gmail(
+            g,
+            to_email,
+            subject,
+            plain_body,
+            html_body,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+        if from_addr:
+            last_from = from_addr
+        if not err and mid:
+            return mid, None, from_addr
+        if err:
+            last_gmail_err = err
+            logger.warning(
+                "RM Gmail send attempt failed, trying next: %s", (err or "")[:500]
+            )
+    # SMTP / Resend fallback (also handles multi recipient since we shipped multi support).
+    smtp_id, smtp_err = send_smtp_email(
+        to_email,
+        subject,
+        plain_body,
+        html_body,
+        in_reply_to=in_reply_to,
+        references=references,
+    )
+    from_addr = (settings.SMTP_FROM_EMAIL or "").strip() or last_from or "noreply@salamair.com"
+    if smtp_id:
+        return smtp_id, None, from_addr
+    # Prefer surfacing the Gmail error if we actually tried Gmail — it's usually the
+    # more actionable hint (e.g. invalid_grant means the shared token needs re-linking).
+    composed_err = smtp_err or last_gmail_err or "Email send failed (no transport available)."
+    return None, composed_err, from_addr
 
 
 def send_outgoing_agent_sales(

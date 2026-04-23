@@ -40,7 +40,7 @@ from app.services.email_service import (
     build_thread_reply_plain,
     send_smtp_email,
 )
-from app.services.gmail_api_service import send_outgoing_agent_sales
+from app.services.gmail_api_service import send_outgoing_agent_sales, send_outgoing_rm
 from app.services.imap_inbox_service import poll_inbox_once
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
@@ -258,7 +258,11 @@ def send_email_to_rm(
         contact_email, current_user.id,
     )
 
-    message_id, smtp_err = send_smtp_email(rm_email, subject, plain_body, html_body)
+    # Prefer Gmail API (works when Resend would sandbox or SMTP egress is blocked, and
+    # delivers to any recipient). Falls back to Resend/SMTP automatically.
+    message_id, smtp_err, gmail_from = send_outgoing_rm(
+        db, current_user, rm_email, subject, plain_body, html_body,
+    )
 
     thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
     if not thread:
@@ -284,7 +288,8 @@ def send_email_to_rm(
             thread.rm_email = primary_rm
 
     now = datetime.now(timezone.utc)
-    from_addr = _outbound_from_header()
+    # Prefer Gmail's authoritative from address (returned by the API); fall back to env.
+    from_addr = (gmail_from or "").strip() or _outbound_from_header()
     # to_email stores the full recipient list (may be "a@x, b@y"); thread.rm_email stores
     # the primary address so legacy UIs still show a single counterparty.
     email_msg = EmailMessage(
@@ -642,17 +647,18 @@ def reply_email(
             smtp_user_email_first=is_agent_on_agent_thread,
         )
     else:
-        message_id, smtp_err = send_smtp_email(
+        # RM thread reply: prefer Gmail API (no sandbox, works on Railway Hobby); the
+        # helper falls back to Resend / SMTP when Gmail is unavailable.
+        message_id, smtp_err, gmail_from = send_outgoing_rm(
+            db,
+            current_user,
             to_addr,
             subject,
             plain_body,
             html_body,
             in_reply_to=in_reply_to,
         )
-        if is_agent_on_agent_thread:
-            from_hdr = (current_user.email or settings.SMTP_FROM_EMAIL or "").strip() or to_addr
-        else:
-            from_hdr = (settings.SMTP_FROM_EMAIL or current_user.email or "").strip() or to_addr
+        from_hdr = (gmail_from or "").strip() or (settings.SMTP_FROM_EMAIL or current_user.email or "").strip() or to_addr
     now = datetime.now(timezone.utc)
     email_msg = EmailMessage(
         thread_id=thread.id,
