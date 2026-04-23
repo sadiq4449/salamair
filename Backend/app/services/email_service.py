@@ -155,8 +155,27 @@ def resend_outbound_summary() -> str | None:
     return f"Envelope From: {disp} <{from_addr}>"
 
 
+def _coerce_to_list(to_email: str | list[str]) -> list[str]:
+    """Normalize a string ("a@x.com, b@y.com") or list into a clean list of addresses."""
+    if isinstance(to_email, list):
+        items = [str(x).strip() for x in to_email]
+    else:
+        items = [p.strip() for p in str(to_email or "").replace(";", ",").split(",")]
+    out: list[str] = []
+    seen: set[str] = set()
+    for x in items:
+        if not x:
+            continue
+        low = x.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(x)
+    return out
+
+
 def _send_via_resend(
-    to_email: str,
+    to_email: str | list[str],
     subject: str,
     body_text: str,
     body_html: str,
@@ -171,9 +190,12 @@ def _send_via_resend(
         return None, "RESEND_API_KEY is not set"
 
     from_addr, reply_to = _resend_from_and_reply_to()
+    recipients = _coerce_to_list(to_email)
+    if not recipients:
+        return None, "No recipient email address provided."
     payload: dict = {
         "from": f"{settings.SMTP_FROM_NAME} <{from_addr}>",
-        "to": [to_email],
+        "to": recipients,
         "subject": subject,
         "html": body_html,
         "text": body_text,
@@ -339,7 +361,7 @@ def _normalize_msg_id_header(value: str) -> str:
 
 
 def send_smtp_email(
-    to_email: str,
+    to_email: str | list[str],
     subject: str,
     body_text: str,
     body_html: str,
@@ -347,9 +369,16 @@ def send_smtp_email(
     in_reply_to: str | None = None,
     references: str | None = None,
 ) -> tuple[str | None, str | None]:
-    """Send via SMTP. Returns (message_id, None) on success, (None, error_hint) if skipped or failed."""
+    """Send via SMTP (or Resend). ``to_email`` may be a single address, a comma-separated
+    string, or a list. Returns (message_id, None) on success, (None, error_hint) otherwise.
+    """
+    recipients = _coerce_to_list(to_email)
+    if not recipients:
+        return None, "No recipient email address provided."
+    display_to = ", ".join(recipients)
+
     if not settings.email_sending_active:
-        logger.info("Email disabled — not sent to %s: %s", to_email, subject)
+        logger.info("Email disabled — not sent to %s: %s", display_to, subject)
         return None, (
             "Email sending is off: set RESEND_API_KEY, or SMTP_USER + SMTP_PASSWORD "
             "(omit EMAIL_ENABLED=false), e.g. on Railway."
@@ -359,7 +388,7 @@ def send_smtp_email(
 
     if (settings.RESEND_API_KEY or "").strip():
         mid, err = _send_via_resend(
-            to_email,
+            recipients,
             subject,
             body_text,
             body_html,
@@ -368,13 +397,13 @@ def send_smtp_email(
             references=references,
         )
         if mid:
-            logger.info("Resend email to %s: %s", to_email, subject)
+            logger.info("Resend email to %s: %s", display_to, subject)
         return mid, err
 
     try:
         msg = MIMEMultipart("alternative")
         msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-        msg["To"] = to_email
+        msg["To"] = display_to
         msg["Subject"] = subject
         msg["Message-ID"] = message_id
         if in_reply_to:
@@ -397,18 +426,18 @@ def send_smtp_email(
             ) as server:
                 if settings.SMTP_USER and settings.SMTP_PASSWORD:
                     server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(msg)
+                server.send_message(msg, to_addrs=recipients)
         else:
             with SMTPIPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=timeout) as server:
                 if settings.SMTP_USE_TLS:
                     server.starttls(context=ssl.create_default_context())
                 if settings.SMTP_USER and settings.SMTP_PASSWORD:
                     server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(msg)
+                server.send_message(msg, to_addrs=recipients)
 
-        logger.info("Email sent to %s: %s", to_email, subject)
+        logger.info("Email sent to %s: %s", display_to, subject)
         return message_id, None
     except Exception as e:
         err = _enhance_smtp_error(str(e))[:1200]
-        logger.exception("Failed to send email to %s", to_email)
+        logger.exception("Failed to send email to %s", display_to)
         return None, err

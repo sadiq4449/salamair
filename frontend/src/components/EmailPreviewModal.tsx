@@ -11,6 +11,30 @@ interface Props {
   onSent?: () => void;
 }
 
+/** Lightweight email syntax check (same shape the backend validator accepts). */
+const EMAIL_RE = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+function parseRecipients(raw: string): { emails: string[]; invalid: string[] } {
+  const parts = raw
+    .split(/[,;\s]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const emails: string[] = [];
+  const invalid: string[] = [];
+  const seen = new Set<string>();
+  for (const p of parts) {
+    const low = p.toLowerCase();
+    if (seen.has(low)) continue;
+    if (!EMAIL_RE.test(p)) {
+      invalid.push(p);
+      continue;
+    }
+    seen.add(low);
+    emails.push(p);
+  }
+  return { emails, invalid };
+}
+
 export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: Props) {
   const { sendEmail, isSending, error, clearError } = useEmailStore();
   const [smtpWarning, setSmtpWarning] = useState<string | null>(null);
@@ -18,24 +42,42 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
     `Please review and approve the fare for ${request.route} route.\n\nDetails:\n- Passengers: ${request.pax}\n- Requested Price: ${Number(request.price).toFixed(2)} OMR\n- Travel Date: ${request.travel_date ?? 'N/A'}`
   );
   const [rmEmail, setRmEmail] = useState('rm@salamair.com');
+  const [toError, setToError] = useState<string | null>(null);
   const [includeAttachments, setIncludeAttachments] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
       clearError();
       setSmtpWarning(null);
+      setToError(null);
     }
   }, [isOpen, clearError]);
 
   if (!isOpen) return null;
 
   const subject = `[${request.request_code}] Fare Approval Request - ${request.route}`;
+  const { emails: parsedRecipients, invalid: invalidRecipients } = parseRecipients(rmEmail);
+  const recipientCount = parsedRecipients.length;
+  const canSend =
+    !isSending &&
+    !!message.trim() &&
+    recipientCount > 0 &&
+    invalidRecipients.length === 0;
 
   async function handleSend() {
+    setToError(null);
+    if (invalidRecipients.length > 0) {
+      setToError(`Invalid email: ${invalidRecipients.join(', ')}`);
+      return;
+    }
+    if (parsedRecipients.length === 0) {
+      setToError('Please enter at least one recipient email.');
+      return;
+    }
     try {
       const result = await sendEmail({
         request_id: request.id,
-        to: rmEmail,
+        to: parsedRecipients.join(', '),
         message: message.trim(),
         include_attachments: includeAttachments,
       });
@@ -82,14 +124,37 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
                 <span className="font-medium">Reply-To</span> your Gmail) — not shown in the preview
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0">To</span>
-              <input
-                type="email"
-                value={rmEmail}
-                onChange={(e) => setRmEmail(e.target.value)}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500"
-              />
+            <div className="flex items-start gap-3">
+              <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0 mt-2">To</span>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={rmEmail}
+                  onChange={(e) => {
+                    setRmEmail(e.target.value);
+                    if (toError) setToError(null);
+                  }}
+                  placeholder="rm@salamair.com, ops@…, finance@…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`w-full px-3 py-1.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 ${
+                    toError || invalidRecipients.length > 0
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
+                      : 'border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:ring-teal-500/15'
+                  }`}
+                />
+                <p className="mt-1 text-[0.7rem] text-gray-400 dark:text-gray-500">
+                  Comma, semicolon, or space separated (max 10).
+                  {recipientCount > 0 && (
+                    <span className="ml-1 text-teal-600 dark:text-teal-400">
+                      {recipientCount} recipient{recipientCount > 1 ? 's' : ''}.
+                    </span>
+                  )}
+                </p>
+                {toError && (
+                  <p className="mt-1 text-[0.7rem] text-red-600 dark:text-red-400">{toError}</p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-gray-400 uppercase w-16 shrink-0">Subject</span>
@@ -187,7 +252,7 @@ export default function EmailPreviewModal({ isOpen, onClose, request, onSent }: 
           </button>
           <button
             onClick={handleSend}
-            disabled={isSending || !message.trim()}
+            disabled={!canSend}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}

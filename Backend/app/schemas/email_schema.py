@@ -1,14 +1,57 @@
+import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from email_validator import EmailNotValidError, validate_email
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+_EMAIL_SPLIT_RE = re.compile(r"[,;\s]+")
+
+
+def _normalize_recipient_list(value: str | None) -> str:
+    """Accept one or more emails separated by commas / semicolons / whitespace.
+
+    Returns a canonical ``"a@x.com, b@y.com"`` string or raises ``ValueError`` on any
+    invalid address. Duplicates (case-insensitive) are removed.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    parts = [p.strip() for p in _EMAIL_SPLIT_RE.split(raw) if p.strip()]
+    validated: list[str] = []
+    seen: set[str] = set()
+    for p in parts:
+        try:
+            info = validate_email(p, check_deliverability=False)
+        except EmailNotValidError as e:
+            raise ValueError(f"Invalid email address: {p} ({e})") from e
+        addr = info.normalized
+        low = addr.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        validated.append(addr)
+    if not validated:
+        raise ValueError("Provide at least one recipient email address.")
+    if len(validated) > 10:
+        raise ValueError("Too many recipients (max 10).")
+    return ", ".join(validated)
 
 
 class SendEmailRequest(BaseModel):
     request_id: UUID
-    to: EmailStr = "rm@salamair.com"
+    to: str = Field(
+        default="",
+        description="One or more recipient emails, comma/semicolon separated.",
+    )
     message: str
     include_attachments: bool = True
+
+    @field_validator("to")
+    @classmethod
+    def _to_validator(cls, v: str) -> str:
+        return _normalize_recipient_list(v)
 
 
 class SendToAgentEmailRequest(BaseModel):

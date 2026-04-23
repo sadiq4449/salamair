@@ -237,7 +237,11 @@ def send_email_to_rm(
             },
         )
 
-    rm_email = payload.to or settings.RM_DEFAULT_EMAIL
+    # payload.to is a comma-joined, validated string of 1+ addresses (schema normalizes it).
+    rm_email = (payload.to or "").strip() or settings.RM_DEFAULT_EMAIL
+    # Store only the first address as the thread's canonical RM counterparty (column is
+    # 255 chars; the full recipient list is recorded on each message below).
+    primary_rm = rm_email.split(",")[0].strip()
     subject = build_subject(req.request_code, req.route)
 
     travel_date_str = str(req.travel_date) if req.travel_date else None
@@ -262,7 +266,7 @@ def send_email_to_rm(
             thread = EmailThread(
                 request_id=req.id,
                 subject=subject,
-                rm_email=rm_email,
+                rm_email=primary_rm,
                 thread_channel=THREAD_CHANNEL_RM,
             )
             db.add(thread)
@@ -274,14 +278,20 @@ def send_email_to_rm(
             thread = _thread_by_channel(db, req.id, THREAD_CHANNEL_RM)
             if not thread:
                 raise
+    else:
+        # Remember the newest primary RM so future auto-fills show what sales last used.
+        if primary_rm and thread.rm_email != primary_rm:
+            thread.rm_email = primary_rm
 
     now = datetime.now(timezone.utc)
     from_addr = _outbound_from_header()
+    # to_email stores the full recipient list (may be "a@x, b@y"); thread.rm_email stores
+    # the primary address so legacy UIs still show a single counterparty.
     email_msg = EmailMessage(
         thread_id=thread.id,
         direction="outgoing",
         from_email=from_addr,
-        to_email=rm_email,
+        to_email=rm_email[:255],
         subject=subject,
         body=plain_body,
         html_body=html_body,
