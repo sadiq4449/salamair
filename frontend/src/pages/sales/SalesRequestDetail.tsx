@@ -20,6 +20,7 @@ import AiPricingAssistant from '../../components/AiPricingAssistant';
 import EmailThreadSummaryCard from '../../components/EmailThreadSummaryCard';
 import type { CounterOffer } from '../../types';
 import RequestDealExportButtons from '../../components/RequestDealExportButtons';
+import { useToastStore } from '../../store/toastStore';
 
 export default function SalesRequestDetail() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function SalesRequestDetail() {
   const navigate = useNavigate();
   const { currentRequest, isDetailLoading, isLoading, history, fetchRequest, updateStatus, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
+  const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
   const [showCounter, setShowCounter] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
@@ -66,7 +68,8 @@ export default function SalesRequestDetail() {
   }
 
   function handleEmailSent() {
-    if (id) fetchRequest(id);
+    addToast('success', 'Email sent to Revenue Management.');
+    if (id) void fetchRequest(id);
   }
 
   return (

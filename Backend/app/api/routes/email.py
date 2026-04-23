@@ -47,6 +47,18 @@ from app.services.request_access import user_can_access_request
 
 router = APIRouter()
 
+_EPOCH_UTC = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _email_message_sort_key(m: EmailMessage) -> tuple:
+    """Stable sort: avoid TypeError when sent_at/created_at are None (legacy rows)."""
+    ts = m.sent_at or m.received_at or m.created_at or _EPOCH_UTC
+    return (ts, str(m.id))
+
+
+def _outbound_from_header() -> str:
+    return (settings.SMTP_FROM_EMAIL or "").strip() or "noreply@salamair.com"
+
 
 @router.get("/inbox", response_model=EmailInboxResponse)
 def list_email_inbox(
@@ -255,10 +267,11 @@ def send_email_to_rm(
         db.flush()
 
     now = datetime.now(timezone.utc)
+    from_addr = _outbound_from_header()
     email_msg = EmailMessage(
         thread_id=thread.id,
         direction="outgoing",
-        from_email=settings.SMTP_FROM_EMAIL,
+        from_email=from_addr,
         to_email=rm_email,
         subject=subject,
         body=plain_body,
@@ -498,15 +511,19 @@ def get_email_thread(
             thread_channel=channel,
         )
 
-    msgs = sorted(thread.messages, key=lambda m: (m.sent_at, m.created_at))
+    msgs = sorted(thread.messages, key=_email_message_sort_key)
     emails = [
         EmailMessageRead(
             id=m.id,
             direction=m.direction,
-            from_email=m.from_email,
-            to_email=m.to_email,
-            subject=m.subject,
-            body=sanitize_incoming_rm_body(m.body) if m.direction == "incoming" else m.body,
+            from_email=m.from_email or "",
+            to_email=m.to_email or "",
+            subject=m.subject or "",
+            body=(
+                sanitize_incoming_rm_body((m.body or "").strip())
+                if m.direction == "incoming"
+                else (m.body or "")
+            ),
             html_body=m.html_body,
             status=m.status,
             attachments=[EmailAttachmentRead.model_validate(a) for a in m.attachments],

@@ -15,10 +15,18 @@ import type {
 function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err) && err.response?.data) {
     const d = err.response.data as {
-      error?: { message?: string };
+      error?: { message?: string; details?: { field?: string; message?: string }[] };
       detail?: unknown;
     };
-    if (d.error?.message) return String(d.error.message);
+    if (d.error?.message) {
+      const base = String(d.error.message);
+      const details = d.error.details;
+      if (Array.isArray(details) && details.length > 0) {
+        const first = details[0];
+        if (first?.message) return `${base}: ${first.message}`;
+      }
+      return base;
+    }
     const det = d.detail as { error?: { message?: string } } | string | undefined;
     if (typeof det === 'object' && det?.error?.message) return String(det.error.message);
     if (typeof det === 'string') return det;
@@ -81,7 +89,12 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     set({ isSending: true, error: null });
     try {
       const data = await emailService.sendEmail(payload);
-      await get().fetchThread(payload.request_id, 'rm');
+      try {
+        await get().fetchThread(payload.request_id, 'rm');
+      } catch (refreshErr) {
+        // Send already succeeded; do not show a global error for refresh-only failures.
+        console.warn('Email sent; thread refresh failed:', refreshErr);
+      }
       set({ isSending: false });
       return data;
     } catch (e) {
