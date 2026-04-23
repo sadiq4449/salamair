@@ -1,4 +1,5 @@
-import { ExternalLink, Plane } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import SalamAirBrandLogo from '../components/branding/SalamAirBrandLogo';
 import SalamAirLiveSearch from '../components/flight/SalamAirLiveSearch';
 
 /** Direct link to SalamAir's own site (full booking UI + payment). */
@@ -8,11 +9,11 @@ export default function FlightAvailability() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 h-full min-h-0 w-full">
       <div className="flex flex-col gap-4 border-b border-gray-200/90 pb-5 dark:border-gray-700/80 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600/10 dark:bg-teal-500/15">
-              <Plane className="h-5 w-5 text-teal-600 dark:text-teal-400" aria-hidden />
-            </span>
+        <div className="min-w-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="shrink-0">
+            <SalamAirBrandLogo heightClass="h-9 sm:h-10" className="max-w-[12rem] sm:max-w-[14rem]" />
+          </div>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white sm:text-xl">
             Book a flight
           </h1>
         </div>

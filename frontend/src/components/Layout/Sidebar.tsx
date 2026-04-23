@@ -22,6 +22,7 @@ import {
   Users,
   ListOrdered,
 } from 'lucide-react';
+import SalamAirBrandLogo from '../branding/SalamAirBrandLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useThemeStore } from '../../store/themeStore';
@@ -117,13 +118,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-blue-500 rounded-lg flex items-center justify-center text-white">
-              <Plane size={20} />
-            </div>
-            <span className="text-lg font-bold text-teal-600 dark:text-teal-400">Salam Air</span>
+        {/* Logo — official SalamAir mark */}
+        <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1 pr-1">
+            <SalamAirBrandLogo heightClass="h-8 sm:h-9" className="max-h-[2.15rem] sm:max-h-[2.35rem]" />
+            <p className="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              SmartDeal Platform
+            </p>
           </div>
           <button className="md:hidden text-gray-400 hover:text-gray-600" onClick={onClose}>
             <X size={18} />

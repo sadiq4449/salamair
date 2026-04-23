@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plane, Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import SalamAirBrandLogo from '../components/branding/SalamAirBrandLogo';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,11 +33,13 @@ export default function Login() {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-600 shadow-lg shadow-teal-500/25 mb-4">
-            <Plane className="h-8 w-8 text-white" />
+          <div className="flex flex-col items-center justify-center">
+            <SalamAirBrandLogo
+              heightClass="h-14 sm:h-16"
+              className="mx-auto max-w-[min(100%,20rem)] drop-shadow-sm dark:opacity-95"
+            />
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 font-medium">SmartDeal Platform</p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Salam Air</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">SmartDeal Platform</p>
         </div>
 
         {/* Card */}

@@ -33,6 +33,7 @@ import { ToastContainer } from './components/ui/Toast';
 import { useToastStore } from './store/toastStore';
 import { useNotificationSocket } from './hooks/useNotificationSocket';
 import { Loader2 } from 'lucide-react';
+import SalamAirBrandLogo from './components/branding/SalamAirBrandLogo';
 import type { UserRole } from './types';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -40,8 +41,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 dark:bg-gray-950 px-4">
+        <SalamAirBrandLogo
+          heightClass="h-10"
+          className="opacity-95"
+        />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00A9C1]" />
       </div>
     );
   }
@@ -75,8 +80,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 dark:bg-gray-950 px-4">
+        <SalamAirBrandLogo
+          heightClass="h-10"
+          className="opacity-95"
+        />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00A9C1]" />
       </div>
     );
   }

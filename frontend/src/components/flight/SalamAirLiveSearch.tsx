@@ -6,7 +6,9 @@ import {
   ChevronRight,
   ExternalLink,
   Info,
+  Minus,
   Plane,
+  Plus,
   Search,
 } from 'lucide-react';
 import axios from 'axios';
@@ -196,8 +198,194 @@ interface FlightsPayload {
 
 const BOOKING_SALAMAIR = 'https://booking.salamair.com/en/search';
 
-const fieldClass =
-  'h-10 w-full rounded-lg border border-[#E0E0E0] bg-white px-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-[#00A9C1] focus:outline-none focus:ring-2 focus:ring-[#00A9C1]/20 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+/** Seated pax (adult + child) cap — matches typical Salam Air-style limits. */
+const PAX_MAX_SEATED = 9;
+const PAX_MAX_EXTRA = 9;
+
+type PaxCounts = { adults: number; children: number; infants: number; extra: number };
+
+/** Trigger text — mirrors Salam Air booking (e.g. “Adult 1”, “Adult 1, Child 1”). */
+function formatPaxSummary(p: PaxCounts): string {
+  const parts: string[] = [];
+  if (p.adults) {
+    parts.push(
+      p.adults === 1 ? 'Adult 1' : `${p.adults} Adults`
+    );
+  }
+  if (p.children) {
+    parts.push(
+      p.children === 1 ? 'Child 1' : `${p.children} Children`
+    );
+  }
+  if (p.infants) {
+    parts.push(
+      p.infants === 1 ? 'Infant 1' : `${p.infants} Infants`
+    );
+  }
+  if (p.extra) {
+    parts.push(
+      p.extra === 1 ? '1 Extra seat' : `${p.extra} Extra seats`
+    );
+  }
+  return parts.length ? parts.join(', ') : 'Adult 1';
+}
+
+function clampPax(prev: PaxCounts, key: keyof PaxCounts, delta: number): PaxCounts {
+  let { adults, children, infants, extra } = prev;
+  if (key === 'adults') {
+    const next = Math.max(1, Math.min(PAX_MAX_SEATED - children, adults + delta));
+    infants = Math.min(infants, next);
+    return { adults: next, children, infants, extra };
+  }
+  if (key === 'children') {
+    const next = Math.max(0, Math.min(PAX_MAX_SEATED - adults, children + delta));
+    return { adults, children: next, infants, extra };
+  }
+  if (key === 'infants') {
+    const next = Math.max(0, Math.min(adults, infants + delta));
+    return { adults, children, infants: next, extra };
+  }
+  if (key === 'extra') {
+    const next = Math.max(0, Math.min(PAX_MAX_EXTRA, extra + delta));
+    return { adults, children, infants, extra: next };
+  }
+  return prev;
+}
+
+function PaxCounterRow({
+  title,
+  subtitle,
+  value,
+  onDec,
+  onInc,
+  decDisabled,
+  incDisabled,
+}: {
+  title: string;
+  subtitle: string;
+  value: number;
+  onDec: () => void;
+  onInc: () => void;
+  decDisabled: boolean;
+  incDisabled: boolean;
+}) {
+  const btn =
+    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition enabled:bg-[#00A9C1] enabled:hover:bg-[#009aad] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700';
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-gray-100 py-2.5 last:border-b-0 dark:border-gray-800">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <button type="button" className={btn} onClick={onDec} disabled={decDisabled} aria-label={`Decrease ${title}`}>
+          <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </button>
+        <span className="min-w-[1.5rem] text-center text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+          {value}
+        </span>
+        <button type="button" className={btn} onClick={onInc} disabled={incDisabled} aria-label={`Increase ${title}`}>
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SalamPassengerSelect({
+  pax,
+  onChange,
+}: {
+  pax: PaxCounts;
+  onChange: (next: PaxCounts) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const setField = (key: keyof PaxCounts, delta: number) => {
+    onChange(clampPax(pax, key, delta));
+  };
+
+  const adultsDec = pax.adults <= 1;
+  const adultsInc = pax.adults + pax.children >= PAX_MAX_SEATED;
+  const childDec = pax.children <= 0;
+  const childInc = pax.adults + pax.children >= PAX_MAX_SEATED;
+  const infDec = pax.infants <= 0;
+  const infInc = pax.infants >= pax.adults;
+  const exDec = pax.extra <= 0;
+  const exInc = pax.extra >= PAX_MAX_EXTRA;
+
+  return (
+    <div ref={ref} className="relative w-full min-w-0 sm:max-w-sm">
+      <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-300">Passengers</span>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border-2 border-[#00A9C1] bg-white px-3 text-left text-sm text-gray-900 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#00A9C1]/30 dark:border-teal-500 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="truncate font-medium">{formatPaxSummary(pax)}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-gray-500 transition ${open ? 'rotate-180' : ''}`}
+          aria-hidden
+        />
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 right-0 z-50 mt-1 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-600 dark:bg-gray-900"
+          role="listbox"
+        >
+          <PaxCounterRow
+            title="Adult"
+            subtitle="12 + Years"
+            value={pax.adults}
+            onDec={() => setField('adults', -1)}
+            onInc={() => setField('adults', 1)}
+            decDisabled={adultsDec}
+            incDisabled={adultsInc}
+          />
+          <PaxCounterRow
+            title="Child"
+            subtitle="2 - 11 years"
+            value={pax.children}
+            onDec={() => setField('children', -1)}
+            onInc={() => setField('children', 1)}
+            decDisabled={childDec}
+            incDisabled={childInc}
+          />
+          <PaxCounterRow
+            title="Infant"
+            subtitle="Under 2 years"
+            value={pax.infants}
+            onDec={() => setField('infants', -1)}
+            onInc={() => setField('infants', 1)}
+            decDisabled={infDec}
+            incDisabled={infInc}
+          />
+          <PaxCounterRow
+            title="Extra Seat"
+            subtitle="Extra seat"
+            value={pax.extra}
+            onDec={() => setField('extra', -1)}
+            onInc={() => setField('extra', 1)}
+            decDisabled={exDec}
+            incDisabled={exInc}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AirportPillSelect({
   label,
@@ -527,7 +715,7 @@ export default function SalamAirLiveSearch() {
   const [depart, setDepart] = useState(defaultOutbound);
   const [returnDate, setReturnDate] = useState(() => addDays(defaultOutbound(), 7));
   const [depart2, setDepart2] = useState(() => addDays(defaultOutbound(), 7));
-  const [adults, setAdults] = useState(1);
+  const [pax, setPax] = useState<PaxCounts>({ adults: 1, children: 0, infants: 0, extra: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<FlightsPayload | null>(null);
@@ -602,7 +790,7 @@ export default function SalamAirLiveSearch() {
       const res = await salamairSearchFlights(
         {
           route: routeStr,
-          counts: `${adults}-0-0-0`,
+          counts: `${pax.adults}-${pax.children}-${pax.infants}-${pax.extra}`,
           dates: datesStr,
           flightType,
           days: 7,
@@ -783,19 +971,8 @@ export default function SalamAirLiveSearch() {
             )}
           </div>
 
-          <div className="mt-5 flex max-w-md flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-4">
-            <label className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-[8rem]">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Adults</span>
-              <input
-                type="number"
-                min={1}
-                max={9}
-                value={adults}
-                onChange={(e) => setAdults(Math.min(9, Math.max(1, Number(e.target.value) || 1)))}
-                className={fieldClass}
-                aria-label="Adult passengers"
-              />
-            </label>
+          <div className="mt-5 max-w-md">
+            <SalamPassengerSelect pax={pax} onChange={setPax} />
           </div>
 
           <div className="mt-6 flex justify-stretch border-t border-gray-100 pt-4 dark:border-gray-800 sm:justify-end">

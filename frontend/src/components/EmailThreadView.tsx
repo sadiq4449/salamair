@@ -81,33 +81,16 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
           </span>
         </div>
         {deliveryFailed && (
-          <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-            {channel === 'rm' ? (
-              <p>
-                <strong className="font-semibold">Not delivered.</strong> The portal kept a copy, but the message was not accepted. On the
-                server, set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_USER</code>,{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_PASSWORD</code>, and{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">SMTP_FROM_EMAIL</code> (Gmail: app password), and ensure{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">EMAIL_ENABLED</code> is not off unless you mean to disable
-                sending.
-              </p>
-            ) : (
-              <p>
-                <strong className="font-semibold">Not delivered.</strong> The portal kept a copy, but nothing was sent. This tab is meant to use{' '}
-                <strong className="font-semibold">Gmail (API)</strong>. Set <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> and
-                the same <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GOOGLE_OAUTH_CLIENT_ID</code> and{' '}
-                <code className="rounded bg-red-100 px-0.5 dark:bg-red-900/50">GOOGLE_OAUTH_CLIENT_SECRET</code> on the server, or use{' '}
-                <strong>Connect Gmail</strong>{' '}
-                here. If Gmail is not set up, the app falls back to SMTP/Resend, which many hosts (including some Railway plans) do not
-                allow for outbound mail.
-              </p>
-            )}
-          </div>
+          <p className="mb-2 rounded-md border border-red-200/80 bg-red-50/90 px-2.5 py-1.5 text-[0.7rem] text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200/95">
+            <span className="font-semibold">Not delivered</span>
+            {channel === 'rm'
+              ? ' — check mail settings on the server, or your admin can fix SMTP/Resend.'
+              : ' — this tab needs Gmail (or use Connect below). Message is saved here only.'}
+          </p>
         )}
         {deliveryOk && (
-          <p className="mb-2 text-[0.7rem] text-gray-500 dark:text-gray-400">
-            Delivered to <span className="font-medium">{email.to_email}</span>.
-            {channel === 'rm' ? ' If RM sees nothing, check spam.' : ' If the agent sees nothing, check spam.'}
+          <p className="mb-1.5 text-[0.65rem] text-gray-500 dark:text-gray-400">
+            To: {email.to_email}
           </p>
         )}
 
@@ -423,120 +406,86 @@ export default function EmailThreadView({
   return (
     <div>
       {showAgentSalesIntro && (
-        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-          <strong className="text-gray-700 dark:text-gray-300">Formal email</strong> between you and <strong>sales</strong> (in addition
-          to <strong>Portal chat</strong>). Replies from your email client appear here when the mailbox is synced. Your profile email must
-          match the address you send from.
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Email with sales (in addition to chat). Use <strong className="text-gray-600 dark:text-gray-300">Sync inbox</strong> to load replies.
         </p>
       )}
       {showRmIntro && (
-        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-          <strong className="text-gray-700 dark:text-gray-300">Read-only.</strong> This is the email between <strong>Sales</strong> and{' '}
-          <strong>Revenue Management (RM)</strong> for this request. Message sales in <strong>Portal chat</strong> or the{' '}
-          <strong>Sales ↔ Agent (email)</strong> tab.
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Read-only: sales ↔ RM. Write to sales in <strong className="text-gray-600 dark:text-gray-300">chat</strong> or the other email tab.
         </p>
       )}
       {showSalesIntroAgent && (
-        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-          Outbound email to the <strong>agent’s email on file</strong> (in addition to portal chat). You can use your <strong>own Gmail</strong> via
-          Connect below, or the server’s SMTP. IMAP <strong>Sync inbox</strong> imports replies; subjects should include the request code.
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Emails the agent on file. Replies import with <strong className="text-gray-600 dark:text-gray-300">Sync inbox</strong> (keep{' '}
+          <code className="text-[0.65rem]">[REQ-…]</code> in the subject).
         </p>
       )}
       {channel === 'agent_sales' && canReply && (isSales || isAdmin || isAgent) && gmailStatus && (
-        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-xs dark:border-slate-600 dark:bg-slate-900/50">
+        <div className="mb-3 flex flex-col gap-1.5 rounded-md border border-slate-200/80 bg-slate-50/80 px-2.5 py-2 text-[0.7rem] dark:border-slate-600/80 dark:bg-slate-900/40">
           {!gmailStatus.clientConfigured ? (
-            <p className="text-gray-600 dark:text-gray-400">
-              Set <code className="text-[0.65rem]">GOOGLE_OAUTH_CLIENT_ID</code> and{' '}
-              <code className="text-[0.65rem]">GOOGLE_OAUTH_CLIENT_SECRET</code> on the API so this tab can use Gmail (or add a server refresh
-              token for the app mailbox). Until then, outbound may use SMTP/Resend, which can fail on some hosts.
-            </p>
+            <p className="text-gray-600 dark:text-gray-400">Email sending is not fully configured on the server yet.</p>
           ) : gmailStatus.agentThreadUsesGmail && gmailStatus.sharedMailbox && !gmailStatus.connected ? (
-            <div className="space-y-2">
-              <p className="text-emerald-800 dark:text-emerald-200/90">
-                <strong className="font-semibold">Gmail (API) is on</strong> for this tab: messages send over HTTPS from the app mailbox. RM
-                email is unchanged (still SMTP).
-              </p>
-              {gmailStatus.configured && (
-                <p className="text-gray-600 dark:text-gray-400">
-                  Optional: <strong className="text-gray-700 dark:text-gray-300">Connect Gmail</strong> to send this thread from your own Google
-                  address instead.
-                </p>
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+              <span>
+                <span className="text-emerald-700 dark:text-emerald-400/90">Gmail</span> — sending is on
+              </span>
               {gmailStatus.configured && (
                 <button
                   type="button"
                   onClick={handleConnectGmail}
                   disabled={gmailActionLoading}
-                  className="shrink-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[0.7rem] font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                  className="text-[0.65rem] font-medium text-slate-700 underline decoration-slate-400 underline-offset-2 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white disabled:opacity-50"
                 >
-                  {gmailActionLoading ? '…' : 'Connect my Gmail'}
+                  Use my Gmail
                 </button>
               )}
             </div>
           ) : gmailStatus.agentThreadUsesGmail && gmailStatus.connected ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-gray-700 dark:text-gray-300">
-                <strong className="font-semibold">Gmail</strong> is connected for you. This tab sends through the Gmail API.
+            <div className="flex flex-wrap items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+              <span>
+                <span className="text-emerald-700 dark:text-emerald-400/90">Gmail</span> — your account
               </span>
               <button
                 type="button"
                 onClick={handleDisconnectGmail}
                 disabled={gmailActionLoading}
-                className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[0.7rem] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+                className="text-[0.65rem] font-medium text-slate-600 underline decoration-slate-400 underline-offset-2 dark:text-slate-400"
               >
-                {gmailActionLoading ? '…' : 'Disconnect my Gmail'}
+                Disconnect
               </button>
             </div>
           ) : !gmailStatus.agentThreadUsesGmail && gmailStatus.configured ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-gray-700 dark:text-gray-300">
-                <strong className="font-semibold">Connect Gmail</strong> to send the sales ↔ agent thread via Gmail, or set{' '}
-                <code className="text-[0.65rem]">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> on the server for a shared app mailbox. Otherwise
-                delivery uses SMTP/Resend and may not work.
-              </span>
+              <span className="text-gray-600 dark:text-gray-400">Connect Gmail to send, or ask admin to turn on the app mailbox.</span>
               <button
                 type="button"
                 onClick={handleConnectGmail}
                 disabled={gmailActionLoading}
-                className="shrink-0 rounded-md bg-slate-800 px-2.5 py-1.5 text-[0.7rem] font-semibold text-white hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white disabled:opacity-50"
+                className="rounded-md bg-slate-800 px-2 py-1 text-[0.65rem] font-semibold text-white dark:bg-slate-200 dark:text-slate-900"
               >
-                {gmailActionLoading ? '…' : 'Connect Gmail'}
+                {gmailActionLoading ? '…' : 'Connect'}
               </button>
             </div>
           ) : !gmailStatus.agentThreadUsesGmail && !gmailStatus.configured ? (
-            <p className="text-gray-600 dark:text-gray-400">
-              Gmail API: add <code className="text-[0.65rem]">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> to the server (with the same client id/secret) so
-              this tab can send on HTTPS, or set <code className="text-[0.65rem]">GOOGLE_OAUTH_REDIRECT_URI</code> and use <strong>Connect Gmail</strong>.
-            </p>
+            <p className="text-gray-600 dark:text-gray-400">Ask your admin to enable Gmail for this tab, or use Connect if available.</p>
           ) : null}
         </div>
       )}
       {showSalesIntroRm && (
-        <p className="mb-3 text-[0.7rem] text-gray-500 dark:text-gray-400 leading-relaxed">
-          Thread order is oldest → newest. RM replies are pulled when you open this tab (same mailbox as{' '}
-          <code className="font-mono text-[0.65rem]">IMAP_USER</code>). Use <strong className="text-gray-700 dark:text-gray-300">Sync inbox</strong>{' '}
-          to refresh. <code className="font-mono text-[0.65rem]">[REQ-…]</code> in the subject. RM:{' '}
-          <strong className="text-gray-700 dark:text-gray-300">{thread?.rm_email ?? 'rm@…'}</strong>.
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Oldest first. <strong className="text-gray-600 dark:text-gray-300">Sync inbox</strong> for new RM replies. RM:{' '}
+          <span className="font-medium text-gray-700 dark:text-gray-300">{thread?.rm_email ?? '—'}</span>
         </p>
       )}
       {hasOutgoingFailed && (
-        <div className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
-          <Mail className="shrink-0 mt-0.5" size={14} />
+        <p className="mb-2 flex items-start gap-1.5 text-[0.7rem] text-amber-900/90 dark:text-amber-200/90">
+          <Mail className="shrink-0 mt-0.5 opacity-80" size={12} />
           <span>
-            {channel === 'agent_sales' && gmailStatus && !gmailStatus.agentThreadUsesGmail ? (
-              <>
-                Outbound on this tab failed: Gmail API is <strong>not</strong> active yet. Set <code className="font-mono">GMAIL_AGENT_THREAD_REFRESH_TOKEN</code> (and Google client
-                id/secret) on the server, or use <strong>Connect Gmail</strong>. Until then, the app may try SMTP, which is often blocked on
-                production hosts.
-              </>
-            ) : (
-              <>
-                At least one outgoing message was <strong>not</strong> accepted by the mail server. Configure production SMTP (e.g. Railway) or
-                Resend after fixing credentials.
-              </>
-            )}
+            Some past sends failed. They are kept below for reference.{' '}
+            {gmailStatus?.agentThreadUsesGmail ? 'If they are old, you can ignore this.' : 'Check mail setup or use Connect (above).'}
           </span>
-        </div>
+        </p>
       )}
 
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
@@ -569,11 +518,8 @@ export default function EmailThreadView({
       </div>
 
       {channel === 'agent_sales' && canReply && (isSales || isAdmin) && isStubThread && (
-        <div className="mb-6 space-y-3 rounded-lg border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Compose — email to the agent</p>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Sends to the address on the agent’s profile. You can change the <strong>Subject</strong> and body below. They also see <strong>Portal chat</strong>.
-          </p>
+        <div className="mb-5 space-y-3 rounded-lg border border-teal-200/90 bg-teal-50/40 p-3 dark:border-teal-900/40 dark:bg-teal-950/15">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Email the agent</p>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">Subject</label>
             <input
@@ -627,7 +573,7 @@ export default function EmailThreadView({
         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           {channel === 'agent_sales' ? (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Compose reply (sales or agent)</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Reply</p>
               <div className="space-y-1.5">
                 <label className="block text-xs text-gray-500 dark:text-gray-400">Subject</label>
                 <input
