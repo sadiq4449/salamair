@@ -1,8 +1,10 @@
 """
-Poll IMAP inbox for incoming RM replies. Matches emails to requests via [REQ-YYYY-NNN] in subject.
+Poll IMAP inbox for incoming mail. Matches [REQ-YYYY-NNN] in subject, routes to threads:
 
-Requires imap_polling_active (IMAP credentials or IMAP_ENABLED) and IMAP_USER/IMAP_PASSWORD.
-Typically use the same mailbox as SMTP (e.g. Gmail).
+- Uses In-Reply-To / References to stay on the same email thread (sales↔agent vs RM).
+- Otherwise: from address = agent → agent_sales; from sales/admin user → agent_sales; else → RM.
+
+Requires imap_polling_active and IMAP_USER/IMAP_PASSWORD (often the same mailbox as outbound Gmail).
 """
 from __future__ import annotations
 
@@ -18,12 +20,16 @@ from email.header import decode_header
 from email.message import Message
 from email.utils import parseaddr, parsedate_to_datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.services.email_service import RESEND_PUBLIC_SENDER
 from app.services.incoming_email_body import sanitize_incoming_rm_body
-from app.services.notification_service import notify_email_received
+from app.services.notification_service import (
+    notify_email_received,
+    notify_incoming_imap_for_thread,
+)
 from app.models.email_message import EmailMessage
 from app.models.email_thread import EmailThread, THREAD_CHANNEL_AGENT_SALES, THREAD_CHANNEL_RM
 from app.models.request import Request
@@ -222,6 +228,60 @@ def extract_request_code(subject: str) -> str | None:
     return m.group(1).upper() if m else None
 
 
+def _email_message_by_threading_token(db: Session, token: str) -> EmailMessage | None:
+    t = (token or "").strip()
+    if not t:
+        return None
+    inner = t.strip("<>")
+    for v in (t, inner, f"<{inner}>"):
+        em = db.query(EmailMessage).filter(EmailMessage.message_id == v).first()
+        if em:
+            return em
+    return None
+
+
+def _thread_channel_from_rfc_headers(db: Session, msg: Message) -> str | None:
+    """Map inbound mail to the same deal thread (agent_sales vs rm) when clients set In-Reply-To / References."""
+    ids: list[str] = []
+    irt = (msg.get("In-Reply-To") or "").replace("\n", " ")
+    for t in irt.split():
+        if t.strip():
+            ids.append(t.strip())
+    refs = (msg.get("References") or "").split()
+    for t in reversed(refs):
+        s = t.strip()
+        if s and s not in ids:
+            ids.append(s)
+    seen: set[str] = set()
+    for t in ids:
+        if t in seen:
+            continue
+        seen.add(t)
+        em = _email_message_by_threading_token(db, t)
+        if not em:
+            continue
+        thread = db.query(EmailThread).filter(EmailThread.id == em.thread_id).first()
+        if thread and thread.thread_channel in (THREAD_CHANNEL_AGENT_SALES, THREAD_CHANNEL_RM):
+            return thread.thread_channel
+    return None
+
+
+def _is_sales_or_admin_email(db: Session, from_norm: str) -> bool:
+    if not from_norm:
+        return False
+    n = (from_norm or "").strip().lower()
+    return (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(("sales", "admin")),
+            func.lower(User.email) == n,
+        )
+        .count()
+        > 0
+    )
+
+
 def poll_inbox_once(db: Session) -> dict:
     """
     Fetch recent messages from IMAP (SINCE window, not only UNSEEN), match [REQ-YYYY-NNN] in subject,
@@ -342,7 +402,17 @@ def poll_inbox_once(db: Session) -> dict:
                 from_norm = (from_email or "").strip().lower()
                 agent_em = (req.agent.email or "").strip().lower() if req.agent else ""
                 is_from_agent = bool(agent_em and from_norm == agent_em)
-                channel = THREAD_CHANNEL_AGENT_SALES if is_from_agent else THREAD_CHANNEL_RM
+
+                channel_hint = _thread_channel_from_rfc_headers(db, msg)
+                if channel_hint:
+                    channel = channel_hint
+                elif is_from_agent:
+                    channel = THREAD_CHANNEL_AGENT_SALES
+                elif _is_sales_or_admin_email(db, from_norm):
+                    # Sales/admin replied from their mail client: keep on sales↔agent thread (not RM).
+                    channel = THREAD_CHANNEL_AGENT_SALES
+                else:
+                    channel = THREAD_CHANNEL_RM
 
                 thread = (
                     db.query(EmailThread)
@@ -419,9 +489,27 @@ def poll_inbox_once(db: Session) -> dict:
                 stored += 1
 
                 try:
-                    notify_email_received(db, req)
+                    if channel == THREAD_CHANNEL_RM:
+                        notify_email_received(db, req)
+                    else:
+                        notify_incoming_imap_for_thread(
+                            db, req, thread_channel=THREAD_CHANNEL_AGENT_SALES, from_email=from_norm
+                        )
                 except Exception as e:
-                    logger.warning("notify_email_received failed: %s", e)
+                    logger.warning("notify IMAP: %s", e)
+
+                if channel == THREAD_CHANNEL_AGENT_SALES:
+                    try:
+                        from app.services.message_service import create_system_message
+
+                        create_system_message(
+                            db,
+                            req.id,
+                            f"Email (Sales↔Agent): new message from {from_norm}. Open the Email to agent tab for the full thread.",
+                            {"source": "imap", "thread": "agent_sales"},
+                        )
+                    except Exception as e:
+                        logger.warning("portal chat line for IMAP: %s", e)
 
                 mail.store(num, "+FLAGS", "\\Seen")
 

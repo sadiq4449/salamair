@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.counter_offer import CounterOffer
@@ -389,6 +390,97 @@ def notify_email_received(db: Session, req: Request) -> list[Notification]:
             notifications.append(n)
     db.commit()
     return notifications
+
+
+def notify_incoming_imap_for_thread(
+    db: Session,
+    req: Request,
+    *,
+    thread_channel: str,
+    from_email: str,
+) -> list[Notification]:
+    """
+    After IMAP imports an email on the sales↔agent thread: in-app notification targets.
+
+    - From agent: notify all active sales.
+    - From sales/admin (email client): notify the request's agent.
+    - Otherwise: notify both sides so the deal is not missed.
+    """
+    if thread_channel != "agent_sales":
+        return []
+    from_norm = (from_email or "").strip().lower()
+    agent_em = (req.agent and (req.agent.email or "").strip().lower()) or ""
+    is_from_agent = bool(agent_em and from_norm == agent_em)
+    is_sales_user = _email_matches_active_sales_or_admin(db, from_norm)
+
+    notifications: list[Notification] = []
+    if is_from_agent:
+        for u in db.query(User).filter(User.role == "sales", User.is_active.is_(True)).all():
+            n = create_notification(
+                db,
+                u.id,
+                "EMAIL_RECEIVED",
+                "Reply from agent (email)",
+                f"New email on {req.request_code} ({req.route}) from the agent",
+                request_id=req.id,
+                request_code=req.request_code,
+            )
+            if n:
+                notifications.append(n)
+    elif is_sales_user and req.agent_id:
+        n = create_notification(
+            db,
+            req.agent_id,
+            "EMAIL_RECEIVED",
+            "Email from sales",
+            f"New email on {req.request_code} ({req.route}) from sales",
+            request_id=req.id,
+            request_code=req.request_code,
+        )
+        if n:
+            notifications.append(n)
+    else:
+        for u in db.query(User).filter(User.role == "sales", User.is_active.is_(True)).all():
+            n = create_notification(
+                db,
+                u.id,
+                "EMAIL_RECEIVED",
+                "New email (deal thread)",
+                f"New email on {req.request_code} ({req.route})",
+                request_id=req.id,
+                request_code=req.request_code,
+            )
+            if n:
+                notifications.append(n)
+        if req.agent_id:
+            n2 = create_notification(
+                db,
+                req.agent_id,
+                "EMAIL_RECEIVED",
+                "New email (deal thread)",
+                f"New email on {req.request_code} ({req.route})",
+                request_id=req.id,
+                request_code=req.request_code,
+            )
+            if n2:
+                notifications.append(n2)
+    db.commit()
+    return notifications
+
+
+def _email_matches_active_sales_or_admin(db: Session, from_norm: str) -> bool:
+    if not from_norm:
+        return False
+    return (
+        db.query(User)
+        .filter(
+            User.is_active.is_(True),
+            User.role.in_(("sales", "admin")),
+            func.lower(User.email) == from_norm,
+        )
+        .count()
+        > 0
+    )
 
 
 def notify_sent_to_rm(db: Session, req: Request) -> list[Notification]:
