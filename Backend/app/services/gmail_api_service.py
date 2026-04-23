@@ -95,6 +95,21 @@ def credentials_for_agent_sales_send(db: Session, user_id) -> Credentials | None
     return _make_credentials((settings.GMAIL_AGENT_THREAD_REFRESH_TOKEN or ""))
 
 
+def _gmail_credential_chain_for_send(db: Session, user_id) -> list[Credentials]:
+    """
+    All Gmail credential attempts, in order: per-user, then server shared token.
+    A bad or expired *user* token must not block the shared app mailbox.
+    """
+    u = credentials_for_user(db, user_id)
+    s = _make_credentials((settings.GMAIL_AGENT_THREAD_REFRESH_TOKEN or ""))
+    out: list[Credentials] = []
+    if u is not None:
+        out.append(u)
+    if s is not None and (u is None or s.refresh_token != u.refresh_token):
+        out.append(s)
+    return out
+
+
 def _rfc_message_id_from_gmail_message(service, gmail_id: str) -> str | None:
     m = (
         service.users()
@@ -149,7 +164,19 @@ def send_via_gmail(
         return rfc, None, from_addr
     except Exception as e:
         logger.exception("Gmail send failed")
-        return None, str(e), ""
+        detail = str(e)
+        try:
+            from googleapiclient.errors import HttpError
+
+            if isinstance(e, HttpError):
+                raw = e.content
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8", errors="replace")
+                status = e.resp.status if e.resp else "?"
+                detail = f"Gmail API {status}: {raw[:1000] if raw else e}"
+        except Exception:
+            pass
+        return None, detail, ""
 
 
 def send_outgoing_agent_sales(
@@ -168,14 +195,25 @@ def send_outgoing_agent_sales(
     smtp_user_email_first: for SMTP only, when True (e.g. agent replying) prefer the user's email for display.
     Returns (message_id, smtp/gmail error string or None, from_email for storage).
     """
-    creds = credentials_for_agent_sales_send(db, user.id)
-    if creds is not None:
+    gchain = _gmail_credential_chain_for_send(db, user.id)
+    last_gmail_err: str | None = None
+    last_from = ""
+    for g in gchain:
         mid, err, from_addr = send_via_gmail(
-            creds, to_email, subject, plain_body, html_body, in_reply_to=in_reply_to
+            g, to_email, subject, plain_body, html_body, in_reply_to=in_reply_to
         )
+        last_from = from_addr
+        if not err and mid:
+            return mid, None, from_addr
         if err:
-            return None, err, from_addr
-        return mid, None, from_addr
+            last_gmail_err = err
+            logger.warning(
+                "Gmail send attempt failed, trying next if any: %s", err[:500] if err else err
+            )
+    if gchain and last_gmail_err:
+        return None, last_gmail_err, last_from
+    if gchain and not last_gmail_err:
+        return None, "Gmail send failed with no error detail", last_from
     smtp_id, smtp_err = send_smtp_email(
         to_email, subject, plain_body, html_body, in_reply_to=in_reply_to
     )

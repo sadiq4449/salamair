@@ -418,7 +418,7 @@ def send_email_to_agent(
         req.id,
         "email_sent_to_agent",
         current_user.id,
-        details=f"Email to agent {agent_email}" if message_id else f"SMTP error: {smtp_err or 'unknown'}",
+        details=f"Email to agent {agent_email}" if message_id else f"Delivery error: {smtp_err or 'unknown'}",
     )
     sync_sla_for_request(db, req)
     db.commit()
@@ -637,7 +637,7 @@ def reply_email(
         req.id,
         "email_reply_sent" if ch == THREAD_CHANNEL_RM else "email_reply_agent_thread",
         current_user.id,
-        details=(f"Reply to {to_addr}" if message_id else f"SMTP failed: {smtp_err}"),
+        details=(f"Reply to {to_addr}" if message_id else f"Delivery failed: {smtp_err}"),
     )
     db.commit()
     db.refresh(email_msg)
