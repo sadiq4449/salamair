@@ -70,13 +70,14 @@ def _make_credentials(refresh_token: str) -> Credentials | None:
     csec = (settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip()
     if not cid or not csec or not (refresh_token or "").strip():
         return None
+    # Omit pinning scopes: a refresh token was issued for a specific grant; requesting a different
+    # scope set on refresh can cause `invalid_scope` (must match the original consent).
     return Credentials(
         token=None,
         refresh_token=refresh_token.strip(),
         token_uri="https://oauth2.googleapis.com/token",
         client_id=cid,
         client_secret=csec,
-        scopes=GMAIL_SCOPES,
     )
 
 
