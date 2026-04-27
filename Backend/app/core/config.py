@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from pydantic_settings import BaseSettings
@@ -106,6 +107,26 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_render_settings() -> None:
+    """Render sets RENDER=true; catch missing DATABASE_URL even if ENVIRONMENT is not production."""
+    if os.environ.get("RENDER", "").strip().lower() != "true":
+        return
+    db = (settings.DATABASE_URL or "").strip().lower()
+    if not db or "localhost" in db or "127.0.0.1" in db:
+        raise RuntimeError(
+            "Running on Render but DATABASE_URL is missing or still points to localhost. "
+            "In the Render Dashboard: open the **salamair** web service → **Environment** → "
+            "**Add** → **Link database** (pick **my_db**), or add **DATABASE_URL** from Postgres "
+            "→ **Connect** → **Internal Database URL**."
+        )
+    sk = (settings.SECRET_KEY or "").strip()
+    if sk in _INSECURE_SECRET_KEYS or len(sk) < 32:
+        raise RuntimeError(
+            "On Render, set SECRET_KEY to a unique random string of at least 32 characters "
+            "(Environment → add variable SECRET_KEY)."
+        )
 
 
 def validate_production_settings() -> None:

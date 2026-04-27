@@ -29,7 +29,7 @@ from app.api.routes.proxy import router as proxy_router
 from app.api.routes.salamair_api_proxy import router as salamair_api_proxy_router
 from app.api.routes.ai import router as ai_router
 from app.api.routes.integrations_gmail import router as integrations_gmail_router
-from app.core.config import settings, validate_production_settings
+from app.core.config import settings, validate_production_settings, validate_render_settings
 from app.core.rate_limit import limiter
 from app.core.logging_filters import install_sensitive_log_redaction
 from app.db.base import Base
@@ -69,6 +69,7 @@ install_sensitive_log_redaction()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_render_settings()
     validate_production_settings()
     Base.metadata.create_all(bind=engine)
     apply_runtime_schema_fixes(engine)
