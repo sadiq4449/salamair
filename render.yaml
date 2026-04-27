@@ -1,0 +1,31 @@
+# Render Blueprint: Docker monolith (Vite frontend baked into FastAPI static/).
+# Existing Postgres (e.g. "my_db"): in the Dashboard, open this web service →
+# Environment → Link Database → select your database (sets DATABASE_URL).
+#
+# Your previous native-Python service "salamair" cannot switch runtime to Docker;
+# this defines a separate Docker web service. Retire the old one when this works.
+
+services:
+  - type: web
+    name: salamair-portal
+    runtime: docker
+    region: singapore
+    plan: free
+    branch: main
+    repo: https://github.com/sadiq4449/salamair
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_SSLMODE
+        value: require
+      - key: CORS_ORIGINS
+        value: https://salamair-portal.onrender.com,https://salamair.onrender.com
+      - key: CORS_ORIGIN_REGEX
+        value: "https://.*\\.onrender\\.com$"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
