@@ -342,8 +342,8 @@ def send_email_to_rm(
         if delivered
         else (
             "Request saved, but the message was not delivered. "
-            "On Railway Hobby set RESEND_API_KEY (outbound SMTP is blocked); verify sender in Resend. "
-            "Locally you can use SMTP_USER + SMTP_PASSWORD."
+            "Hosted environments (e.g. Railway Hobby, Render) often block outbound SMTP — set RESEND_API_KEY "
+            "(HTTPS); verify your sender/domain in Resend. Locally use SMTP_USER + SMTP_PASSWORD."
         )
     )
     return SendEmailResponse(
@@ -688,7 +688,10 @@ def reply_email(
     msg = (
         "Reply sent successfully"
         if delivered
-        else "Reply not delivered. Set RESEND_API_KEY or SMTP for outbound email."
+        else (
+            "Reply not delivered. Set RESEND_API_KEY (recommended on Railway/Render) or SMTP_USER + "
+            "SMTP_PASSWORD for outbound email."
+        )
     )
     return ReplyEmailResponse(
         message=msg,

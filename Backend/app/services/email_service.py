@@ -78,8 +78,8 @@ def _enhance_smtp_error(err: str) -> str:
     if "timed out" in low or "timeout" in low:
         return (
             f"{err}\n\n"
-            "Railway Free/Hobby plans block outbound SMTP (ports 465/587). Use RESEND_API_KEY "
-            "(Resend sends over HTTPS port 443) or upgrade Railway. "
+            "Many hosted plans (e.g. Railway Free/Hobby, Render) block outbound SMTP (465/587). "
+            "Use RESEND_API_KEY (Resend over HTTPS/443) or a host that allows SMTP. "
             "See Backend/.env.example. IMAP inbound on 993 often still works."
         )
     return err
@@ -93,7 +93,8 @@ def _enhance_resend_error(err: str) -> str:
             f"{err}\n\n"
             "While using Resend’s test sender (onboarding@resend.dev), Resend only delivers to the email "
             "address tied to your Resend API key. To email other recipients (e.g. RM), verify a domain at "
-            "https://resend.com/domains and set RESEND_FROM_EMAIL to an address on that domain in Railway / .env."
+            "https://resend.com/domains and set RESEND_FROM_EMAIL to an address on that domain in your "
+            "host environment or .env."
         )
     return err
 
@@ -184,7 +185,7 @@ def _send_via_resend(
     in_reply_to: str | None = None,
     references: str | None = None,
 ) -> tuple[str | None, str | None]:
-    """Send via Resend HTTP API (works when SMTP egress is blocked, e.g. Railway Hobby)."""
+    """Send via Resend HTTP API (works when SMTP egress is blocked, e.g. Railway or Render)."""
     key = (settings.RESEND_API_KEY or "").strip()
     if not key:
         return None, "RESEND_API_KEY is not set"
@@ -381,7 +382,7 @@ def send_smtp_email(
         logger.info("Email disabled — not sent to %s: %s", display_to, subject)
         return None, (
             "Email sending is off: set RESEND_API_KEY, or SMTP_USER + SMTP_PASSWORD "
-            "(omit EMAIL_ENABLED=false), e.g. on Railway."
+            "(omit EMAIL_ENABLED=false). On Railway/Render, prefer RESEND_API_KEY when SMTP is blocked."
         )
 
     message_id = f"<{uuid.uuid4()}@salamair.com>"

@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     # When False: never send. When True: send (if credentials fail, SMTP errors). When None: send
     # only if SMTP_USER and SMTP_PASSWORD are both set (so Railway can omit this when creds exist).
     EMAIL_ENABLED: Optional[bool] = None
-    # Railway Hobby/Free often blocks outbound SMTP (465/587). Use Resend HTTPS API (port 443) instead.
+    # Hosted platforms (Railway Hobby/Free, Render, etc.) often block outbound SMTP (465/587).
+    # Use Resend HTTPS API (port 443) instead.
     # https://resend.com — verify your domain (or use onboarding@resend.dev while testing).
     RESEND_API_KEY: str = ""
     # Optional: verified sender in Resend (e.g. noreply@yourdomain.com). If empty, the app picks a valid From.
