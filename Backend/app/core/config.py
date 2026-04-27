@@ -113,6 +113,12 @@ def validate_production_settings() -> None:
     env = (settings.ENVIRONMENT or "").strip().lower()
     if env not in ("production", "prod"):
         return
+    db = (settings.DATABASE_URL or "").strip().lower()
+    if not db or "localhost" in db or "127.0.0.1" in db:
+        raise RuntimeError(
+            "Refusing to start in production: DATABASE_URL must be set to your Render Postgres URL "
+            "(Dashboard → your Postgres → Connect → Internal/External Database URL, or Environment → Link Database)."
+        )
     sk = (settings.SECRET_KEY or "").strip()
     if sk in _INSECURE_SECRET_KEYS or len(sk) < 32:
         raise RuntimeError(
