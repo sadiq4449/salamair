@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # Use implicit TLS on port 465 (SMTP_SSL) instead of STARTTLS on 587. Try True if 587 times out
     # (some networks block STARTTLS; Gmail: smtp.gmail.com:465 + SMTP_IMPLICIT_SSL=true).
     SMTP_IMPLICIT_SSL: bool = False
+    # When True, outbound email uses SMTP even if RESEND_API_KEY is set (default Resend wins if both exist).
+    SMTP_PREFERRED: bool = False
     # When False: never send. When True: send (if credentials fail, SMTP errors). When None: send
     # only if SMTP_USER and SMTP_PASSWORD are both set (so Railway can omit this when creds exist).
     EMAIL_ENABLED: Optional[bool] = None

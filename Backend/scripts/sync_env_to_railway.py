@@ -27,6 +27,7 @@ SYNC_KEYS = frozenset(
         "SMTP_USE_TLS",
         "SMTP_IMPLICIT_SSL",
         "SMTP_TIMEOUT_SECONDS",
+        "SMTP_PREFERRED",
         "EMAIL_ENABLED",
         "RM_DEFAULT_EMAIL",
         "IMAP_ENABLED",

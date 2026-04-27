@@ -382,12 +382,14 @@ def send_smtp_email(
         logger.info("Email disabled — not sent to %s: %s", display_to, subject)
         return None, (
             "Email sending is off: set RESEND_API_KEY, or SMTP_USER + SMTP_PASSWORD "
-            "(omit EMAIL_ENABLED=false). On Railway/Render, prefer RESEND_API_KEY when SMTP is blocked."
+            "(omit EMAIL_ENABLED=false). On Railway/Render, SMTP may be blocked — use Resend or set SMTP_PREFERRED=true "
+            "only if your host allows outbound 465/587."
         )
 
     message_id = f"<{uuid.uuid4()}@salamair.com>"
 
-    if (settings.RESEND_API_KEY or "").strip():
+    resend_key = (settings.RESEND_API_KEY or "").strip()
+    if resend_key and not settings.SMTP_PREFERRED:
         mid, err = _send_via_resend(
             recipients,
             subject,
@@ -400,6 +402,14 @@ def send_smtp_email(
         if mid:
             logger.info("Resend email to %s: %s", display_to, subject)
         return mid, err
+
+    if settings.SMTP_PREFERRED:
+        u, p = (settings.SMTP_USER or "").strip(), (settings.SMTP_PASSWORD or "").strip()
+        if not (u and p):
+            return None, (
+                "SMTP_PREFERRED is true but SMTP_USER and SMTP_PASSWORD are not both set. "
+                "Clear SMTP_PREFERRED or add Gmail (app password) / provider credentials."
+            )
 
     try:
         msg = MIMEMultipart("alternative")
