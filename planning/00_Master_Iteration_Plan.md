@@ -168,7 +168,7 @@ Enhances efficiency and adds intelligence.
 - `POST /api/v1/email/send`
 - `GET /api/v1/email/thread/{request_id}`
 - `POST /api/v1/email/reply`
-- `POST /api/v1/email/poll-inbox` (IMAP: fetch RM replies; see `planing/Email_SMTP_IMAP_Configuration.md`)
+- `POST /api/v1/email/poll-inbox` (IMAP: fetch RM replies; see `planning/Email_SMTP_IMAP_Configuration.md`)
 
 ### Iteration 5 - Messages
 - `POST /api/v1/messages`
