@@ -50,7 +50,8 @@ export default function PendingApprovals() {
     fetchSalesQueue({ page: 1, limit: 20, search: '', status: '', origin: '', destination: '', date_from: '', date_to: '', agent: '' });
   }
 
-  const selectClass = 'px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10';
+  const selectClass =
+    'px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]';
 
   return (
     <div className="space-y-5">
@@ -64,7 +65,7 @@ export default function PendingApprovals() {
             value={searchLocal}
             onChange={(e) => setSearchLocal(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
+            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
           />
         </div>
       </div>
@@ -91,50 +92,53 @@ export default function PendingApprovals() {
         />
         <input type="date" value={filters.date_from || ''} onChange={(e) => handleFilterChange('date_from', e.target.value)} className={selectClass} />
         <input type="date" value={filters.date_to || ''} onChange={(e) => handleFilterChange('date_to', e.target.value)} className={selectClass} />
-        <button onClick={handleReset} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <button
+          onClick={handleReset}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+        >
           <RotateCcw size={14} />
           Reset
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin h-6 w-6 border-2 border-teal-600 border-t-transparent rounded-full" />
+            <div className="animate-spin h-6 w-6 border-2 border-[#00A99D] border-t-transparent rounded-full" />
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-16 text-gray-400 dark:text-gray-500">
             <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm font-medium">No requests found</p>
-            <p className="text-xs mt-1">Try adjusting your filters</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">No requests found</p>
+            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Try adjusting your filters</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+            <table className="w-full text-sm bg-white dark:bg-gray-900">
+              <thead className="bg-gray-50 dark:bg-gray-800/60">
                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">REQ ID</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Route</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pax</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SLA</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">REQ ID</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Agent</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Route</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Pax</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Price</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Priority</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">SLA</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {requests.map((req) => (
-                  <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">
+                  <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200">
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
                       <span className="inline-flex items-center gap-1.5">
                         {req.request_code}
                         {(req.attachments_count ?? 0) > 0 && (
                           <span
-                            className="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 dark:text-teal-400"
+                            className="inline-flex items-center gap-0.5 text-xs font-medium text-[#00A99D] dark:text-[#2dd4bf]"
                             title={`${req.attachments_count} attachment${req.attachments_count === 1 ? '' : 's'}`}
                           >
                             <Paperclip size={12} />
@@ -143,24 +147,28 @@ export default function PendingApprovals() {
                         )}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.agent_name ?? '—'}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
-                    <td className="px-6 py-3.5 min-w-[140px]">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.agent_name ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.route}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.pax}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={req.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PriorityDot priority={req.priority} />
+                    </td>
+                    <td className="px-4 py-3 min-w-[140px]">
                       {['approved', 'rejected', 'draft'].includes(req.status) ? (
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
                         <SlaIndicator requestId={req.id} compact />
                       )}
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <button
                         onClick={() => navigate(`/pending/${req.id}`)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 rounded-lg text-sm font-medium hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors"
+                        className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium bg-[#00A99D] text-white hover:bg-[#009688] transition-all duration-200"
                       >
                         <Eye size={14} />
                         Review

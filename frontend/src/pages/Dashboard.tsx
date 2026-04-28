@@ -30,19 +30,19 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-xl p-6 text-white shadow-lg shadow-teal-500/20">
+      <div className="bg-gradient-to-r from-[#003B3F] to-[#00A99D] rounded-xl p-6 text-white shadow-sm transition-all duration-200">
         <h1 className="text-2xl font-bold">
           Welcome back, {user?.name?.split(' ')[0] ?? 'User'}!
         </h1>
-        <p className="text-teal-100 mt-1 text-sm">
+        <p className="text-white/85 mt-1 text-sm">
           You are logged in as <span className="font-semibold text-white">{ROLE_LABELS[role]}</span>.
         </p>
       </div>
 
       {/* Profile card */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm">
+        <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
             Your Profile
           </h3>
         </div>
@@ -56,7 +56,7 @@ function AdminDashboard() {
             icon={User}
             label="Status"
             value={user?.is_active ? 'Active' : 'Inactive'}
-            valueColor={user?.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}
+            valueColor={user?.is_active ? 'text-green-700 dark:text-green-400' : 'text-red-500'}
           />
         </div>
       </div>
@@ -83,7 +83,7 @@ function ProfileField({
         <Icon className="h-4 w-4" />
       </div>
       <div>
-        <p className="text-xs text-gray-400 dark:text-gray-500">{label}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
         <p className={`text-sm font-medium ${valueColor ?? 'text-gray-800 dark:text-gray-200'}`}>
           {value}
         </p>

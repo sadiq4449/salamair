@@ -43,7 +43,7 @@ export default function SalesRequestDetail() {
   if (isDetailLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
       </div>
     );
   }
@@ -77,7 +77,7 @@ export default function SalesRequestDetail() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 text-sm text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] transition-all duration-200 shrink-0"
         >
           <ArrowLeft size={16} />
           Back to Queue
@@ -91,9 +91,9 @@ export default function SalesRequestDetail() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-5">
           {/* Request Info Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Request Information</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Request Information</h3>
               <StatusBadge status={req.status} />
             </div>
             <div className="p-6">
@@ -124,21 +124,21 @@ export default function SalesRequestDetail() {
           <RequestHistoryPanel events={history} />
 
           {/* Communication Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                <strong className="text-gray-600 dark:text-gray-300">Portal chat</strong> (instant),{' '}
-                <strong className="text-gray-600 dark:text-gray-300">formal email to the agent</strong> (copied in the
-                portal), and <strong className="text-gray-600 dark:text-gray-300">email to RM</strong>.
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-3">Communication</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                <strong className="text-gray-700 dark:text-gray-300">Portal chat</strong> (instant),{' '}
+                <strong className="text-gray-700 dark:text-gray-300">formal email to the agent</strong> (copied in the
+                portal), and <strong className="text-gray-700 dark:text-gray-300">email to RM</strong>.
               </p>
-              <div className="flex flex-wrap border-b-2 border-gray-200 dark:border-gray-700 gap-x-1">
+              <div className="flex flex-wrap border-b-2 border-border dark:border-gray-700 gap-x-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('chat')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 ${
                     activeTab === 'chat'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -147,9 +147,9 @@ export default function SalesRequestDetail() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('agentEmail')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 flex items-center gap-1.5 ${
                     activeTab === 'agentEmail'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -159,9 +159,9 @@ export default function SalesRequestDetail() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('rmEmail')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 flex items-center gap-1.5 ${
                     activeTab === 'rmEmail'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -213,13 +213,13 @@ export default function SalesRequestDetail() {
           {(user?.role === 'sales' || user?.role === 'admin') && id && <SalesInternalNoteForm requestId={id} />}
 
           {!isTerminal && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Actions</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Actions</h3>
               </div>
               <div className="p-4 space-y-2.5">
                 {req.status === 'counter_offered' ? (
-                  <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-2.5">
+                  <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-2.5 transition-all duration-200">
                     Awaiting agent response to the counter offer. Sales actions are paused until the agent accepts or rejects.
                   </p>
                 ) : (
@@ -252,9 +252,9 @@ export default function SalesRequestDetail() {
 
           {/* Attachments */}
           {req.attachments && req.attachments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Attachments</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
               </div>
               <div className="p-4 space-y-2">
                 {req.attachments.map((att) => (
@@ -263,10 +263,10 @@ export default function SalesRequestDetail() {
                     href={att.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
                   >
                     <Paperclip size={14} className="text-gray-400" />
-                    <span className="text-sm text-teal-600 dark:text-teal-400 truncate">{att.filename}</span>
+                    <span className="text-sm text-[#00A99D] dark:text-[#2dd4bf] truncate">{att.filename}</span>
                     <span className="text-xs text-gray-400 ml-auto">{(att.file_size / 1024).toFixed(0)} KB</span>
                   </a>
                 ))}
@@ -275,9 +275,9 @@ export default function SalesRequestDetail() {
           )}
 
           {/* Notes Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Notes</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Notes</h3>
             </div>
             <div className="p-6">
               {req.notes ? (
@@ -314,8 +314,8 @@ export default function SalesRequestDetail() {
 function InfoItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold ${highlight ? 'text-teal-600 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-0.5">{label}</p>
+      <p className={`text-sm font-semibold ${highlight ? 'text-[#00A99D] dark:text-[#2dd4bf]' : 'text-gray-900 dark:text-white'}`}>
         {value}
       </p>
     </div>
@@ -323,16 +323,16 @@ function InfoItem({ label, value, highlight }: { label: string; value: string; h
 }
 
 const OFFER_STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/40',
-  accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40',
-  rejected: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-900/40',
+  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900/40',
+  accepted: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40',
+  rejected: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40',
 };
 
 function CounterOfferHistoryCard({ offers }: { offers: CounterOffer[] }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-      <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Counter Offers</h3>
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Counter Offers</h3>
       </div>
       <div className="p-4 space-y-2.5">
         {offers.map((o) => {
@@ -340,7 +340,7 @@ function CounterOfferHistoryCard({ offers }: { offers: CounterOffer[] }) {
           return (
             <div
               key={o.id}
-              className="rounded-lg border border-gray-100 dark:border-gray-800 p-3 space-y-1.5"
+              className="rounded-lg border border-border dark:border-gray-800 p-3 space-y-1.5 transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

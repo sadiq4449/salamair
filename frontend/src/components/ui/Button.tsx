@@ -12,9 +12,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary:
-    'bg-teal-600 text-white hover:bg-teal-700 shadow-sm hover:shadow-md hover:-translate-y-0.5',
-  secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+  primary: 'bg-[#00A99D] text-white hover:bg-[#009688]',
+  secondary:
+    'bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800',
   outline:
     'bg-transparent text-gray-600 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-800',
   success: 'bg-emerald-500 text-white hover:bg-emerald-600',
@@ -25,7 +25,7 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   sm: 'px-3 py-1.5 text-xs',
-  md: 'px-4.5 py-2.5 text-sm',
+  md: 'px-4 py-2 text-sm',
   lg: 'px-6 py-3 text-base',
 };
 

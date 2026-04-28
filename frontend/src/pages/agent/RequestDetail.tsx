@@ -68,7 +68,7 @@ export default function RequestDetail() {
   if (isDetailLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function RequestDetail() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 text-sm text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] transition-all duration-200 shrink-0"
         >
           <ArrowLeft size={16} />
           Back to Requests
@@ -107,9 +107,9 @@ export default function RequestDetail() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-5">
           {/* Request Info Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Request Information</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Request Information</h3>
               <StatusBadge status={req.status} />
             </div>
             <div className="p-6">
@@ -139,21 +139,21 @@ export default function RequestDetail() {
 
           <RequestHistoryPanel events={history} />
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Communication</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Use <strong className="text-gray-600 dark:text-gray-300">Portal chat</strong> for quick messages,{' '}
-                <strong className="text-gray-600 dark:text-gray-300">email to / from sales</strong> for formal copies, and
-                read the <strong className="text-gray-600 dark:text-gray-300">RM thread</strong> (read-only).
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-3">Communication</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                Use <strong className="text-gray-700 dark:text-gray-300">Portal chat</strong> for quick messages,{' '}
+                <strong className="text-gray-700 dark:text-gray-300">email to / from sales</strong> for formal copies, and
+                read the <strong className="text-gray-700 dark:text-gray-300">RM thread</strong> (read-only).
               </p>
-              <div className="flex flex-wrap border-b-2 border-gray-200 dark:border-gray-700 gap-x-1">
+              <div className="flex flex-wrap border-b-2 border-border dark:border-gray-700 gap-x-1">
                 <button
                   type="button"
                   onClick={() => setCommTab('chat')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 ${
                     commTab === 'chat'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -162,9 +162,9 @@ export default function RequestDetail() {
                 <button
                   type="button"
                   onClick={() => setCommTab('agentEmail')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 flex items-center gap-1.5 ${
                     commTab === 'agentEmail'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -174,9 +174,9 @@ export default function RequestDetail() {
                 <button
                   type="button"
                   onClick={() => setCommTab('rmEmail')}
-                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-2.5 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 flex items-center gap-1.5 ${
                     commTab === 'rmEmail'
-                      ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                      ? 'border-[#00A99D] text-[#00A99D] dark:text-[#2dd4bf]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
                 >
@@ -220,8 +220,8 @@ export default function RequestDetail() {
           )}
 
           {showCounterOfferFallback && id && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm p-5 space-y-3">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Counter offer</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-yellow-200 dark:border-yellow-900/40 shadow-sm p-5 space-y-3">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Counter offer</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 A counter offer is waiting for your response. If details do not appear, refresh — the latest offer loads from the server.
               </p>
@@ -249,9 +249,9 @@ export default function RequestDetail() {
           />
 
           {/* Notes Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Notes</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Notes</h3>
             </div>
             <div className="p-6">
               {req.notes ? (
@@ -264,9 +264,9 @@ export default function RequestDetail() {
 
           {/* Attachments Card */}
           {req.attachments && req.attachments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Attachments</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
               </div>
               <div className="p-4 space-y-2">
                 {req.attachments.map((att) => (
@@ -275,10 +275,10 @@ export default function RequestDetail() {
                     href={att.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
                   >
                     <Paperclip size={14} className="text-gray-400" />
-                    <span className="text-sm text-teal-600 dark:text-teal-400 truncate">{att.filename}</span>
+                    <span className="text-sm text-[#00A99D] dark:text-[#2dd4bf] truncate">{att.filename}</span>
                     <span className="text-xs text-gray-400 ml-auto">{(att.file_size / 1024).toFixed(0)} KB</span>
                   </a>
                 ))}
@@ -294,8 +294,8 @@ export default function RequestDetail() {
 function InfoItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold ${highlight ? 'text-teal-600 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-0.5">{label}</p>
+      <p className={`text-sm font-semibold ${highlight ? 'text-[#00A99D] dark:text-[#2dd4bf]' : 'text-gray-900 dark:text-white'}`}>
         {value}
       </p>
     </div>

@@ -114,12 +114,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-[260px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col z-[100] transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-screen w-[260px] bg-white dark:bg-gray-900 border-r border-border dark:border-gray-700 flex flex-col z-[100] transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         {/* Logo — official SalamAir mark */}
-        <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+        <div className="px-4 py-4 border-b border-border dark:border-gray-700 flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1 pr-1">
             <SalamAirBrandLogo heightClass="h-8 sm:h-9" className="max-h-[2.15rem] sm:max-h-[2.35rem]" />
             <p className="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -157,9 +157,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div
                 key={item.path}
                 onClick={() => handleNav(item.path)}
-                className={`flex items-center gap-3 px-4 py-2.5 my-0.5 rounded-lg cursor-pointer text-[0.88rem] font-medium transition-all duration-200 ${
+                className={`flex items-center gap-3 px-4 py-2.5 my-1 rounded-lg cursor-pointer text-[0.88rem] font-medium transition-all duration-200 ${
                   active
-                    ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                    ? 'bg-[#00A99D]/10 text-[#00A99D] dark:bg-[#00A99D]/15 dark:text-[#2dd4bf]'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
               >
@@ -178,7 +178,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+              className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-[#00A99D] text-white hover:bg-[#009688] transition-all duration-200"
             >
               <Plus size={16} />
               Create Request
@@ -187,10 +187,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
 
         {/* Bottom section */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        <div className="p-4 border-t border-border dark:border-gray-700 space-y-2">
           <button
             onClick={toggle}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
           >
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             {isDark ? 'Light Mode' : 'Dark Mode'}

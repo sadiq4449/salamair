@@ -77,20 +77,20 @@ export default function NotificationSettings() {
     <div className="max-w-2xl mx-auto">
       <button
         onClick={() => navigate('/notifications')}
-        className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] mb-4 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Notifications
       </button>
 
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Notification Settings</h1>
+      <h1 className="text-xl font-semibold text-gray-800 dark:text-white mb-1">Notification Settings</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
         Configure how and when you receive notifications
       </p>
 
       {/* Global Toggles */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Delivery Channels</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm p-5 mb-6 transition-all duration-200">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Delivery Channels</h2>
         <div className="space-y-4">
           <ToggleRow
             icon={<Bell className="h-5 w-5" />}
@@ -117,17 +117,17 @@ export default function NotificationSettings() {
       </div>
 
       {/* Per-type Settings */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Notification Types</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm p-5 mb-6 transition-all duration-200">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">Notification Types</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Toggle individual notification types on or off
         </p>
-        <div className="space-y-3">
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {ALL_TYPES.map((t) => (
-            <div key={t.key} className="flex items-center justify-between py-2">
+            <div key={t.key} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.label}</p>
-                <p className="text-xs text-gray-400">{t.description}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t.description}</p>
               </div>
               <Toggle
                 checked={!localPrefs.types_disabled.includes(t.key)}
@@ -143,7 +143,7 @@ export default function NotificationSettings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-lg font-medium text-sm hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#00A99D] text-white rounded-lg font-medium text-sm hover:bg-[#009688] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Save Preferences
@@ -157,8 +157,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   return (
     <button
       onClick={onChange}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
-        checked ? 'bg-teal-600' : 'bg-gray-200 dark:bg-gray-700'
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00A99D] focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+        checked ? 'bg-[#00A99D]' : 'bg-gray-200 dark:bg-gray-700'
       }`}
     >
       <span
@@ -186,10 +186,10 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="text-gray-400 dark:text-gray-500">{icon}</div>
+        <div className="text-[#00A99D] dark:text-[#2dd4bf]">{icon}</div>
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
-          <p className="text-xs text-gray-400">{description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
         </div>
       </div>
       <Toggle checked={checked} onChange={onChange} />

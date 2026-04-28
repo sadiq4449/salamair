@@ -270,9 +270,9 @@ function PaxCounterRow({
   incDisabled: boolean;
 }) {
   const btn =
-    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition enabled:bg-[#00A9C1] enabled:hover:bg-[#009aad] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700';
+    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-all duration-200 enabled:bg-[#00A99D] enabled:hover:bg-[#009688] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-700';
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-100 py-2.5 last:border-b-0 dark:border-gray-800">
+    <div className="flex items-center justify-between gap-3 border-b border-border py-2.5 last:border-b-0 dark:border-gray-800">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
@@ -330,19 +330,19 @@ function SalamPassengerSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border-2 border-[#00A9C1] bg-white px-3 text-left text-sm text-gray-900 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#00A9C1]/30 dark:border-teal-500 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border-2 border-[#00A99D] bg-white px-3 text-left text-sm text-gray-900 shadow-sm transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#00A99D]/30 dark:border-[#00A99D] dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
         <span className="truncate font-medium">{formatPaxSummary(pax)}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-gray-500 transition ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-gray-500 transition-all duration-200 ${open ? 'rotate-180' : ''}`}
           aria-hidden
         />
       </button>
       {open && (
         <div
-          className="absolute left-0 right-0 z-50 mt-1 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-600 dark:bg-gray-900"
+          className="absolute left-0 right-0 z-50 mt-1 rounded-xl border border-border bg-white p-1 shadow-lg dark:border-gray-600 dark:bg-gray-900"
           role="listbox"
         >
           <PaxCounterRow
@@ -406,7 +406,7 @@ function AirportPillSelect({
       <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {label}
       </span>
-      <div className="relative min-h-[5.5rem] rounded border border-[#E0E0E0] bg-white px-4 py-3 pr-11 shadow-sm dark:border-gray-600 dark:bg-gray-900">
+      <div className="relative min-h-[5.5rem] rounded-xl border border-border bg-white px-4 py-3 pr-11 shadow-sm dark:border-gray-600 dark:bg-gray-900">
         <select
           className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
           value={value}
@@ -420,7 +420,7 @@ function AirportPillSelect({
           ))}
         </select>
         <div className="pointer-events-none flex min-h-[4.25rem] flex-col justify-center">
-          <span className="text-2xl font-bold tracking-tight text-[#00A9C1] sm:text-3xl">
+          <span className="text-2xl font-bold tracking-tight text-[#00A99D] sm:text-3xl">
             {value}
           </span>
           <span className="mt-0.5 line-clamp-2 text-sm text-slate-800 dark:text-slate-200">
@@ -528,36 +528,36 @@ function DepartingFlightBlock({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5">
-      <div className="h-1 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500" aria-hidden />
-      <div className="border-b border-teal-700/15 bg-gradient-to-b from-teal-50/90 to-white px-4 py-4 dark:border-teal-900/30 dark:from-teal-950/40 dark:to-gray-900 sm:px-6">
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="h-1 bg-gradient-to-r from-[#003B3F] via-[#00A99D] to-[#009688]" aria-hidden />
+      <div className="border-b border-[#00A99D]/15 bg-gradient-to-b from-[#00A99D]/8 to-white px-4 py-4 dark:border-[#00A99D]/20 dark:from-[#00A99D]/10 dark:to-gray-900 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-800 dark:text-teal-300">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-800 dark:text-[#2dd4bf]">
               Departing flight
             </h3>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
-              <Plane className="h-4 w-4 shrink-0 text-lime-600 dark:text-lime-400" aria-hidden />
+              <Plane className="h-4 w-4 shrink-0 text-[#00A99D] dark:text-[#2dd4bf]" aria-hidden />
               <span className="font-bold tracking-wide">
                 {originLabel}{' '}
-                <span className="mx-0.5 font-normal text-lime-700/90 dark:text-lime-400/90">TO</span> {destLabel}
+                <span className="mx-0.5 font-normal text-[#00A99D] dark:text-[#2dd4bf]">TO</span> {destLabel}
               </span>
             </div>
             {headlineDateIso && (
-              <p className="mt-1.5 text-sm font-semibold uppercase tracking-wide text-lime-600 dark:text-lime-400">
+              <p className="mt-1.5 text-sm font-semibold uppercase tracking-wide text-[#00A99D] dark:text-[#2dd4bf]">
                 {formatRouteDateLine(headlineDateIso)}
               </p>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {currency && (
-              <span className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+              <span className="rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
                 {currency}
               </span>
             )}
             <a
               href="#find-flights"
-              className="text-xs font-bold uppercase tracking-wide text-sky-600 hover:underline dark:text-sky-400"
+              className="text-xs font-bold uppercase tracking-wide text-[#00A99D] hover:underline dark:text-[#2dd4bf]"
             >
               Modify search
             </a>
@@ -565,7 +565,7 @@ function DepartingFlightBlock({
               href={BOOKING_SALAMAIR}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-teal-800 shadow-sm transition-colors hover:bg-teal-50 dark:border-teal-700 dark:bg-teal-950/50 dark:text-teal-200 dark:hover:bg-teal-900/40"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#00A99D] px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition-all duration-200 hover:bg-[#009688]"
             >
               Book on SalamAir
               <ExternalLink className="h-3.5 w-3.5 opacity-80" />
@@ -579,7 +579,7 @@ function DepartingFlightBlock({
           <button
             type="button"
             onClick={() => scrollCarousel(-1)}
-            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-200/80 bg-amber-50 text-teal-800 shadow-sm hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-teal-300 dark:hover:bg-amber-900/30"
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-[#00A99D] shadow-sm transition-all duration-200 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-[#2dd4bf] dark:hover:bg-gray-800"
             aria-label="Scroll dates left"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -603,15 +603,15 @@ function DepartingFlightBlock({
                   type="button"
                   onClick={() => hasPrice && setSelectedMarketIndex(mi)}
                   disabled={!hasPrice}
-                  className={`flex min-w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-all sm:min-w-[7rem] ${
+          className={`flex min-w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-all duration-200 sm:min-w-[7rem] ${
                     !hasPrice
                       ? 'cursor-not-allowed opacity-70'
-                      : 'cursor-pointer hover:border-lime-400/80'
+                      : 'cursor-pointer hover:border-[#00A99D]/50'
                   } ${
                     isSelected && hasPrice
-                      ? 'border-lime-500 bg-white ring-2 ring-lime-400/40 dark:border-lime-400 dark:ring-lime-500/30'
+                      ? 'border-[#00A99D] bg-white ring-2 ring-[#00A99D]/30 dark:border-[#00A99D] dark:ring-[#00A99D]/25'
                       : isCheapest && hasPrice
-                        ? 'border-emerald-400 bg-emerald-50/90 dark:border-emerald-500/60 dark:bg-emerald-950/40'
+                        ? 'border-green-500/60 bg-green-50/90 dark:border-green-500/50 dark:bg-green-950/40'
                         : 'border-gray-200 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-800/40'
                   }`}
                 >
@@ -628,9 +628,9 @@ function DepartingFlightBlock({
                       <span
                         className={`mt-1.5 text-sm font-bold tabular-nums ${
                           isCheapest
-                            ? 'text-emerald-700 dark:text-emerald-300'
+                            ? 'text-green-700 dark:text-green-300'
                             : isSelected
-                              ? 'text-lime-700 dark:text-lime-300'
+                              ? 'text-[#00A99D] dark:text-[#2dd4bf]'
                               : 'text-gray-900 dark:text-gray-100'
                         }`}
                       >
@@ -644,7 +644,7 @@ function DepartingFlightBlock({
                     </>
                   )}
                   {isCheapest && hasPrice && (
-                    <span className="mt-1 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white dark:bg-emerald-600">
+                    <span className="mt-1 rounded bg-green-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white dark:bg-green-600">
                       Lowest
                     </span>
                   )}
@@ -656,7 +656,7 @@ function DepartingFlightBlock({
           <button
             type="button"
             onClick={() => scrollCarousel(1)}
-            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-200/80 bg-amber-50 text-teal-800 shadow-sm hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-teal-300 dark:hover:bg-amber-900/30"
+            className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-[#00A99D] shadow-sm transition-all duration-200 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-[#2dd4bf] dark:hover:bg-gray-800"
             aria-label="Scroll dates right"
           >
             <ChevronRight className="h-5 w-5" />
@@ -664,11 +664,11 @@ function DepartingFlightBlock({
         </div>
 
         {selectedMarket && legDetail && selectedMarket.lowestFare > 0 && (
-          <div className="mt-6 space-y-3 border-t border-gray-100 pt-5 dark:border-gray-800">
+          <div className="mt-6 space-y-3 border-t border-border pt-5 dark:border-gray-800">
             <p className="text-center text-xs text-gray-500 dark:text-gray-400">
               {selectedMarket.date ? formatRouteDateLine(selectedMarket.date) : ''}
             </p>
-            <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-800/40 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-800/40 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
               <div className="flex flex-1 flex-col items-center justify-center gap-3 sm:flex-row sm:gap-8">
                 <div className="text-center sm:text-right">
                   <div className="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">{legDetail.dep}</div>
@@ -677,7 +677,7 @@ function DepartingFlightBlock({
                   </div>
                 </div>
                 <div
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-lime-100 text-lime-700 shadow-inner dark:bg-lime-900/40 dark:text-lime-300"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#00A99D]/15 text-[#00A99D] shadow-inner dark:bg-[#00A99D]/20 dark:text-[#2dd4bf]"
                   aria-hidden
                 >
                   <Plane className="h-6 w-6" />
@@ -689,7 +689,7 @@ function DepartingFlightBlock({
                   </div>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col justify-center rounded-xl bg-gradient-to-br from-lime-500 to-emerald-600 px-5 py-4 text-center text-white shadow-md lg:min-w-[11rem]">
+              <div className="flex shrink-0 flex-col justify-center rounded-xl bg-gradient-to-br from-[#00A99D] to-[#003B3F] px-5 py-4 text-center text-white shadow-md lg:min-w-[11rem]">
                 <span className="text-xs font-semibold uppercase tracking-wide opacity-95">From</span>
                 <span className="text-2xl font-bold tabular-nums">
                   {formatFareDisplay(selectedMarket.lowestFare, currency)}
@@ -817,17 +817,17 @@ export default function SalamAirLiveSearch() {
       {/* Search card — airline-style strip + compact form */}
       <div
         id="find-flights"
-        className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-md ring-1 ring-black/[0.03] dark:border-gray-700 dark:bg-gray-900 dark:ring-white/5 scroll-mt-4"
+        className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 scroll-mt-4"
       >
         <div className="px-4 pb-0 pt-5 dark:border-gray-800 sm:px-6 sm:pt-6">
-          <div className="border-b-4 border-[#00A9C1]">
+          <div className="border-b-4 border-[#00A99D]">
             <div className="flex flex-wrap items-end justify-between gap-3 pb-2">
               <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900 sm:text-lg dark:text-slate-100">
                 Book your flight
               </h2>
               <details className="group text-xs text-gray-500 dark:text-gray-400">
                 <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden">
-                  <Info className="h-3.5 w-3.5 text-[#00A9C1] dark:text-teal-400" aria-hidden />
+                  <Info className="h-3.5 w-3.5 text-[#00A99D] dark:text-[#2dd4bf]" aria-hidden />
                   How this works
                 </summary>
                 <p className="mt-2 max-w-md rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/80 dark:text-gray-400">
@@ -837,7 +837,7 @@ export default function SalamAirLiveSearch() {
                     href={BOOKING_SALAMAIR}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-[#00A9C1] hover:underline dark:text-teal-400"
+                    className="font-medium text-[#00A99D] hover:underline dark:text-[#2dd4bf]"
                   >
                     booking.salamair.com
                   </a>
@@ -864,7 +864,7 @@ export default function SalamAirLiveSearch() {
                 <input
                   type="radio"
                   name="book-trip"
-                  className="h-4 w-4 border-gray-300 text-[#00A9C1] focus:ring-[#00A9C1]"
+                  className="h-4 w-4 border-gray-300 text-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
                   checked={tripKind === opt.id}
                   onChange={() => setTripKind(opt.id)}
                 />
@@ -926,7 +926,7 @@ export default function SalamAirLiveSearch() {
               <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                 {tripKind === 'multi' ? 'Leg 1 ' : null}
                 <span>Departing</span>{' '}
-                <span className="font-semibold text-[#00A9C1] tabular-nums">
+                <span className="font-semibold text-[#00A99D] tabular-nums">
                   {formatBookDisplayDate(depart)}
                 </span>
               </div>
@@ -941,7 +941,7 @@ export default function SalamAirLiveSearch() {
               <div>
                 <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                   <span>Returning</span>{' '}
-                  <span className="font-semibold text-[#00A9C1] tabular-nums">
+                  <span className="font-semibold text-[#00A99D] tabular-nums">
                     {formatBookDisplayDate(returnDate)}
                   </span>
                 </div>
@@ -957,7 +957,7 @@ export default function SalamAirLiveSearch() {
               <div>
                 <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
                   <span>Leg 2 departing</span>{' '}
-                  <span className="font-semibold text-[#00A9C1] tabular-nums">
+                  <span className="font-semibold text-[#00A99D] tabular-nums">
                     {formatBookDisplayDate(depart2)}
                   </span>
                 </div>
@@ -975,12 +975,12 @@ export default function SalamAirLiveSearch() {
             <SalamPassengerSelect pax={pax} onChange={setPax} />
           </div>
 
-          <div className="mt-6 flex justify-stretch border-t border-gray-100 pt-4 dark:border-gray-800 sm:justify-end">
+          <div className="mt-6 flex justify-stretch border-t border-border pt-4 dark:border-gray-800 sm:justify-end">
             <Button
               type="button"
               variant="primary"
               size="md"
-              className="h-12 w-full min-w-[12.5rem] justify-center rounded-lg !bg-[#00A9C1] !text-white shadow-md !hover:bg-[#009aad] sm:w-auto text-sm font-bold uppercase tracking-wide"
+              className="h-12 w-full min-w-[12.5rem] justify-center rounded-lg !bg-[#00A99D] !text-white shadow-sm hover:!bg-[#009688] sm:w-auto text-sm font-bold uppercase tracking-wide transition-all duration-200"
               onClick={() => void runSearch()}
               disabled={loading}
               isLoading={loading}

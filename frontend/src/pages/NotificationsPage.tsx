@@ -42,19 +42,19 @@ const typeIconMap: Record<NotificationType, React.ElementType> = {
 };
 
 const typeColorMap: Record<NotificationType, string> = {
-  REQUEST_CREATED: 'text-blue-500 bg-blue-50 dark:bg-blue-900/30',
-  REQUEST_APPROVED: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30',
-  REQUEST_REJECTED: 'text-red-500 bg-red-50 dark:bg-red-900/30',
-  COUNTER_OFFERED: 'text-amber-500 bg-amber-50 dark:bg-amber-900/30',
-  COUNTER_ACCEPTED: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30',
-  COUNTER_REJECTED: 'text-rose-500 bg-rose-50 dark:bg-rose-900/30',
-  SENT_TO_RM: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30',
-  EMAIL_RECEIVED: 'text-purple-500 bg-purple-50 dark:bg-purple-900/30',
-  NEW_MESSAGE: 'text-teal-500 bg-teal-50 dark:bg-teal-900/30',
-  SLA_WARNING: 'text-orange-500 bg-orange-50 dark:bg-orange-900/30',
-  SLA_BREACHED: 'text-red-600 bg-red-50 dark:bg-red-900/30',
-  REQUEST_ASSIGNED: 'text-cyan-500 bg-cyan-50 dark:bg-cyan-900/30',
-  REMINDER: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30',
+  REQUEST_CREATED: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+  REQUEST_APPROVED: 'text-green-700 bg-green-100 dark:bg-green-900/30',
+  REQUEST_REJECTED: 'text-red-700 bg-red-100 dark:bg-red-900/30',
+  COUNTER_OFFERED: 'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30',
+  COUNTER_ACCEPTED: 'text-green-700 bg-green-100 dark:bg-green-900/30',
+  COUNTER_REJECTED: 'text-red-700 bg-red-100 dark:bg-red-900/30',
+  SENT_TO_RM: 'text-[#003B3F] bg-[#003B3F]/10 dark:bg-[#003B3F]/25 dark:text-[#5eead4]',
+  EMAIL_RECEIVED: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
+  NEW_MESSAGE: 'text-[#00A99D] bg-[#00A99D]/10 dark:bg-[#00A99D]/15 dark:text-[#2dd4bf]',
+  SLA_WARNING: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30',
+  SLA_BREACHED: 'text-red-700 bg-red-100 dark:bg-red-900/30',
+  REQUEST_ASSIGNED: 'text-cyan-600 bg-cyan-100 dark:bg-cyan-900/30',
+  REMINDER: 'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30',
 };
 
 const typeLabelMap: Record<NotificationType, string> = {
@@ -144,7 +144,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">Notifications</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}
           </p>
@@ -153,7 +153,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[#00A99D] dark:text-[#2dd4bf] hover:bg-[#00A99D]/10 dark:hover:bg-[#00A99D]/15 transition-all duration-200"
             >
               <CheckCheck className="h-4 w-4" />
               Mark all as read
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
           )}
           <button
             onClick={() => navigate('/notifications/settings')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
           >
             <Settings className="h-4 w-4" />
             Settings
@@ -176,9 +176,9 @@ export default function NotificationsPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.key
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-[#00A99D]/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
@@ -192,7 +192,7 @@ export default function NotificationsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="text-sm bg-white dark:bg-gray-900 border border-border dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-600 dark:text-gray-300 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
           >
             <option value="">All types</option>
             {Object.entries(typeLabelMap).map(([key, label]) => (
@@ -203,16 +203,16 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notification List */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 overflow-hidden shadow-sm transition-all duration-200">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <Bell className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-lg font-medium">No notifications</p>
-            <p className="text-sm mt-1">
+            <p className="text-xl font-semibold text-gray-800 dark:text-gray-200">No notifications</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {activeTab === 'unread' ? "You're all caught up!" : 'Nothing to show here.'}
             </p>
           </div>
@@ -226,8 +226,8 @@ export default function NotificationsPage() {
                 <button
                   key={notif.id}
                   onClick={() => handleClick(notif)}
-                  className={`w-full flex items-start gap-4 px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                    !notif.is_read ? 'bg-teal-50/30 dark:bg-teal-900/10' : ''
+                  className={`w-full flex items-start gap-4 px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200 ${
+                    !notif.is_read ? 'bg-[#00A99D]/5 dark:bg-[#00A99D]/10' : ''
                   }`}
                 >
                   <div className={`p-2.5 rounded-xl shrink-0 ${colorClass}`}>
@@ -239,7 +239,7 @@ export default function NotificationsPage() {
                         {notif.title}
                       </span>
                       {!notif.is_read && (
-                        <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+                        <span className="h-2 w-2 rounded-full bg-[#00A99D] shrink-0" />
                       )}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
@@ -271,14 +271,14 @@ export default function NotificationsPage() {
             <button
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1}
-              className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-border dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages}
-              className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-border dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

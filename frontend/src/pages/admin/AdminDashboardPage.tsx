@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-teal-600">
+      <div className="flex items-center justify-center py-24 text-[#00A99D]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -144,22 +144,22 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Link
           to="/admin/data-hub"
-          className="flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/90 dark:bg-purple-950/40 px-4 py-3 text-sm text-purple-900 dark:text-purple-100 hover:bg-purple-100/90 dark:hover:bg-purple-950/60 transition-colors"
+          className="flex items-center gap-3 rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm px-4 py-3 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-all duration-200"
         >
-          <Database className="h-5 w-5 shrink-0" />
+          <Database className="h-5 w-5 shrink-0 text-[#00A99D]" />
           <span>
-            <span className="font-semibold">All database data</span>
-            <span className="block text-xs opacity-90 mt-0.5">
+            <span className="font-semibold text-gray-900 dark:text-white">All database data</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               View and edit requests, chat messages, history, notifications, counter offers, SLA, chat files — without
               SQL or Railway tables.
             </span>
           </span>
         </Link>
-        <div className="flex flex-col gap-1.5 rounded-xl border border-teal-200/80 dark:border-teal-900/50 bg-teal-50/80 dark:bg-teal-950/30 px-4 py-3 text-sm text-teal-900 dark:text-teal-100">
+        <div className="flex flex-col gap-1.5 rounded-xl border border-border dark:border-gray-800 bg-[#00A99D]/5 dark:bg-[#00A99D]/10 px-4 py-3 text-sm text-gray-800 dark:text-gray-200 shadow-sm transition-all duration-200">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <span className="font-semibold">Full portal backup (PDF)</span>
-              <span className="block text-xs opacity-90 mt-0.5 text-teal-800/90 dark:text-teal-200/80">
+              <span className="font-semibold text-gray-900 dark:text-white">Full portal backup (PDF)</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 One file: all users, every request (deal, activity, chat, Sales↔RM copy), and the full audit log. Text
                 only—no binary attachments. For large databases the download may take a moment.
               </span>
@@ -168,7 +168,7 @@ export default function AdminDashboardPage() {
               type="button"
               onClick={() => void runFullBackupPdf()}
               disabled={backupBusy}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-wait"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-[#00A99D] text-white hover:bg-[#009688] disabled:opacity-50 disabled:cursor-wait transition-all duration-200"
             >
               {backupBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileType className="h-4 w-4" />}
               Download PDF
@@ -181,11 +181,11 @@ export default function AdminDashboardPage() {
         {cards.map(({ label, value, icon: Icon }) => (
           <div
             key={label}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm"
+            className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 p-5 shadow-sm transition-all duration-200"
           >
             <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400 mb-2">
-              <Icon size={18} />
-              <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+              <Icon size={18} className="text-[#00A99D]" />
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{label}</span>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
           </div>
@@ -193,14 +193,14 @@ export default function AdminDashboardPage() {
       </div>
 
       {emailStatus && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 p-5 shadow-sm transition-all duration-200">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Mail size={18} className="text-teal-600" />
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <Mail size={18} className="text-[#00A99D]" />
                 Email (deploy check)
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
                 After setting SMTP/IMAP on the host, send a test message and poll the inbox. Values below omit
                 passwords.
               </p>
@@ -209,20 +209,20 @@ export default function AdminDashboardPage() {
               type="button"
               onClick={() => refreshEmailStatus()}
               disabled={emailBusy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
             >
               <RefreshCw size={14} className={emailBusy ? 'animate-spin' : ''} />
               Refresh status
             </button>
           </div>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs mb-4">
-            <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1">
+            <div className="flex justify-between gap-2 border-b border-border dark:border-gray-800 pb-1">
               <dt className="text-gray-500">Outbound sending</dt>
               <dd
                 className={
                   emailStatus.resend_configured ||
                   (emailStatus.smtp_user_configured && emailStatus.smtp_password_configured)
-                    ? 'text-teal-700 dark:text-teal-400 font-medium'
+                    ? 'text-[#00A99D] dark:text-[#2dd4bf] font-medium'
                     : 'text-amber-700 dark:text-amber-400'
                 }
               >
@@ -233,13 +233,13 @@ export default function AdminDashboardPage() {
                     : 'no'}
               </dd>
             </div>
-            <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1">
+            <div className="flex justify-between gap-2 border-b border-border dark:border-gray-800 pb-1">
               <dt className="text-gray-500">IMAP active</dt>
-              <dd className={emailStatus.imap_polling_active ? 'text-teal-700 dark:text-teal-400 font-medium' : 'text-amber-700 dark:text-amber-400'}>
+              <dd className={emailStatus.imap_polling_active ? 'text-[#00A99D] dark:text-[#2dd4bf] font-medium' : 'text-amber-700 dark:text-amber-400'}>
                 {emailStatus.imap_polling_active ? 'yes' : 'no'}
               </dd>
             </div>
-            <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
+            <div className="flex justify-between gap-2 border-b border-border dark:border-gray-800 pb-1 sm:col-span-2">
               <dt className="text-gray-500">Outbound</dt>
               <dd className="text-right text-gray-800 dark:text-gray-200 break-all text-[0.7rem] leading-snug">
                 {emailStatus.resend_configured ? (
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
                 )}
               </dd>
             </div>
-            <div className="flex justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
+            <div className="flex justify-between gap-2 border-b border-border dark:border-gray-800 pb-1 sm:col-span-2">
               <dt className="text-gray-500">Inbound</dt>
               <dd className="text-right font-mono text-gray-800 dark:text-gray-200 break-all">
                 {emailStatus.imap_host}:{emailStatus.imap_port} SSL={emailStatus.imap_use_ssl ? 'on' : 'off'}
@@ -281,7 +281,7 @@ export default function AdminDashboardPage() {
               onClick={runTestSend}
               disabled={emailBusy || !emailStatus.email_sending_active}
               title={!emailStatus.email_sending_active ? 'Configure SMTP on the server first' : 'Send test to your admin email'}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#00A99D] text-white hover:bg-[#009688] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {emailBusy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               Send test email (to me)
@@ -291,7 +291,7 @@ export default function AdminDashboardPage() {
               onClick={runTestInbox}
               disabled={emailBusy || !emailStatus.imap_polling_active}
               title={!emailStatus.imap_polling_active ? 'Configure IMAP on the server first' : 'Fetch UNSEEN and match [REQ-…]'}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-teal-600 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {emailBusy ? <Loader2 size={16} className="animate-spin" /> : <Inbox size={16} />}
               Test IMAP sync

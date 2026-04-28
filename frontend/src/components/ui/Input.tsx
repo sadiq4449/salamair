@@ -25,7 +25,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={id}
-            className={`w-full ${icon ? 'pl-10' : 'pl-3.5'} ${suffix ? 'pr-11' : 'pr-4'} py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 transition-all duration-200 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10 placeholder:text-gray-400 ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' : ''} ${className}`}
+            className={`w-full ${icon ? 'pl-10' : 'pl-3'} ${suffix ? 'pr-11' : 'pr-3'} py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 transition-all duration-200 outline-none focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D] placeholder:text-gray-400 ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''} ${className}`}
             {...props}
           />
           {suffix && (

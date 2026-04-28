@@ -24,11 +24,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-page-bg via-white to-[#00A99D]/5 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 px-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-teal-100/40 dark:bg-teal-900/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-blue-100/40 dark:bg-blue-900/10 blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-[#00A99D]/15 dark:bg-[#00A99D]/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-[#003B3F]/10 dark:bg-[#003B3F]/20 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
@@ -44,9 +44,9 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl shadow-gray-200/50 dark:shadow-black/20 border border-gray-100 dark:border-gray-800 p-8">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-border dark:border-gray-800 p-8 transition-all duration-200">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Welcome back</h2>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Welcome back</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Sign in to your account to continue
             </p>
@@ -86,7 +86,7 @@ export default function Login() {
               suffix={
                 <button
                   type="button"
-                  className="view p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                  className="view p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#00A99D]/30 transition-all duration-200"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -107,7 +107,7 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
           &copy; {new Date().getFullYear()} Salam Air. All rights reserved.
         </p>
       </div>

@@ -107,16 +107,16 @@ export default function MiniCalendar({
 
   return (
     <div
-      className={`overflow-hidden rounded border border-[#E0E0E0] bg-white dark:border-gray-600 dark:bg-gray-900 ${className}`}
+      className={`overflow-hidden rounded-xl border border-border bg-white dark:border-gray-600 dark:bg-gray-900 ${className}`}
     >
-      {/* Month header — green controls like Salam Air main site */}
+      {/* Month header */}
       <div className="flex items-center justify-between bg-gray-100 px-2 py-2 dark:bg-gray-800 sm:px-3">
         {showNavPrev ? (
           <button
             type="button"
             onClick={goPrev}
             disabled={!!prevDisabled}
-            className="rounded p-1 text-gray-500 hover:text-[#76B82A] disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-400"
+            className="rounded-lg p-1 text-gray-500 transition-all duration-200 hover:text-[#00A99D] disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-400 dark:hover:text-[#2dd4bf]"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function MiniCalendar({
             type="button"
             onClick={goNext}
             disabled={!!nextDisabled}
-            className="rounded-md bg-[#76B82A] p-1.5 text-white hover:bg-[#6aa823] disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-lg bg-[#00A99D] p-1.5 text-white transition-all duration-200 hover:bg-[#009688] disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -170,14 +170,12 @@ export default function MiniCalendar({
                 disabled={disabled}
                 onClick={() => !disabled && onChange(iso)}
                 className={[
-                  'flex aspect-square min-h-[30px] items-center justify-center rounded-sm text-xs transition-colors',
+                  'flex aspect-square min-h-[30px] items-center justify-center rounded-sm text-xs transition-all duration-200',
                   disabled
                     ? 'cursor-not-allowed text-gray-300 dark:text-gray-600'
-                    : 'text-gray-800 hover:bg-[#00A9C1]/10 dark:text-gray-200',
-                  isSel
-                    ? 'bg-[#00A9C1] font-bold text-white hover:bg-[#00A9C1]'
-                    : '',
-                  today && !isSel ? 'font-bold text-[#76B82A]' : '',
+                    : 'text-gray-800 hover:bg-[#00A99D]/10 dark:text-gray-200 dark:hover:bg-[#00A99D]/15',
+                  isSel ? 'bg-[#00A99D] font-bold text-white hover:bg-[#009688]' : '',
+                  today && !isSel ? 'font-bold text-[#00A99D] dark:text-[#2dd4bf]' : '',
                 ].join(' ')}
               >
                 {d}

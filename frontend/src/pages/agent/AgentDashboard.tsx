@@ -25,10 +25,34 @@ export default function AgentDashboard() {
   const recentRequests = requests.slice(0, 5);
 
   const statCards = [
-    { label: 'Total Requests', value: stats.total, icon: FileText, iconBg: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Pending', value: stats.pending, icon: Clock, iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconColor: 'text-amber-600 dark:text-amber-400' },
-    { label: 'Approved', value: stats.approved, icon: CheckCircle, iconBg: 'bg-emerald-100 dark:bg-emerald-900/30', iconColor: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, iconBg: 'bg-red-100 dark:bg-red-900/30', iconColor: 'text-red-600 dark:text-red-400' },
+    {
+      label: 'Total Requests',
+      value: stats.total,
+      icon: FileText,
+      iconBg: 'bg-[#00A99D]/10 dark:bg-[#00A99D]/20',
+      iconColor: 'text-[#00A99D] dark:text-[#2dd4bf]',
+    },
+    {
+      label: 'Pending',
+      value: stats.pending,
+      icon: Clock,
+      iconBg: 'bg-yellow-100 dark:bg-yellow-900/30',
+      iconColor: 'text-yellow-700 dark:text-yellow-400',
+    },
+    {
+      label: 'Approved',
+      value: stats.approved,
+      icon: CheckCircle,
+      iconBg: 'bg-green-100 dark:bg-green-900/30',
+      iconColor: 'text-green-700 dark:text-green-400',
+    },
+    {
+      label: 'Rejected',
+      value: stats.rejected,
+      icon: XCircle,
+      iconBg: 'bg-red-100 dark:bg-red-900/30',
+      iconColor: 'text-red-700 dark:text-red-400',
+    },
   ];
 
   return (
@@ -38,7 +62,7 @@ export default function AgentDashboard() {
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5"
+            className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm p-5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${card.iconBg}`}>
@@ -70,12 +94,12 @@ export default function AgentDashboard() {
       </div>
 
       {/* Recent Requests Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Recent Requests</h3>
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-gray-800">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Recent Requests</h3>
           <button
             onClick={() => navigate('/requests')}
-            className="text-sm text-teal-600 hover:text-teal-700 dark:text-teal-400 font-medium"
+            className="text-sm text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] font-medium transition-all duration-200"
           >
             View All →
           </button>
@@ -83,7 +107,7 @@ export default function AgentDashboard() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin h-6 w-6 border-2 border-teal-600 border-t-transparent rounded-full" />
+            <div className="animate-spin h-6 w-6 border-2 border-[#00A99D] border-t-transparent rounded-full" />
           </div>
         ) : recentRequests.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">
@@ -92,31 +116,38 @@ export default function AgentDashboard() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+            <table className="w-full text-sm bg-white dark:bg-gray-900">
+              <thead className="bg-gray-50 dark:bg-gray-800/60">
                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">REQ ID</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Route</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pax</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">REQ ID</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Route</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Pax</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Price</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Priority</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {recentRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
-                    <td className="px-6 py-3.5">
+                  <tr
+                    key={req.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
+                  >
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.route}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.pax}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={req.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PriorityDot priority={req.priority} />
+                    </td>
+                    <td className="px-4 py-3">
                       <button
                         onClick={() => navigate(`/requests/${req.id}`)}
-                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 dark:text-teal-400 font-medium text-sm"
+                        className="inline-flex items-center gap-1 text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] font-medium text-sm transition-all duration-200"
                       >
                         <Eye size={14} />
                         View

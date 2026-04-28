@@ -79,7 +79,7 @@ export default function BulkUploadPage() {
           <select
             value={agentUserId}
             onChange={(e) => setAgentUserId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+            className="w-full px-3 py-2 rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
           >
             <option value="">Select agent…</option>
             {agentOptions.map((a) => (
@@ -91,7 +91,7 @@ export default function BulkUploadPage() {
         </div>
       )}
 
-      <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center">
+      <div className="border-2 border-dashed border-border dark:border-gray-700 rounded-xl p-8 text-center transition-all duration-200 hover:border-[#00A99D]/35">
         <input
           type="file"
           accept=".xlsx,.xls"
@@ -105,8 +105,8 @@ export default function BulkUploadPage() {
             if (f) void handlePreview(f);
           }}
         />
-        <label htmlFor="bulk-xlsx" className="cursor-pointer inline-flex flex-col items-center gap-2 text-gray-600 dark:text-gray-300">
-          <Upload className="h-10 w-10 text-teal-600" />
+        <label htmlFor="bulk-xlsx" className="cursor-pointer inline-flex flex-col items-center gap-2 text-gray-600 dark:text-gray-300 transition-colors">
+          <Upload className="h-10 w-10 text-[#00A99D]" />
           <span className="text-sm font-medium">Drop Excel here or click to choose (.xlsx)</span>
           {file && <span className="text-xs text-gray-400">{file.name}</span>}
         </label>
@@ -114,7 +114,7 @@ export default function BulkUploadPage() {
 
       {loading && (
         <div className="flex justify-center py-6">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
         </div>
       )}
 
@@ -127,27 +127,30 @@ export default function BulkUploadPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Valid {preview.valid_rows} / {preview.total_rows} rows
           </p>
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-x-auto max-h-80 overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 max-h-80 overflow-auto shadow-sm">
+            <table className="w-full text-xs bg-white dark:bg-gray-900">
+              <thead className="sticky top-0 z-[1] bg-gray-50 dark:bg-gray-800/90 border-b border-border dark:border-gray-800">
                 <tr>
-                  <th className="text-left px-3 py-2">Row</th>
-                  <th className="text-left px-3 py-2">Route</th>
-                  <th className="text-left px-3 py-2">Pax</th>
-                  <th className="text-left px-3 py-2">Price</th>
-                  <th className="text-left px-3 py-2">OK</th>
-                  <th className="text-left px-3 py-2">Errors</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Row</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Route</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Pax</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Price</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">OK</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Errors</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {preview.preview.map((row) => (
-                  <tr key={row.row} className={row.valid ? '' : 'bg-red-50/80 dark:bg-red-950/30'}>
-                    <td className="px-3 py-1.5">{row.row}</td>
-                    <td className="px-3 py-1.5">{row.route}</td>
-                    <td className="px-3 py-1.5">{row.pax}</td>
-                    <td className="px-3 py-1.5">{row.price}</td>
-                    <td className="px-3 py-1.5">{row.valid ? 'Yes' : 'No'}</td>
-                    <td className="px-3 py-1.5 text-red-600">{row.errors?.join('; ')}</td>
+                  <tr
+                    key={row.row}
+                    className={`transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${row.valid ? '' : 'bg-red-50/80 dark:bg-red-950/30'}`}
+                  >
+                    <td className="px-4 py-3">{row.row}</td>
+                    <td className="px-4 py-3">{row.route}</td>
+                    <td className="px-4 py-3">{row.pax}</td>
+                    <td className="px-4 py-3">{row.price}</td>
+                    <td className="px-4 py-3">{row.valid ? 'Yes' : 'No'}</td>
+                    <td className="px-4 py-3 text-red-600">{row.errors?.join('; ')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -175,7 +178,7 @@ export default function BulkUploadPage() {
       )}
 
       {result && (
-        <div className="rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900 px-4 py-3 text-sm text-teal-900 dark:text-teal-100">
+        <div className="rounded-xl bg-[#00A99D]/10 dark:bg-[#00A99D]/15 border border-[#00A99D]/25 dark:border-[#00A99D]/30 px-4 py-3 text-sm text-gray-800 dark:text-gray-100 transition-all duration-200">
           {result.message}: created {result.created}, failed {result.failed}.
         </div>
       )}

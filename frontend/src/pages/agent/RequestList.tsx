@@ -69,7 +69,8 @@ export default function RequestList() {
     });
   }
 
-  const selectClass = 'px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10';
+  const selectClass =
+    'px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]';
 
   return (
     <div className="space-y-5">
@@ -84,7 +85,7 @@ export default function RequestList() {
               value={searchLocal}
               onChange={(e) => setSearchLocal(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
+              className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
             />
           </div>
         </div>
@@ -135,7 +136,7 @@ export default function RequestList() {
         />
         <button
           onClick={handleReset}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
         >
           <RotateCcw size={14} />
           Reset
@@ -143,45 +144,47 @@ export default function RequestList() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin h-6 w-6 border-2 border-teal-600 border-t-transparent rounded-full" />
+            <div className="animate-spin h-6 w-6 border-2 border-[#00A99D] border-t-transparent rounded-full" />
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-16 text-gray-400 dark:text-gray-500">
             <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm font-medium">No requests found</p>
-            <p className="text-xs mt-1">Try adjusting your filters or create a new request</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">No requests found</p>
+            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">Try adjusting your filters or create a new request</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+            <table className="w-full text-sm bg-white dark:bg-gray-900">
+              <thead className="bg-gray-50 dark:bg-gray-800/60">
                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">REQ ID</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Route</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pax</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tags</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SLA</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">REQ ID</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Route</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Pax</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Price</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Tags</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">SLA</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Priority</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Created</th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {requests.map((req) => (
-                  <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.route}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{req.pax}</td>
-                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
-                    <td className="px-6 py-3.5"><StatusBadge status={req.status} /></td>
-                    <td className="px-6 py-3.5">
+                  <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200">
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{req.request_code}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.route}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.travel_date ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{req.pax}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{Number(req.price).toFixed(2)} OMR</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={req.status} />
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {(req.tags ?? []).map((t) => (
                           <span
@@ -196,21 +199,23 @@ export default function RequestList() {
                         {(req.tags ?? []).length === 0 && <span className="text-gray-400">—</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       {['submitted', 'under_review', 'rm_pending', 'counter_offered'].includes(req.status) ? (
                         <SlaIndicator requestId={req.id} compact />
                       ) : (
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-3.5"><PriorityDot priority={req.priority} /></td>
-                    <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-3">
+                      <PriorityDot priority={req.priority} />
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                       {new Date(req.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <button
                         onClick={() => navigate(`/requests/${req.id}`)}
-                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 dark:text-teal-400 font-medium text-sm"
+                        className="inline-flex items-center gap-1 text-[#00A99D] hover:text-[#009688] dark:text-[#2dd4bf] font-medium text-sm transition-all duration-200"
                       >
                         <Eye size={14} />
                         View

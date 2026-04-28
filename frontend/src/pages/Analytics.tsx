@@ -33,15 +33,15 @@ import { rangeFromPreset, toYMD } from '../utils/dateRange';
 import { TOKEN_KEY } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 
-/** UI.demo_design agent.css / sales.css — chart accent */
-const TEAL = '#0d9488';
-const ROUTE_CHART_COLORS = ['#0d9488', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#10b981', '#6366f1', '#ec4899'];
+/** Chart accent — SalamAir primary */
+const TEAL = '#00a99d';
+const ROUTE_CHART_COLORS = ['#00a99d', '#003b3f', '#ca8a04', '#8b5cf6', '#ef4444', '#16a34a', '#6366f1', '#ec4899'];
 
 const STATUS_BUCKET_COLORS: Record<string, string> = {
-  Approved: '#10b981',
-  Pending: '#f59e0b',
+  Approved: '#16a34a',
+  Pending: '#ca8a04',
   Rejected: '#ef4444',
-  'RM Review': '#8b5cf6',
+  'RM Review': '#6366f1',
 };
 
 function bucketStatusLabel(status: string): string {
@@ -123,7 +123,7 @@ function StatShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-[22px] shadow-[0_1px_3px_rgba(0,0,0,0.1)] flex items-start gap-3.5 transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
+    <div className="rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm flex items-start gap-3.5 transition-all duration-200">
       <div
         className={`w-[46px] h-[46px] rounded-lg flex items-center justify-center shrink-0 text-lg ${iconClass}`}
       >
@@ -154,7 +154,7 @@ function DeltaSch({
   return (
     <div
       className={`text-[0.72rem] font-semibold mt-1.5 flex items-center gap-1 ${
-        good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+        good ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'
       }`}
     >
       {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -165,7 +165,7 @@ function DeltaSch({
 
 function SkeletonCard() {
   return (
-    <div className="rounded-[12px] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-[22px] animate-pulse flex gap-3.5">
+    <div className="rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 p-5 animate-pulse flex gap-3.5">
       <div className="w-[46px] h-[46px] rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0" />
       <div className="flex-1 space-y-2">
         <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -177,8 +177,8 @@ function SkeletonCard() {
 
 function SkeletonChart() {
   return (
-    <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden animate-pulse">
-      <div className="px-6 py-[18px] border-b border-gray-200 dark:border-gray-700">
+    <div className="rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden animate-pulse">
+      <div className="px-6 py-4 border-b border-border dark:border-gray-800">
         <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
       </div>
       <div className="p-6 h-[280px] bg-gray-50 dark:bg-gray-800/40" />
@@ -189,9 +189,9 @@ function SkeletonChart() {
 /** UI.demo_design `.cd` card */
 function DemoCard({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_1px_3px_rgba(0,0,0,0.1)] overflow-hidden transition-shadow hover:shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
-      <div className="px-6 py-[18px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
-        <h3 className="text-[1.05rem] font-semibold text-gray-900 dark:text-white">{title}</h3>
+    <div className="rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden transition-all duration-200">
+      <div className="px-6 py-4 border-b border-border dark:border-gray-800 flex items-center justify-between gap-3">
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white">{title}</h3>
         {right}
       </div>
       <div className="p-6">{children}</div>
@@ -387,7 +387,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
     <button
       type="button"
       onClick={() => toggleSort(key)}
-      className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-800 dark:hover:text-gray-200"
+      className="inline-flex items-center gap-1 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-all duration-200"
     >
       {label}
       {tableSort.key === key ? (tableSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
@@ -398,18 +398,18 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
     <div className={embedded ? 'space-y-6 mt-2' : 'space-y-6'}>
       <div
         className={`flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between ${
-          embedded ? 'pt-2 border-t border-gray-100 dark:border-gray-800' : ''
+          embedded ? 'pt-2 border-t border-border dark:border-gray-800' : ''
         }`}
       >
         <div>
           {embedded ? (
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-teal-600 shrink-0" />
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-[#00A99D] shrink-0" />
               Analytics
             </h2>
           ) : (
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="h-7 w-7 text-teal-600" />
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-7 w-7 text-[#00A99D]" />
               Analytics
             </h1>
           )}
@@ -424,10 +424,10 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                 key={p}
                 type="button"
                 onClick={() => applyPreset(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
                   preset === p
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-[#00A99D] text-white shadow-sm hover:bg-[#009688]'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-border dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
                 {p === 'today' ? 'Today' : p === 'week' ? 'This week' : p === 'month' ? 'This month' : 'This quarter'}
@@ -442,7 +442,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                 setFrom(e.target.value);
                 setPreset(null);
               }}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-2 text-gray-900 dark:text-white text-sm"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-2 text-gray-900 dark:text-white text-sm outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
             />
             <span className="text-gray-400">—</span>
             <input
@@ -452,13 +452,13 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                 setTo(e.target.value);
                 setPreset(null);
               }}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-2 text-gray-900 dark:text-white text-sm"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-2 text-gray-900 dark:text-white text-sm outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
             />
           </div>
           {isSalesOrAdmin && (
             <div className="flex flex-wrap gap-2">
               <select
-                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-2 text-xs font-medium text-gray-700 dark:text-gray-200"
+                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none transition-all duration-200 focus:border-[#00A99D] focus:ring-2 focus:ring-[#00A99D]"
                 onChange={(e) => {
                   const v = e.target.value;
                   if (!v) return;
@@ -485,7 +485,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
             <button
               type="button"
               onClick={() => exportFile('kpis', 'csv')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
             >
               <Download className="h-3.5 w-3.5" />
               Export KPIs
@@ -506,21 +506,21 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
               </>
             ) : kpis ? (
               <>
-                <StatShell icon={Banknote} iconClass="bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
+                <StatShell icon={Banknote} iconClass="bg-[#00A99D]/10 text-[#00A99D] dark:bg-[#00A99D]/15 dark:text-[#2dd4bf]">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {formatMoneyOmr(kpis.total_revenue)}
                   </div>
                   <div className="text-[0.82rem] text-gray-500 dark:text-gray-400 mt-0.5">{revenueTitle}</div>
                   <DeltaSch value={kpis.total_revenue_change} />
                 </StatShell>
-                <StatShell icon={Percent} iconClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <StatShell icon={Percent} iconClass="bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {kpis.approval_rate}%
                   </div>
                   <div className="text-[0.82rem] text-gray-500 dark:text-gray-400 mt-0.5">Approval rate</div>
                   <DeltaSch value={kpis.approval_rate_change} />
                 </StatShell>
-                <StatShell icon={Clock} iconClass="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                <StatShell icon={Clock} iconClass="bg-[#003B3F]/10 text-[#003B3F] dark:bg-[#003B3F]/25 dark:text-[#5eead4]">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {kpis.avg_response_time_hours}h
                   </div>
@@ -632,28 +632,28 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
               </>
             ) : kpis ? (
               <>
-                <StatShell icon={Banknote} iconClass="bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
+                <StatShell icon={Banknote} iconClass="bg-[#00A99D]/10 text-[#00A99D] dark:bg-[#00A99D]/15 dark:text-[#2dd4bf]">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {formatMoneyOmr(kpis.total_revenue)}
                   </div>
                   <div className="text-[0.82rem] text-gray-500 dark:text-gray-400 mt-0.5">Total revenue</div>
                   <DeltaSch value={kpis.total_revenue_change} />
                 </StatShell>
-                <StatShell icon={Percent} iconClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                <StatShell icon={Percent} iconClass="bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {kpis.approval_rate}%
                   </div>
                   <div className="text-[0.82rem] text-gray-500 dark:text-gray-400 mt-0.5">Approval rate</div>
                   <DeltaSch value={kpis.approval_rate_change} />
                 </StatShell>
-                <StatShell icon={Clock} iconClass="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                <StatShell icon={Clock} iconClass="bg-[#003B3F]/10 text-[#003B3F] dark:bg-[#003B3F]/25 dark:text-[#5eead4]">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {(salesOverview?.avg_response_time_hours ?? kpis.avg_response_time_hours)}h
                   </div>
                   <div className="text-[0.82rem] text-gray-500 dark:text-gray-400 mt-0.5">Avg response time</div>
                   <DeltaSch value={kpis.avg_response_time_change} invert />
                 </StatShell>
-                <StatShell icon={Mail} iconClass="bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-300">
+                <StatShell icon={Mail} iconClass="bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300">
                   <div className="text-[1.65rem] font-bold text-gray-900 dark:text-white leading-tight">
                     {salesOverview?.rm_emails_sent ?? 0}
                   </div>
@@ -690,7 +690,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                           <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" allowDecimals={false} />
                           <Tooltip labelFormatter={(label) => formatPeriodTick(String(label ?? ''))} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="approved" name="Approved" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="approved" name="Approved" fill="#16a34a" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="rejected" name="Rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -737,7 +737,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
             <div className="h-[260px]">
               {loading ? (
                 <div className="h-full flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
                 </div>
               ) : dailyTrends.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm">No data</div>
@@ -750,7 +750,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                     <Tooltip />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Line type="monotone" dataKey="submitted" stroke={TEAL} name="Submitted" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="approved" stroke="#10b981" name="Approved" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="approved" stroke="#16a34a" name="Approved" strokeWidth={2} dot={false} />
                     <Line type="monotone" dataKey="rejected" stroke="#ef4444" name="Rejected" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -763,7 +763,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
               <div className="h-[280px]">
                 {loading ? (
                   <div className="h-full flex justify-center items-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
                   </div>
                 ) : cities.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400 text-sm">No city data</div>
@@ -774,7 +774,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                       <XAxis type="number" tick={{ fontSize: 11 }} />
                       <YAxis type="category" dataKey="city" width={96} tick={{ fontSize: 11 }} />
                       <Tooltip />
-                      <Bar dataKey="requests" fill="#2563eb" name="Requests" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="requests" fill="#00a99d" name="Requests" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -784,7 +784,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
               <div className="h-[280px]">
                 {loading || dailyTrends.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                    {loading ? <Loader2 className="h-8 w-8 animate-spin text-teal-600" /> : 'No data'}
+                    {loading ? <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" /> : 'No data'}
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
@@ -813,48 +813,48 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
             </DemoCard>
           </div>
 
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-            <div className="px-6 py-[18px] border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-[1.05rem] font-semibold text-gray-900 dark:text-white">Agent performance</h3>
-              <span className="text-xs text-gray-500">
+          <div className="rounded-xl border border-border dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Agent performance</h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {sortedAgents.length} agent{sortedAgents.length !== 1 ? 's' : ''}
               </span>
             </div>
             <div className="overflow-x-auto">
               {loading ? (
                 <div className="py-16 flex justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-[#00A99D]" />
                 </div>
               ) : sortedAgents.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 text-sm">No agents in this period</div>
               ) : (
-                <table className="min-w-full text-sm">
+                <table className="min-w-full text-sm bg-white dark:bg-gray-900">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-800/50 text-left text-[0.68rem] font-semibold text-gray-500 uppercase tracking-wide">
-                      <th className="px-5 py-3">#</th>
-                      <th className="px-5 py-3">{thBtn('Agent', 'name')}</th>
-                      <th className="px-5 py-3">City</th>
-                      <th className="px-5 py-3 text-right">{thBtn('Requests', 'requests')}</th>
-                      <th className="px-5 py-3 text-right">Approved</th>
-                      <th className="px-5 py-3 text-right">{thBtn('Rate', 'approval_rate')}</th>
-                      <th className="px-5 py-3 text-right">{thBtn('Revenue', 'revenue')}</th>
-                      <th className="px-5 py-3 text-right">{thBtn('Avg resp (h)', 'avg_response_time_hours')}</th>
+                    <tr className="bg-gray-50 dark:bg-gray-800/60 text-left border-b border-gray-100 dark:border-gray-800">
+                      <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">#</th>
+                      <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">{thBtn('Agent', 'name')}</th>
+                      <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-300">City</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">{thBtn('Requests', 'requests')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">Approved</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">{thBtn('Rate', 'approval_rate')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">{thBtn('Revenue', 'revenue')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">{thBtn('Avg resp (h)', 'avg_response_time_hours')}</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {pagedAgents.map((a, idx) => (
                       <tr
                         key={a.id}
-                        className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50/80 dark:hover:bg-gray-800/40"
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
                       >
-                        <td className="px-5 py-3 text-gray-500">{tablePage * PAGE_SIZE + idx + 1}</td>
-                        <td className="px-5 py-3 font-medium text-gray-900 dark:text-white">{a.name}</td>
-                        <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{a.city}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{a.total_requests}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{a.approved}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{a.approval_rate}%</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{formatMoneyOmr(a.total_revenue)}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{a.avg_response_time_hours}</td>
+                        <td className="px-4 py-3 text-gray-500">{tablePage * PAGE_SIZE + idx + 1}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{a.name}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{a.city}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{a.total_requests}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{a.approved}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{a.approval_rate}%</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{formatMoneyOmr(a.total_revenue)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{a.avg_response_time_hours}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -862,12 +862,12 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
               )}
             </div>
             {sortedAgents.length > PAGE_SIZE && (
-              <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+              <div className="px-5 py-3 border-t border-border dark:border-gray-800 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
                 <button
                   type="button"
                   disabled={tablePage <= 0}
                   onClick={() => setTablePage((p) => Math.max(0, p - 1))}
-                  className="font-semibold text-teal-600 disabled:opacity-40"
+                  className="font-semibold text-[#00A99D] hover:text-[#009688] disabled:opacity-40 transition-all duration-200"
                 >
                   Previous
                 </button>
@@ -878,7 +878,7 @@ export default function Analytics({ embedded = false }: AnalyticsProps) {
                   type="button"
                   disabled={tablePage >= tablePages - 1}
                   onClick={() => setTablePage((p) => Math.min(tablePages - 1, p + 1))}
-                  className="font-semibold text-teal-600 disabled:opacity-40"
+                  className="font-semibold text-[#00A99D] hover:text-[#009688] disabled:opacity-40 transition-all duration-200"
                 >
                   Next
                 </button>

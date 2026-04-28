@@ -103,14 +103,14 @@ export default function GlobalSearchBar() {
             if (e.key === 'Enter') goSearch();
           }}
           placeholder="Search requests, messages…"
-          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-gray-900 dark:text-gray-100"
+          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-white dark:bg-gray-800/80 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 outline-none transition-all duration-200 focus:ring-2 focus:ring-[#00A99D] focus:border-[#00A99D]"
         />
         {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-teal-600" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#00A99D]" />
         )}
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-80 overflow-y-auto text-sm">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-80 overflow-y-auto text-sm transition-all duration-200">
           {q.trim().length < 2 && recent.length > 0 && (
             <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 text-xs text-gray-500">
               Recent
@@ -121,7 +121,7 @@ export default function GlobalSearchBar() {
               <button
                 key={r}
                 type="button"
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
+                className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-all duration-200"
                 onClick={() => {
                   setQ(r);
                   goSearch(r);
@@ -134,7 +134,7 @@ export default function GlobalSearchBar() {
             <button
               key={`${h.path}-${i}`}
               type="button"
-              className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border-t border-gray-50 dark:border-gray-800"
+              className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border-t border-gray-50 dark:border-gray-800 transition-all duration-200"
               onClick={() => {
                 pushRecent(q);
                 setOpen(false);
@@ -147,7 +147,7 @@ export default function GlobalSearchBar() {
           {q.trim().length >= 2 && (
             <button
               type="button"
-              className="w-full text-left px-3 py-2 text-teal-600 font-medium border-t border-gray-100 dark:border-gray-800"
+              className="w-full text-left px-3 py-2 text-[#00A99D] font-medium border-t border-gray-100 dark:border-gray-800 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/80"
               onClick={() => goSearch()}
             >
               View all results
