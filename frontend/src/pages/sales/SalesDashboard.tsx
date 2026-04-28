@@ -1,23 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Send, AlertTriangle, CheckCircle, Eye } from 'lucide-react';
 import { useRequestStore } from '../../store/requestStore';
+import { requestService } from '../../services/requestService';
 import PriorityDot from '../../components/ui/PriorityDot';
 import type { Priority } from '../../types';
 
 export default function SalesDashboard() {
   const navigate = useNavigate();
   const { requests, fetchSalesQueue, isLoading } = useRequestStore();
+  /** `/sales/queue` only returns active queue rows; terminal statuses are omitted, so counts must come from `GET /requests`. */
+  const [processedTotal, setProcessedTotal] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSalesQueue({ limit: 100 });
   }, [fetchSalesQueue]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [approved, rejected, counterOffered] = await Promise.all([
+          requestService.getRequests({ status: 'approved', page: 1, limit: 1 }),
+          requestService.getRequests({ status: 'rejected', page: 1, limit: 1 }),
+          requestService.getRequests({ status: 'counter_offered', page: 1, limit: 1 }),
+        ]);
+        if (!cancelled) {
+          setProcessedTotal(approved.total + rejected.total + counterOffered.total);
+        }
+      } catch {
+        if (!cancelled) setProcessedTotal(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const stats = {
     pending: requests.filter((r) => ['submitted', 'under_review'].includes(r.status)).length,
     rmPending: requests.filter((r) => r.status === 'rm_pending').length,
     urgent: requests.filter((r) => r.priority === 'urgent').length,
-    processed: requests.filter((r) => ['approved', 'rejected', 'counter_offered'].includes(r.status)).length,
   };
 
   const pendingRequests = requests.filter((r) => ['submitted', 'under_review'].includes(r.status));
@@ -46,7 +69,7 @@ export default function SalesDashboard() {
     },
     {
       label: 'Processed',
-      value: stats.processed,
+      value: processedTotal ?? 0,
       icon: CheckCircle,
       iconBg: 'bg-green-100 dark:bg-green-900/30',
       iconColor: 'text-green-700 dark:text-green-400',
