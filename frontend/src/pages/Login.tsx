@@ -9,6 +9,9 @@ import SalamAirBrandLogo from '../components/branding/SalamAirBrandLogo';
 const inputGlass =
   'bg-white/95 backdrop-blur-[2px] border-gray-200/90 shadow-sm dark:bg-white dark:border-gray-200 dark:text-gray-900';
 
+const bullet =
+  'inline-block h-1.5 w-1.5 rounded-full bg-[#7CE3D0] shadow-[0_0_8px_rgba(124,227,208,0.6)]';
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuth();
@@ -27,19 +30,20 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] min-h-screen overflow-hidden bg-[#F0F7F6]">
-      {/* Full-viewport hero — plane composition favors left side */}
+    <div className="relative min-h-[100dvh] min-h-screen overflow-hidden bg-[#0B2A38]">
+      {/* Full-viewport hero — SalamAir cityscape with built-in left scrim */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <img
           src="/images/salam-air-login-hero.png"
           alt=""
-          className="h-full w-full object-cover object-[25%_center] sm:object-[30%_center] lg:object-[35%_center]"
+          className="h-full w-full object-cover object-[60%_30%] sm:object-[55%_center] lg:object-center"
           decoding="async"
           fetchPriority="high"
         />
-        {/* Readability: transparent center-left → opaque right so the form area stays crisp */}
-        <div className="absolute inset-0 bg-[linear-gradient(255deg,#F8FAFB_0%,rgba(248,250,251,0.93)_32%,rgba(248,250,251,0.45)_56%,transparent_76%)] sm:bg-[linear-gradient(255deg,#F8FAFB_0%,rgba(248,250,251,0.9)_38%,rgba(248,250,251,0.35)_58%,transparent_78%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#003B3F]/[0.07] via-transparent to-[#003B3F]/[0.05]" />
+        {/* Strengthen the left scrim so light copy reads cleanly at all viewport widths */}
+        <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(8,32,46,0.78)_0%,rgba(8,32,46,0.55)_28%,rgba(8,32,46,0.18)_54%,transparent_72%)] sm:bg-[linear-gradient(105deg,rgba(8,32,46,0.74)_0%,rgba(8,32,46,0.45)_32%,rgba(8,32,46,0.12)_58%,transparent_78%)]" />
+        {/* Subtle vignette to ground the form card on the bright cityscape */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#03161E]/40 via-transparent to-[#03161E]/15" />
       </div>
 
       <div className="relative z-10 mx-auto grid min-h-[100dvh] max-w-[1600px] grid-cols-1 gap-10 px-5 py-12 sm:px-10 lg:min-h-screen lg:grid-cols-[1.05fr_minmax(420px,460px)] lg:items-center lg:gap-16 lg:px-16 xl:px-24">
@@ -47,34 +51,34 @@ export default function Login() {
         <div className="flex flex-col justify-center">
           <SalamAirBrandLogo
             heightClass="h-12 sm:h-14"
-            className="drop-shadow-sm brightness-[1.02]"
+            className="drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] brightness-[1.05]"
           />
-          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#00A99D]">
+          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.18em] text-[#7CE3D0] drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
             SmartDeal Platform
           </p>
 
-          <h1 className="mt-7 text-3xl font-semibold leading-[1.15] tracking-tight text-[#003B3F] sm:mt-9 sm:text-[2.5rem] lg:text-[2.75rem]">
+          <h1 className="mt-7 text-[2rem] font-semibold leading-[1.15] tracking-tight text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.55)] sm:mt-9 sm:text-[2.5rem] lg:text-[2.875rem]">
             Smarter deals.
             <br />
             Better journeys.
           </h1>
-          <p className="mt-5 max-w-[34rem] text-[15px] leading-relaxed text-gray-700/90 sm:text-base">
+          <p className="mt-5 max-w-[34rem] text-[15px] leading-relaxed text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)] sm:text-base">
             SalamAir's SmartDeal portal gives travel teams real-time corporate
             fares, transparent pricing, and a single workspace for every
             booking — across the GCC and beyond.
           </p>
 
-          <ul className="mt-7 hidden max-w-[34rem] flex-wrap gap-x-7 gap-y-3 text-sm font-medium text-[#003B3F]/80 lg:flex">
+          <ul className="mt-7 hidden max-w-[34rem] flex-wrap gap-x-7 gap-y-3 text-sm font-medium text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)] lg:flex">
             <li className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              <span className={bullet} />
               Negotiated corporate fares
             </li>
             <li className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              <span className={bullet} />
               Live availability
             </li>
             <li className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              <span className={bullet} />
               Centralised reporting
             </li>
           </ul>
@@ -83,7 +87,7 @@ export default function Login() {
         {/* RIGHT: form card */}
         <div className="w-full max-w-[460px] lg:ml-auto">
           <div
-            className="rounded-2xl border border-white/70 bg-white/75 p-8 shadow-[0_25px_50px_-12px_rgba(0,59,63,0.18)] backdrop-blur-xl backdrop-saturate-150 sm:p-9 dark:bg-white/90 dark:backdrop-blur-xl"
+            className="rounded-2xl border border-white/60 bg-white/90 p-8 shadow-[0_30px_60px_-12px_rgba(3,22,30,0.5)] backdrop-blur-xl backdrop-saturate-150 sm:p-9 dark:bg-white/95 dark:backdrop-blur-xl"
             style={{ WebkitBackdropFilter: 'blur(16px)' }}
           >
             <div className="mb-7">
@@ -154,7 +158,7 @@ export default function Login() {
             </form>
           </div>
 
-          <p className="mt-8 text-center text-[13px] text-gray-600/95 drop-shadow-sm sm:text-right">
+          <p className="mt-8 text-center text-[13px] text-white/75 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)] sm:text-right">
             &copy; {new Date().getFullYear()} Salam Air. All rights reserved.
           </p>
         </div>
