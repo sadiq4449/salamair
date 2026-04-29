@@ -6,6 +6,9 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SalamAirBrandLogo from '../components/branding/SalamAirBrandLogo';
 
+const inputGlass =
+  'bg-white/95 backdrop-blur-[2px] border-gray-200/90 shadow-sm dark:bg-white dark:border-gray-200 dark:text-gray-900';
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuth();
@@ -24,92 +27,109 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-page-bg via-white to-[#00A99D]/5 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 px-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-[#00A99D]/15 dark:bg-[#00A99D]/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-[#003B3F]/10 dark:bg-[#003B3F]/20 blur-3xl" />
+    <div className="relative min-h-[100dvh] min-h-screen overflow-hidden bg-[#F0F7F6]">
+      {/* Full-viewport hero — plane composition favors right side */}
+      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
+        <img
+          src="/images/salam-air-login-hero.png"
+          alt=""
+          className="h-full w-full object-cover object-[75%_center] sm:object-[70%_center] lg:object-[65%_center]"
+          decoding="async"
+          fetchPriority="high"
+        />
+        {/* Readability: opaque left → transparent center-right so the aircraft stays crisp */}
+        <div className="absolute inset-0 bg-[linear-gradient(105deg,#F8FAFB_0%,rgba(248,250,251,0.93)_32%,rgba(248,250,251,0.45)_56%,transparent_76%)] sm:bg-[linear-gradient(105deg,#F8FAFB_0%,rgba(248,250,251,0.9)_38%,rgba(248,250,251,0.35)_58%,transparent_78%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#003B3F]/[0.07] via-transparent to-[#003B3F]/[0.05]" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex flex-col items-center justify-center">
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1600px] flex-col justify-center px-5 py-12 sm:px-10 lg:min-h-screen lg:px-16 xl:px-24">
+        <div className="w-full max-w-[440px] lg:mx-0 lg:max-w-[420px]">
+          <div className="mb-9 lg:mb-10">
             <SalamAirBrandLogo
-              heightClass="h-14 sm:h-16"
-              className="mx-auto max-w-[min(100%,20rem)] drop-shadow-sm dark:opacity-95"
+              heightClass="h-12 sm:h-14"
+              className="drop-shadow-sm brightness-[1.02]"
             />
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 font-medium">SmartDeal Platform</p>
-          </div>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-border dark:border-gray-800 p-8 transition-all duration-200">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Welcome back</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Sign in to your account to continue
+            <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#00A99D]">
+              SmartDeal Platform
             </p>
           </div>
 
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-              {error}
+          <div
+            className="rounded-2xl border border-white/70 bg-white/75 p-8 shadow-[0_25px_50px_-12px_rgba(0,59,63,0.18)] backdrop-blur-xl backdrop-saturate-150 sm:p-9 dark:bg-white/90 dark:backdrop-blur-xl"
+            style={{ WebkitBackdropFilter: 'blur(16px)' }}
+          >
+            <div className="mb-7">
+              <h2 className="text-[1.375rem] font-semibold tracking-tight text-[#003B3F] dark:text-[#003B3F]">
+                Welcome back
+              </h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-600">
+                Sign in to your account to continue
+              </p>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="Email address"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (error) clearError();
-              }}
-              icon={<Mail className="h-4 w-4" />}
-              required
-              autoComplete="email"
-            />
+            {error && (
+              <div className="mb-5 rounded-xl border border-red-200/90 bg-red-50/95 px-4 py-3 text-sm text-red-700 backdrop-blur-sm dark:bg-red-50 dark:text-red-700">
+                {error}
+              </div>
+            )}
 
-            <Input
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (error) clearError();
-              }}
-              icon={<Lock className="h-4 w-4" />}
-              suffix={
-                <button
-                  type="button"
-                  className="view p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#00A99D]/30 transition-all duration-200"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" aria-hidden />
-                  ) : (
-                    <Eye className="h-4 w-4" aria-hidden />
-                  )}
-                </button>
-              }
-              required
-              autoComplete="current-password"
-            />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <Input
+                label="Email address"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) clearError();
+                }}
+                icon={<Mail className="h-4 w-4 text-[#00A99D]/90" />}
+                required
+                autoComplete="email"
+                className={inputGlass}
+              />
 
-            <Button type="submit" fullWidth size="lg" isLoading={isLoading}>
-              Sign In
-            </Button>
-          </form>
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) clearError();
+                }}
+                icon={<Lock className="h-4 w-4 text-[#00A99D]/90" />}
+                suffix={
+                  <button
+                    type="button"
+                    className="view rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00A99D]/35 dark:hover:bg-gray-100 dark:hover:text-gray-700"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden />
+                    )}
+                  </button>
+                }
+                required
+                autoComplete="current-password"
+                className={inputGlass}
+              />
+
+              <div className="pt-1">
+                <Button type="submit" fullWidth size="lg" isLoading={isLoading}>
+                  Sign In
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          <p className="mt-8 text-center text-[13px] text-gray-600/95 drop-shadow-sm sm:text-left">
+            &copy; {new Date().getFullYear()} Salam Air. All rights reserved.
+          </p>
         </div>
-
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
-          &copy; {new Date().getFullYear()} Salam Air. All rights reserved.
-        </p>
       </div>
     </div>
   );
