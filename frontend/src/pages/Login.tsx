@@ -28,32 +28,60 @@ export default function Login() {
 
   return (
     <div className="relative min-h-[100dvh] min-h-screen overflow-hidden bg-[#F0F7F6]">
-      {/* Full-viewport hero — plane composition favors right side */}
+      {/* Full-viewport hero — plane composition favors left side */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <img
           src="/images/salam-air-login-hero.png"
           alt=""
-          className="h-full w-full object-cover object-[75%_center] sm:object-[70%_center] lg:object-[65%_center]"
+          className="h-full w-full object-cover object-[25%_center] sm:object-[30%_center] lg:object-[35%_center]"
           decoding="async"
           fetchPriority="high"
         />
-        {/* Readability: opaque left → transparent center-right so the aircraft stays crisp */}
-        <div className="absolute inset-0 bg-[linear-gradient(105deg,#F8FAFB_0%,rgba(248,250,251,0.93)_32%,rgba(248,250,251,0.45)_56%,transparent_76%)] sm:bg-[linear-gradient(105deg,#F8FAFB_0%,rgba(248,250,251,0.9)_38%,rgba(248,250,251,0.35)_58%,transparent_78%)]" />
+        {/* Readability: transparent center-left → opaque right so the form area stays crisp */}
+        <div className="absolute inset-0 bg-[linear-gradient(255deg,#F8FAFB_0%,rgba(248,250,251,0.93)_32%,rgba(248,250,251,0.45)_56%,transparent_76%)] sm:bg-[linear-gradient(255deg,#F8FAFB_0%,rgba(248,250,251,0.9)_38%,rgba(248,250,251,0.35)_58%,transparent_78%)]" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#003B3F]/[0.07] via-transparent to-[#003B3F]/[0.05]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1600px] flex-col justify-center px-5 py-12 sm:px-10 lg:min-h-screen lg:px-16 xl:px-24">
-        <div className="w-full max-w-[440px] lg:mx-0 lg:max-w-[420px]">
-          <div className="mb-9 lg:mb-10">
-            <SalamAirBrandLogo
-              heightClass="h-12 sm:h-14"
-              className="drop-shadow-sm brightness-[1.02]"
-            />
-            <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#00A99D]">
-              SmartDeal Platform
-            </p>
-          </div>
+      <div className="relative z-10 mx-auto grid min-h-[100dvh] max-w-[1600px] grid-cols-1 gap-10 px-5 py-12 sm:px-10 lg:min-h-screen lg:grid-cols-[1.05fr_minmax(420px,460px)] lg:items-center lg:gap-16 lg:px-16 xl:px-24">
+        {/* LEFT: brand + marketing copy */}
+        <div className="flex flex-col justify-center">
+          <SalamAirBrandLogo
+            heightClass="h-12 sm:h-14"
+            className="drop-shadow-sm brightness-[1.02]"
+          />
+          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#00A99D]">
+            SmartDeal Platform
+          </p>
 
+          <h1 className="mt-7 text-3xl font-semibold leading-[1.15] tracking-tight text-[#003B3F] sm:mt-9 sm:text-[2.5rem] lg:text-[2.75rem]">
+            Smarter deals.
+            <br />
+            Better journeys.
+          </h1>
+          <p className="mt-5 max-w-[34rem] text-[15px] leading-relaxed text-gray-700/90 sm:text-base">
+            SalamAir's SmartDeal portal gives travel teams real-time corporate
+            fares, transparent pricing, and a single workspace for every
+            booking — across the GCC and beyond.
+          </p>
+
+          <ul className="mt-7 hidden max-w-[34rem] flex-wrap gap-x-7 gap-y-3 text-sm font-medium text-[#003B3F]/80 lg:flex">
+            <li className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              Negotiated corporate fares
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              Live availability
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#00A99D]" />
+              Centralised reporting
+            </li>
+          </ul>
+        </div>
+
+        {/* RIGHT: form card */}
+        <div className="w-full max-w-[460px] lg:ml-auto">
           <div
             className="rounded-2xl border border-white/70 bg-white/75 p-8 shadow-[0_25px_50px_-12px_rgba(0,59,63,0.18)] backdrop-blur-xl backdrop-saturate-150 sm:p-9 dark:bg-white/90 dark:backdrop-blur-xl"
             style={{ WebkitBackdropFilter: 'blur(16px)' }}
@@ -126,7 +154,7 @@ export default function Login() {
             </form>
           </div>
 
-          <p className="mt-8 text-center text-[13px] text-gray-600/95 drop-shadow-sm sm:text-left">
+          <p className="mt-8 text-center text-[13px] text-gray-600/95 drop-shadow-sm sm:text-right">
             &copy; {new Date().getFullYear()} Salam Air. All rights reserved.
           </p>
         </div>
