@@ -36,7 +36,7 @@ export default function Login() {
         <img
           src="/images/salam-air-login-hero.png"
           alt=""
-          className="h-full w-full object-cover object-[60%_30%] sm:object-[55%_center] lg:object-[62%_32%]"
+          className="h-full w-full object-cover object-[48%_34%] sm:object-[46%_36%] lg:object-[44%_32%]"
           decoding="async"
           fetchPriority="high"
         />
