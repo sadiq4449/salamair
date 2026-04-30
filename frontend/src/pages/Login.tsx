@@ -36,7 +36,7 @@ export default function Login() {
         <img
           src="/images/salam-air-login-hero.png"
           alt=""
-          className="h-full w-full object-cover object-[60%_30%] sm:object-[55%_center] lg:object-center"
+          className="h-full w-full object-cover object-[60%_30%] sm:object-[55%_center] lg:object-[62%_32%]"
           decoding="async"
           fetchPriority="high"
         />
@@ -46,8 +46,8 @@ export default function Login() {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#03161E]/40 via-transparent to-[#03161E]/15" />
       </div>
 
-      <div className="relative z-10 mx-auto grid min-h-[100dvh] max-w-[1600px] grid-cols-1 gap-10 px-5 py-12 sm:px-10 lg:min-h-screen lg:grid-cols-[1.05fr_minmax(420px,460px)] lg:items-center lg:gap-16 lg:px-16 xl:px-24">
-        {/* LEFT: brand + marketing copy */}
+      <div className="relative z-10 mx-auto grid min-h-[100dvh] max-w-[1600px] grid-cols-1 gap-10 px-5 py-12 sm:px-10 lg:min-h-screen lg:grid-cols-[1.05fr_minmax(420px,460px)] lg:items-stretch lg:gap-16 lg:px-16 xl:px-24">
+        {/* LEFT: brand + marketing copy — stays vertically centred */}
         <div className="flex flex-col justify-center">
           <SalamAirBrandLogo
             heightClass="h-12 sm:h-14"
@@ -84,8 +84,8 @@ export default function Login() {
           </ul>
         </div>
 
-        {/* RIGHT: form card */}
-        <div className="w-full max-w-[460px] lg:ml-auto">
+        {/* RIGHT: form card — bottom-aligned on large screens so the hero plane stays visible above */}
+        <div className="flex w-full max-w-[460px] flex-col justify-end lg:ml-auto lg:pb-8">
           <div
             className="rounded-2xl border border-white/60 bg-white/90 p-8 shadow-[0_30px_60px_-12px_rgba(3,22,30,0.5)] backdrop-blur-xl backdrop-saturate-150 sm:p-9 dark:bg-white/95 dark:backdrop-blur-xl"
             style={{ WebkitBackdropFilter: 'blur(16px)' }}
