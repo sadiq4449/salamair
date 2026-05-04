@@ -4,6 +4,7 @@ import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
 import { useAuth } from '../hooks/useAuth';
 import { integrationService } from '../services/integrationService';
+import { emailService } from '../services/emailService';
 import type { EmailMessageItem, RequestStatus, EmailThreadChannel } from '../types';
 
 const EMPTY_THREAD_ID = '00000000-0000-0000-0000-000000000000';
@@ -45,6 +46,7 @@ function formatFullDate(iso: string) {
 }
 
 function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: EmailThreadChannel }) {
+  const { addToast } = useToastStore();
   const isOutgoing = email.direction === 'outgoing';
   const deliveryFailed = isOutgoing && email.status === 'failed';
   const deliveryOk = isOutgoing && email.status === 'sent';
@@ -135,19 +137,44 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
 
         {email.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
-            {email.attachments.map((att) => (
-              <a
-                key={att.id}
-                href={att.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                <Paperclip size={12} />
-                <span className="truncate max-w-[140px]">{att.filename}</span>
-                <Download size={12} className="shrink-0" />
-              </a>
-            ))}
+            {email.attachments.map((att) => {
+              const url = (att.file_url || '').trim();
+              const isExternal =
+                url.startsWith('http://') ||
+                url.startsWith('https://') ||
+                url.startsWith('mailto:');
+              if (isExternal) {
+                return (
+                  <a
+                    key={att.id}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Paperclip size={12} />
+                    <span className="truncate max-w-[140px]">{att.filename}</span>
+                    <Download size={12} className="shrink-0" />
+                  </a>
+                );
+              }
+              return (
+                <button
+                  key={att.id}
+                  type="button"
+                  onClick={() => {
+                    void emailService
+                      .downloadThreadAttachment(att.id, att.filename)
+                      .catch(() => addToast('error', 'Download failed'));
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Paperclip size={12} />
+                  <span className="truncate max-w-[140px]">{att.filename}</span>
+                  <Download size={12} className="shrink-0" />
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

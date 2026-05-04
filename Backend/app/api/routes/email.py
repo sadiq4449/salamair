@@ -1,13 +1,16 @@
+import re
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_current_user_optional, get_db, require_role
 from app.core.config import settings
+from app.models.attachment import Attachment
 from app.models.email_attachment import EmailAttachment
 from app.models.email_message import EmailMessage
 from app.models.email_thread import (
@@ -45,8 +48,94 @@ from app.services.imap_inbox_service import poll_inbox_once
 from app.services.incoming_email_body import sanitize_incoming_rm_body
 from app.services.sla_service import sync_sla_for_request
 from app.services.request_access import user_can_access_request
+from app.services.stored_files import resolve_request_attachment_disk_path
 
 router = APIRouter()
+
+
+@router.get("/attachments/{attachment_id}/file")
+def download_email_thread_attachment(
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download a file linked from an email thread row (portal request attachments, any era of stored URL)."""
+    ea = (
+        db.query(EmailAttachment)
+        .options(
+            joinedload(EmailAttachment.email).joinedload(EmailMessage.thread),
+        )
+        .filter(EmailAttachment.id == attachment_id)
+        .first()
+    )
+    if not ea or not ea.email or not ea.email.thread:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Attachment not found"}},
+        )
+    req = db.query(Request).filter(Request.id == ea.email.thread.request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if not user_can_access_request(current_user, req):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
+        )
+
+    url = (ea.file_url or "").strip().replace("\\", "/")
+    att_row: Attachment | None = None
+
+    m = re.match(
+        r"^/?requests/([0-9a-fA-F-]{36})/attachments/([0-9a-fA-F-]{36})/file\s*$",
+        url,
+    )
+    if m:
+        try:
+            rid = uuid.UUID(m.group(1))
+            aid = uuid.UUID(m.group(2))
+        except ValueError:
+            rid, aid = None, None
+        if rid and aid and rid == req.id:
+            att_row = (
+                db.query(Attachment)
+                .filter(Attachment.id == aid, Attachment.request_id == rid)
+                .first()
+            )
+
+    if att_row is None and url.startswith("/uploads/"):
+        att_row = (
+            db.query(Attachment)
+            .filter(Attachment.request_id == req.id, Attachment.file_url == url)
+            .first()
+        )
+    if att_row is None and "/uploads/" in url:
+        legacy_name = url.rstrip("/").split("/")[-1]
+        if legacy_name:
+            att_row = (
+                db.query(Attachment)
+                .filter(
+                    Attachment.request_id == req.id,
+                    Attachment.file_url.like(f"%/{legacy_name}"),
+                )
+                .first()
+            )
+
+    if att_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Could not resolve attachment file"}},
+        )
+
+    path = resolve_request_attachment_disk_path(att_row)
+    return FileResponse(
+        path,
+        media_type=att_row.file_type,
+        filename=ea.filename,
+        content_disposition_type="attachment",
+    )
 
 _EPOCH_UTC = datetime(1970, 1, 1, tzinfo=timezone.utc)
 

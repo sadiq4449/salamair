@@ -1,4 +1,5 @@
 import api from './api';
+import { downloadAuthenticated } from '../utils/authenticatedDownload';
 import type {
   RequestListResponse,
   RequestDetail,
@@ -126,6 +127,13 @@ export const requestService = {
   async getAttachments(id: string): Promise<Attachment[]> {
     const { data } = await api.get<Attachment[]>(`/requests/${id}/attachments`);
     return data;
+  },
+
+  async downloadAttachment(requestId: string, attachmentId: string, filename: string): Promise<void> {
+    return downloadAuthenticated(
+      `requests/${requestId}/attachments/${attachmentId}/file`,
+      filename,
+    );
   },
 
   async getSalesQueue(params: RequestFilters = {}): Promise<RequestListResponse> {

@@ -46,6 +46,7 @@ import type {
   RequestStatus,
 } from '../../types';
 import { useToastStore } from '../../store/toastStore';
+import { messageService } from '../../services/messageService';
 
 type TabId =
   | 'requests'
@@ -479,9 +480,17 @@ export default function AdminDataHubPage() {
                     <tr key={a.id} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="px-3 py-2">{a.request_code}</td>
                       <td className="px-3 py-2">
-                        <a href={a.file_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 break-all">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void messageService
+                              .downloadChatAttachment(a.id, a.filename)
+                              .catch(() => addToast('error', 'Download failed'));
+                          }}
+                          className="text-teal-600 break-all text-left hover:underline"
+                        >
                           {a.filename}
-                        </a>
+                        </button>
                       </td>
                       <td className="px-3 py-2">{a.file_size}</td>
                       <td className="px-3 py-2">

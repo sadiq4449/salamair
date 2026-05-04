@@ -13,11 +13,6 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      // Static files served by FastAPI (request attachments, chat attachments)
-      '/uploads': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
     },
   },
 })

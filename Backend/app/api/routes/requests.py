@@ -1,10 +1,9 @@
 import logging
-import os
 import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -39,14 +38,15 @@ from app.services.notification_service import (
     notify_request_created,
     format_notification,
 )
+from app.services.secure_upload import validate_bulk_xlsx_bytes, validate_portal_attachment_bytes
 from app.services.sla_service import sync_sla_for_request
+from app.services.stored_files import resolve_request_attachment_disk_path
 from app.services.websocket_manager import manager
+from app.core.paths import PRIVATE_REQUEST_FILES_DIR
 
 logger = logging.getLogger("uvicorn.error")
 
 router = APIRouter()
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "uploads")
 
 
 def _enforce_upload_size(raw: bytes, db: Session) -> None:
@@ -296,6 +296,13 @@ def bulk_preview_endpoint(
 ):
     raw = file.file.read()
     _enforce_upload_size(raw, db)
+    try:
+        validate_bulk_xlsx_bytes(raw)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_FILE", "message": str(e)}},
+        )
     return preview_bulk(raw)
 
 
@@ -308,6 +315,13 @@ def bulk_upload_endpoint(
 ):
     raw = file.file.read()
     _enforce_upload_size(raw, db)
+    try:
+        validate_bulk_xlsx_bytes(raw)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_FILE", "message": str(e)}},
+        )
     try:
         if current_user.role == "admin":
             if not agent_id:
@@ -450,6 +464,49 @@ def update_request(
     return req_out or req
 
 
+@router.get("/{request_id}/attachments/{attachment_id}/file")
+def download_request_attachment_file(
+    request_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    att = (
+        db.query(Attachment)
+        .filter(Attachment.id == attachment_id, Attachment.request_id == request_id)
+        .first()
+    )
+    if not att:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Attachment not found"}},
+        )
+    req = db.query(Request).filter(Request.id == request_id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Request not found"}},
+        )
+    if current_user.role == "agent" and req.agent_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "You can only download attachments for your own requests"}},
+        )
+    if not user_can_access_request(current_user, req):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
+        )
+
+    path = resolve_request_attachment_disk_path(att)
+    return FileResponse(
+        path,
+        media_type=att.file_type,
+        filename=att.filename,
+        content_disposition_type="attachment",
+    )
+
+
 @router.post("/{request_id}/attachments", response_model=AttachmentRead, status_code=status.HTTP_201_CREATED)
 def upload_attachment(
     request_id: uuid.UUID,
@@ -469,22 +526,27 @@ def upload_attachment(
             detail={"error": {"code": "FORBIDDEN", "message": "You can only upload to your own requests"}},
         )
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-    file_ext = os.path.splitext(file.filename or "file")[1]
-    unique_name = f"{uuid.uuid4().hex}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
-
     contents = file.file.read()
     _enforce_upload_size(contents, db)
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    try:
+        canonical_type = validate_portal_attachment_bytes(contents, file.content_type)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_FILE", "message": str(e)}},
+        )
+
+    PRIVATE_REQUEST_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    attachment_id = uuid.uuid4()
+    disk_path = PRIVATE_REQUEST_FILES_DIR / str(attachment_id)
+    disk_path.write_bytes(contents)
 
     attachment = Attachment(
+        id=attachment_id,
         request_id=request_id,
         filename=file.filename or "unknown",
-        file_url=f"/uploads/{unique_name}",
-        file_type=file.content_type or "application/octet-stream",
+        file_url=f"requests/{request_id}/attachments/{attachment_id}/file",
+        file_type=canonical_type,
         file_size=len(contents),
     )
     db.add(attachment)

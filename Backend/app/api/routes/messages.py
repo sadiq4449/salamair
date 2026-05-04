@@ -2,9 +2,11 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
+from app.core.paths import LEGACY_CHAT_SUBDIR, PRIVATE_CHAT_FILES_DIR
 from app.models.message import Message
 from app.models.message_attachment import MessageAttachment
 from app.models.request import Request
@@ -18,11 +20,10 @@ from app.services.message_service import (
     mark_messages_read,
 )
 from app.services.request_access import user_can_access_request
+from app.services.secure_upload import validate_portal_attachment_bytes
 from app.services.upload_limits import get_max_upload_bytes
 
 router = APIRouter()
-
-UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "chat"
 
 
 def _get_request_or_404(db: Session, request_id: uuid.UUID) -> Request:
@@ -41,6 +42,22 @@ def _check_access(req: Request, user: User):
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Access denied"}},
         )
+
+
+def _resolve_chat_attachment_path(att: MessageAttachment) -> Path:
+    new_path = PRIVATE_CHAT_FILES_DIR / str(att.id)
+    if new_path.is_file():
+        return new_path
+    url = att.file_url or ""
+    if url.startswith("/uploads/chat/"):
+        legacy_name = url.rstrip("/").split("/")[-1]
+        legacy_path = LEGACY_CHAT_SUBDIR / legacy_name
+        if legacy_path.is_file():
+            return legacy_path
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={"error": {"code": "NOT_FOUND", "message": "Attachment file is no longer on disk"}},
+    )
 
 
 @router.patch("/chat/{message_id}", status_code=status.HTTP_200_OK)
@@ -106,6 +123,36 @@ def send_message(
     return format_message(msg, current_user.id, db)
 
 
+@router.get("/chat-attachments/{attachment_id}/file")
+def download_chat_attachment_file(
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("agent", "sales", "admin")),
+):
+    att = db.query(MessageAttachment).filter(MessageAttachment.id == attachment_id).first()
+    if not att:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Attachment not found"}},
+        )
+    msg = db.query(Message).filter(Message.id == att.message_id).first()
+    if not msg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Message not found"}},
+        )
+    req = _get_request_or_404(db, msg.request_id)
+    _check_access(req, current_user)
+
+    path = _resolve_chat_attachment_path(att)
+    return FileResponse(
+        path,
+        media_type=att.file_type,
+        filename=att.filename,
+        content_disposition_type="attachment",
+    )
+
+
 @router.get("/{request_id}")
 def get_messages(
     request_id: uuid.UUID,
@@ -142,11 +189,6 @@ async def upload_chat_attachment(
             detail={"error": {"code": "NOT_FOUND", "message": "Message not found"}},
         )
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    ext = Path(file.filename or "file").suffix
-    safe_name = f"{uuid.uuid4()}{ext}"
-    file_path = UPLOAD_DIR / safe_name
-
     max_bytes = get_max_upload_bytes(db)
     content = await file.read()
     if len(content) > max_bytes:
@@ -159,13 +201,24 @@ async def upload_chat_attachment(
                 }
             },
         )
-    file_path.write_bytes(content)
+    try:
+        canonical_type = validate_portal_attachment_bytes(content, file.content_type)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_FILE", "message": str(e)}},
+        )
+
+    PRIVATE_CHAT_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    att_id = uuid.uuid4()
+    (PRIVATE_CHAT_FILES_DIR / str(att_id)).write_bytes(content)
 
     att = MessageAttachment(
+        id=att_id,
         message_id=message_id,
         filename=file.filename or "file",
-        file_url=f"/uploads/chat/{safe_name}",
-        file_type=file.content_type or "application/octet-stream",
+        file_url=f"messages/chat-attachments/{att_id}/file",
+        file_type=canonical_type,
         file_size=len(content),
     )
     db.add(att)

@@ -4,6 +4,8 @@ import { ArrowLeft, Paperclip, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useToastStore } from '../../store/toastStore';
+import { requestService } from '../../services/requestService';
 import { useEmailStore } from '../../store/emailStore';
 import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -270,17 +272,21 @@ export default function RequestDetail() {
               </div>
               <div className="p-4 space-y-2">
                 {req.attachments.map((att) => (
-                  <a
+                  <button
                     key={att.id}
-                    href={att.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+                    type="button"
+                    onClick={() => {
+                      if (!id) return;
+                      void requestService
+                        .downloadAttachment(id, att.id, att.filename)
+                        .catch(() => addToast('error', 'Download failed'));
+                    }}
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-left"
                   >
                     <Paperclip size={14} className="text-gray-400" />
                     <span className="text-sm text-[#00A99D] dark:text-[#2dd4bf] truncate">{att.filename}</span>
                     <span className="text-xs text-gray-400 ml-auto">{(att.file_size / 1024).toFixed(0)} KB</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>

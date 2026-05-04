@@ -9,6 +9,7 @@ import type {
   PollInboxResponse,
   EmailThreadChannel,
 } from '../types';
+import { downloadAuthenticated } from '../utils/authenticatedDownload';
 
 export const emailService = {
   async sendEmail(payload: SendEmailPayload): Promise<SendEmailResponse> {
@@ -47,5 +48,9 @@ export const emailService = {
     }
     const { data } = await api.post<PollInboxResponse>('/email/poll-inbox', {}, { headers });
     return data;
+  },
+
+  async downloadThreadAttachment(attachmentId: string, filename: string): Promise<void> {
+    return downloadAuthenticated(`email/attachments/${attachmentId}/file`, filename);
   },
 };

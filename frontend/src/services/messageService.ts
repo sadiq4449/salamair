@@ -1,4 +1,5 @@
 import api from './api';
+import { downloadAuthenticated } from '../utils/authenticatedDownload';
 import type { MessageListResponse } from '../types';
 
 export const messageService = {
@@ -33,6 +34,10 @@ export const messageService = {
       headers: { 'Content-Type': undefined },
     });
     return data;
+  },
+
+  async downloadChatAttachment(attachmentId: string, filename: string): Promise<void> {
+    return downloadAuthenticated(`messages/chat-attachments/${attachmentId}/file`, filename);
   },
 
   async markRead(messageIds: string[]): Promise<void> {

@@ -10,7 +10,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-
 from app.api.routes.auth import router as auth_router
 from app.api.routes.email import router as email_router
 from app.api.routes.messages import router as messages_router
@@ -60,8 +59,15 @@ from app.models import (  # noqa: F401
     UserGmailCredential,
 )
 
+from app.core.paths import (
+    LEGACY_CHAT_SUBDIR,
+    LEGACY_UPLOAD_DIR,
+    PRIVATE_CHAT_FILES_DIR,
+    PRIVATE_REQUEST_FILES_DIR,
+    PRIVATE_UPLOAD_ROOT,
+)
+
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
-UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 # Avoid JWTs and Bearer tokens in uvicorn access/error lines (Railway log history).
 install_sensitive_log_redaction()
@@ -167,10 +173,13 @@ def health_check():
     return {"status": "healthy", "service": "Salam Air SmartDeal API"}
 
 
-# Ensure the upload directory exists before mounting StaticFiles (runs at
-# import time, before the lifespan startup hook).
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Ensure private attachment storage exists (never mounted as static files).
+PRIVATE_UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+PRIVATE_REQUEST_FILES_DIR.mkdir(parents=True, exist_ok=True)
+PRIVATE_CHAT_FILES_DIR.mkdir(parents=True, exist_ok=True)
+# Legacy folder may still hold older uploads referenced by DB rows (served only via authenticated routes).
+LEGACY_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+LEGACY_CHAT_SUBDIR.mkdir(parents=True, exist_ok=True)
 
 if STATIC_DIR.exists():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")

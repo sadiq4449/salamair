@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Paperclip, Download, Pencil, Trash2 } from 'lucide-react';
 import type { ChatMessage } from '../../types';
+import { messageService } from '../../services/messageService';
+import { useToastStore } from '../../store/toastStore';
 
 const ROLE_STYLES: Record<string, { bg: string; border: string; badge: string; label: string }> = {
   agent: {
@@ -79,6 +81,7 @@ export default function MessageBubble({
   onAdminDelete,
 }: Props) {
   const { type, sender, content, attachments, timestamp, id } = message;
+  const { addToast } = useToastStore();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
 
@@ -212,18 +215,21 @@ export default function MessageBubble({
         {attachments.length > 0 && (
           <div className="mt-2 space-y-1">
             {attachments.map((att) => (
-              <a
+              <button
                 key={att.id}
-                href={att.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-teal-400 transition-colors group"
+                type="button"
+                onClick={() => {
+                  void messageService
+                    .downloadChatAttachment(att.id, att.filename)
+                    .catch(() => addToast('error', 'Download failed'));
+                }}
+                className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-teal-400 transition-colors group"
               >
                 <Paperclip size={14} className="text-gray-400 group-hover:text-teal-500" />
                 <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{att.filename}</span>
                 <span className="text-[10px] text-gray-400">{(att.file_size / 1024).toFixed(0)} KB</span>
                 <Download size={12} className="text-gray-400 group-hover:text-teal-500" />
-              </a>
+              </button>
             ))}
           </div>
         )}
