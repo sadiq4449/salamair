@@ -32,6 +32,7 @@ export default function RequestDetail() {
   const { user } = useAuth();
   const { currentRequest, isDetailLoading, history, fetchRequest, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
+  const addToast = useToastStore((s) => s.addToast);
   const [commTab, setCommTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
 
   useEffect(() => {
