@@ -389,7 +389,18 @@ def send_smtp_email(
     message_id = f"<{uuid.uuid4()}@salamair.com>"
 
     resend_key = (settings.RESEND_API_KEY or "").strip()
-    if resend_key and not settings.SMTP_PREFERRED:
+    smtp_ready = bool((settings.SMTP_USER or "").strip() and (settings.SMTP_PASSWORD or "").strip())
+    # Resend test sender (onboarding@resend.dev) cannot reach arbitrary recipients. If Gmail SMTP
+    # credentials exist, try SMTP first so RM / multi-recipient sends work when Gmail API is down;
+    # on hosts that block SMTP, we still fall back to Resend after failure.
+    try_smtp_before_resend = (
+        resend_key
+        and not settings.SMTP_PREFERRED
+        and resend_test_sender_mode()
+        and smtp_ready
+    )
+
+    if resend_key and not settings.SMTP_PREFERRED and not try_smtp_before_resend:
         mid, err = _send_via_resend(
             recipients,
             subject,
@@ -451,4 +462,17 @@ def send_smtp_email(
     except Exception as e:
         err = _enhance_smtp_error(str(e))[:1200]
         logger.exception("Failed to send email to %s", display_to)
+        if try_smtp_before_resend and resend_key:
+            mid, rerr = _send_via_resend(
+                recipients,
+                subject,
+                body_text,
+                body_html,
+                message_id,
+                in_reply_to=in_reply_to,
+                references=references,
+            )
+            if mid:
+                logger.info("Resend email to %s (after SMTP failed): %s", display_to, subject)
+            return mid, rerr or err
         return None, err
