@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "CHANGE-ME-set-a-real-secret-in-env"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    LOGIN_MAX_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_MINUTES: int = 15
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     # Optional regex (e.g. https://.*\\.up\\.railway\\.app$) so the SPA and API on the same Railway URL work.
     CORS_ORIGIN_REGEX: str = ""

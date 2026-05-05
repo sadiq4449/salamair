@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request
 
 from app.api.deps import get_current_token_payload, get_current_user, get_db, parse_payload_exp_utc
+from app.core.config import settings
 from app.core.csrf import generate_csrf_token, set_csrf_cookie
 from app.core.rate_limit import AUTH_RATE, limiter
 from app.core.security import create_access_token, get_password_hash, verify_password
@@ -113,11 +114,56 @@ def logout(
 
 
 def _authenticate(db: Session, email: str, password: str) -> User:
+    now = datetime.now(timezone.utc)
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Incorrect email or password"}},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if user.lockout_until and user.lockout_until > now:
+        mins = settings.LOGIN_LOCKOUT_MINUTES
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": {
+                    "code": "ACCOUNT_LOCKED",
+                    "message": f"Account temporarily locked due to repeated failed logins. Try again in about {mins} minutes.",
+                }
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not verify_password(password, user.password):
+        attempts = int(user.failed_login_attempts or 0) + 1
+        user.failed_login_attempts = attempts
+        if attempts >= settings.LOGIN_MAX_ATTEMPTS:
+            user.lockout_until = now + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+        db.add(user)
+        db.commit()
+        if attempts >= settings.LOGIN_MAX_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": {
+                        "code": "ACCOUNT_LOCKED",
+                        "message": (
+                            "Too many failed login attempts. "
+                            f"Account locked for {settings.LOGIN_LOCKOUT_MINUTES} minutes."
+                        ),
+                    }
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        remaining = max(settings.LOGIN_MAX_ATTEMPTS - attempts, 0)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": {
+                    "code": "INVALID_CREDENTIALS",
+                    "message": f"Incorrect email or password. {remaining} attempt(s) remaining before temporary lockout.",
+                }
+            },
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
@@ -125,6 +171,8 @@ def _authenticate(db: Session, email: str, password: str) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "INACTIVE_USER", "message": "User account is deactivated"}},
         )
+    user.failed_login_attempts = 0
+    user.lockout_until = None
     return user
 
 

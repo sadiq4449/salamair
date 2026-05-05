@@ -18,6 +18,16 @@ def apply_runtime_schema_fixes(engine: Engine) -> None:
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE"
             )
         )
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS lockout_until TIMESTAMP WITH TIME ZONE"
+            )
+        )
         # email_threads: one row per (request, channel) — add agent_sales thread alongside legacy RM thread.
         conn.execute(
             text(
