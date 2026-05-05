@@ -65,7 +65,7 @@ class Settings(BaseSettings):
 
     # Analytics (Iteration 7): optional Redis; falls back to in-process TTL cache
     REDIS_URL: str = ""
-    ANALYTICS_CACHE_TTL_SECONDS: int = 600
+    ANALYTICS_CACHE_TTL_SECONDS: int = 3600
 
     # Groq (OpenAI-compatible): pricing assistant on request detail. If unset, API returns heuristic fallback.
     GROQ_API_KEY: str = ""
