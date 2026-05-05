@@ -24,17 +24,17 @@ class Request(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     request_code = Column(String(20), unique=True, nullable=False, index=True)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     route = Column(String(100), nullable=False)
     pax = Column(Integer, nullable=False)
     price = Column(Numeric(12, 2), nullable=False)
     travel_date = Column(Date, nullable=True)
     return_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
-    status = Column(String(20), nullable=False, default="draft")
-    priority = Column(String(10), default="normal")
-    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    status = Column(String(20), nullable=False, default="draft", index=True)
+    priority = Column(String(10), default="normal", index=True)
+    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

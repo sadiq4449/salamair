@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.middleware.csrf_middleware import CSRFProtectionMiddleware
+from app.middleware.observability_middleware import ObservabilityMiddleware
 from app.middleware.request_size_middleware import RequestSizeLimitMiddleware
 from app.middleware.security_headers_middleware import SecurityHeadersMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -39,6 +40,7 @@ from app.db.base import Base
 from app.db.schema_sync import apply_runtime_schema_fixes
 from app.db.session import engine
 from app.services.websocket_manager import manager as ws_manager
+from app.services.observability import metrics_registry
 from app.models import (  # noqa: F401
     User,
     AgentProfile,
@@ -98,6 +100,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+app.add_middleware(ObservabilityMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
@@ -183,6 +186,16 @@ app.include_router(
 @app.get("/api/health", tags=["Health"])
 def health_check():
     return {"status": "healthy", "service": "Salam Air SmartDeal API"}
+
+
+@app.get("/api/metrics", tags=["Health"])
+def metrics():
+    snapshot = metrics_registry.snapshot()
+    return {
+        "requests_total": snapshot.total_requests,
+        "errors_total": snapshot.total_errors,
+        "avg_duration_ms": round(snapshot.avg_duration_ms, 2),
+    }
 
 
 # Ensure private attachment storage exists (never mounted as static files).

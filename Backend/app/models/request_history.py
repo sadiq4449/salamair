@@ -11,13 +11,13 @@ class RequestHistory(Base):
     __tablename__ = "request_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    request_id = Column(UUID(as_uuid=True), ForeignKey("requests.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("requests.id", ondelete="CASCADE"), nullable=False, index=True)
     action = Column(String(50), nullable=False)
     from_status = Column(String(20), nullable=True)
     to_status = Column(String(20), nullable=True)
-    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     details = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
 
     request = relationship("Request", back_populates="history")
     actor = relationship("User", foreign_keys=[actor_id])

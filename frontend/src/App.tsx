@@ -1,34 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import AdminLayout from './components/admin/AdminLayout';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminAgentsPage from './pages/admin/AdminAgentsPage';
-import AdminLogsPage from './pages/admin/AdminLogsPage';
-import AdminConfigPage from './pages/admin/AdminConfigPage';
-import AdminRemindersPage from './pages/admin/AdminRemindersPage';
-import AdminTagsPage from './pages/admin/AdminTagsPage';
-import AdminAllRequestsPage from './pages/admin/AdminAllRequestsPage';
-import AdminMailDataPage from './pages/admin/AdminMailDataPage';
-import AdminDataHubPage from './pages/admin/AdminDataHubPage';
-import SlaDashboardPage from './pages/SlaDashboardPage';
-import BulkUploadPage from './pages/BulkUploadPage';
-import FlightAvailability from './pages/FlightAvailability';
-import EmailInbox from './pages/sales/EmailInbox';
-import CityWiseView from './pages/sales/CityWiseView';
-import AgentHistoryPage from './pages/sales/AgentHistoryPage';
-import SearchPage from './pages/SearchPage';
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
-import AppLayout from './components/Layout/AppLayout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import RequestList from './pages/agent/RequestList';
-import RequestDetail from './pages/agent/RequestDetail';
-import PendingApprovals from './pages/sales/PendingApprovals';
-import SalesRequestDetail from './pages/sales/SalesRequestDetail';
-import NotificationsPage from './pages/NotificationsPage';
-import NotificationSettings from './pages/NotificationSettings';
-import Analytics from './pages/Analytics';
 import { ToastContainer } from './components/ui/Toast';
 import { useToastStore } from './store/toastStore';
 import api from './services/api';
@@ -36,6 +8,24 @@ import { useNotificationSocket } from './hooks/useNotificationSocket';
 import { Loader2 } from 'lucide-react';
 import SalamAirBrandLogo from './components/branding/SalamAirBrandLogo';
 import type { UserRole } from './types';
+import { agentRoutes } from './routes/agentRoutes';
+import { salesRoutes } from './routes/salesRoutes';
+import { sharedRoutes } from './routes/sharedRoutes';
+import { AdminLayoutLazy, adminChildRoutes } from './routes/adminRoutes';
+
+const AppLayout = lazy(() => import('./components/Layout/AppLayout'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 dark:bg-gray-950 px-4">
+      <SalamAirBrandLogo heightClass="h-10" className="opacity-95" />
+      <Loader2 className="h-8 w-8 animate-spin text-[#00A9C1]" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -128,120 +118,65 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppInit>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-
-          <Route
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-
-            {/* Agent routes (administrators have full access to the same flows) */}
-            <Route path="/requests" element={<RoleRoute roles={['agent', 'admin']}><RequestList /></RoleRoute>} />
-            <Route path="/requests/:id" element={<RoleRoute roles={['agent', 'admin']}><RequestDetail /></RoleRoute>} />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
             <Route
-              path="/bulk-upload"
+              path="/login"
               element={
-                <RoleRoute roles={['agent', 'admin']}>
-                  <BulkUploadPage />
-                </RoleRoute>
-              }
-            />
-
-            {/* Shared reference data (demo: flight grid) */}
-            <Route
-              path="/flights"
-              element={
-                <RoleRoute roles={['agent', 'sales', 'admin']}>
-                  <FlightAvailability />
-                </RoleRoute>
-              }
-            />
-
-            {/* Sales routes */}
-            <Route path="/pending" element={<RoleRoute roles={['sales', 'admin']}><PendingApprovals /></RoleRoute>} />
-            <Route path="/pending/:id" element={<RoleRoute roles={['sales', 'admin']}><SalesRequestDetail /></RoleRoute>} />
-            <Route
-              path="/inbox"
-              element={
-                <RoleRoute roles={['sales', 'admin']}>
-                  <EmailInbox />
-                </RoleRoute>
-              }
-            />
-            <Route
-              path="/city-view"
-              element={
-                <RoleRoute roles={['sales', 'admin']}>
-                  <CityWiseView />
-                </RoleRoute>
-              }
-            />
-            <Route
-              path="/agent-history"
-              element={
-                <RoleRoute roles={['sales', 'admin']}>
-                  <AgentHistoryPage />
-                </RoleRoute>
-              }
-            />
-            <Route
-              path="/sla-dashboard"
-              element={
-                <RoleRoute roles={['sales', 'admin']}>
-                  <SlaDashboardPage />
-                </RoleRoute>
-              }
-            />
-
-            {/* Notification routes (all roles) */}
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/notifications/settings" element={<NotificationSettings />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route
-              path="/analytics"
-              element={
-                <RoleRoute roles={['agent', 'sales', 'admin']}>
-                  <AnalyticsEntry />
-                </RoleRoute>
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
               }
             />
 
             <Route
-              path="/admin"
               element={
-                <RoleRoute roles={['admin']}>
-                  <AdminLayout />
-                </RoleRoute>
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="data-hub" element={<AdminDataHubPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="agents" element={<AdminAgentsPage />} />
-              <Route path="logs" element={<AdminLogsPage />} />
-              <Route path="config" element={<AdminConfigPage />} />
-              <Route path="reminders" element={<AdminRemindersPage />} />
-              <Route path="tags" element={<AdminTagsPage />} />
-              <Route path="requests" element={<AdminAllRequestsPage />} />
-              <Route path="mail" element={<AdminMailDataPage />} />
-            </Route>
-          </Route>
+              <Route path="/dashboard" element={<Dashboard />} />
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+              {agentRoutes.map(({ path, roles, Component }) => (
+                <Route key={path} path={path} element={<RoleRoute roles={roles}><Component /></RoleRoute>} />
+              ))}
+
+              {salesRoutes.map(({ path, roles, Component }) => (
+                <Route key={path} path={path} element={<RoleRoute roles={roles}><Component /></RoleRoute>} />
+              ))}
+
+              {sharedRoutes.map(({ path, roles, Component }) => (
+                <Route key={path} path={path} element={<RoleRoute roles={roles}><Component /></RoleRoute>} />
+              ))}
+
+              <Route
+                path="/analytics"
+                element={
+                  <RoleRoute roles={['agent', 'sales', 'admin']}>
+                    <AnalyticsEntry />
+                  </RoleRoute>
+                }
+              />
+
+              <Route
+                path="/admin"
+                element={
+                  <RoleRoute roles={['admin']}>
+                    <AdminLayoutLazy />
+                  </RoleRoute>
+                }
+              >
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                {adminChildRoutes.map(({ path, Component }) => (
+                  <Route key={path} path={path} element={<Component />} />
+                ))}
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </AppInit>
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />

@@ -57,3 +57,18 @@ def apply_runtime_schema_fixes(engine: Engine) -> None:
                 """
             )
         )
+        # Performance indexes for frequently filtered/joined columns.
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_requests_agent_id ON requests (agent_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_requests_assigned_to ON requests (assigned_to)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_requests_status ON requests (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_requests_priority ON requests (priority)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_requests_created_at ON requests (created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_counter_offers_request_id ON counter_offers (request_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_counter_offers_created_by ON counter_offers (created_by)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_counter_offers_status ON counter_offers (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_counter_offers_created_at ON counter_offers (created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_request_history_request_id ON request_history (request_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_request_history_actor_id ON request_history (actor_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_request_history_created_at ON request_history (created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attachments_request_id ON attachments (request_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attachments_uploaded_at ON attachments (uploaded_at)"))
