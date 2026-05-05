@@ -18,8 +18,17 @@ from app.models.revoked_token import RevokedToken
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserLoginInfo, UserRead
+from app.services.security_audit import log_security_event
 
 router = APIRouter()
+
+
+def _request_meta(request: Request) -> dict:
+    return {
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+        "path": request.url.path,
+    }
 
 
 @router.get("/csrf")
@@ -54,6 +63,13 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
         db.add(AgentProfile(user_id=user.id, company_name=None, credit_limit=Decimal("0")))
     db.commit()
     db.refresh(user)
+    log_security_event(
+        "auth.register.success",
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role,
+        **_request_meta(request),
+    )
     body = jsonable_encoder(UserRead.model_validate(user))
     csrf = generate_csrf_token()
     body["csrf_token"] = csrf
@@ -67,11 +83,18 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
 def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     _ = request
     """Login with JSON body."""
-    user = _authenticate(db, payload.email, payload.password)
+    user = _authenticate(db, payload.email, payload.password, request=request)
     user.last_login = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
     db.refresh(user)
+    log_security_event(
+        "auth.login.success",
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role,
+        **_request_meta(request),
+    )
     return _token_json_response(user)
 
 
@@ -85,11 +108,18 @@ def login_form(
     _ = request
     """Login with OAuth2 form data (for Swagger UI "Authorize" button).
     Use email as the username field."""
-    user = _authenticate(db, form_data.username, form_data.password)
+    user = _authenticate(db, form_data.username, form_data.password, request=request)
     user.last_login = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
     db.refresh(user)
+    log_security_event(
+        "auth.login.success",
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role,
+        **_request_meta(request),
+    )
     return _token_json_response(user)
 
 
@@ -110,13 +140,23 @@ def logout(
     if not already:
         db.add(RevokedToken(user_id=current_user.id, jti=token_jti, expires_at=expires_at))
         db.commit()
+    log_security_event(
+        "auth.logout.success",
+        user_id=str(current_user.id),
+        email=current_user.email,
+        role=current_user.role,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _authenticate(db: Session, email: str, password: str) -> User:
+def _authenticate(db: Session, email: str, password: str, request: Request | None = None) -> User:
+    req_meta = {}
+    if request is not None:
+        req_meta = _request_meta(request)
     now = datetime.now(timezone.utc)
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        log_security_event("auth.login.failed_user_not_found", email=email, **req_meta)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Incorrect email or password"}},
@@ -124,6 +164,13 @@ def _authenticate(db: Session, email: str, password: str) -> User:
         )
     if user.lockout_until and user.lockout_until > now:
         mins = settings.LOGIN_LOCKOUT_MINUTES
+        log_security_event(
+            "auth.login.blocked_locked_account",
+            user_id=str(user.id),
+            email=user.email,
+            lockout_minutes=mins,
+            **req_meta,
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
@@ -141,6 +188,14 @@ def _authenticate(db: Session, email: str, password: str) -> User:
             user.lockout_until = now + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
         db.add(user)
         db.commit()
+        log_security_event(
+            "auth.login.failed_bad_password",
+            user_id=str(user.id),
+            email=user.email,
+            failed_attempts=attempts,
+            locked=attempts >= settings.LOGIN_MAX_ATTEMPTS,
+            **req_meta,
+        )
         if attempts >= settings.LOGIN_MAX_ATTEMPTS:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -167,6 +222,7 @@ def _authenticate(db: Session, email: str, password: str) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
+        log_security_event("auth.login.blocked_inactive_user", user_id=str(user.id), email=user.email, **req_meta)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "INACTIVE_USER", "message": "User account is deactivated"}},

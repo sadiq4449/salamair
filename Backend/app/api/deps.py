@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.revoked_token import RevokedToken
 from app.models.user import User
+from app.services.security_audit import log_security_event
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/token")
 oauth2_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/token", auto_error=False)
@@ -27,6 +28,7 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
+    request_meta = {}
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail={"error": {"code": "INVALID_TOKEN", "message": "Could not validate credentials"}},
@@ -37,18 +39,23 @@ def get_current_user(
         user_id: str | None = payload.get("sub")
         token_jti: str | None = payload.get("jti")
         if user_id is None or not token_jti:
+            log_security_event("auth.access.denied_invalid_token_payload", **request_meta)
             raise credentials_exception
     except JWTError:
+        log_security_event("auth.access.denied_invalid_token", **request_meta)
         raise credentials_exception
 
     revoked = db.query(RevokedToken).filter(RevokedToken.jti == token_jti).first()
     if revoked:
+        log_security_event("auth.access.denied_revoked_token", token_jti=token_jti, **request_meta)
         raise credentials_exception
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        log_security_event("auth.access.denied_user_missing", user_id=user_id, **request_meta)
         raise credentials_exception
     if not user.is_active:
+        log_security_event("auth.access.denied_inactive_user", user_id=str(user.id), email=user.email, **request_meta)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "INACTIVE_USER", "message": "User account is deactivated"}},
@@ -84,6 +91,13 @@ def get_current_user_optional(
 def require_role(*roles: str) -> Callable:
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in roles:
+            log_security_event(
+                "auth.access.denied_insufficient_permissions",
+                user_id=str(current_user.id),
+                email=current_user.email,
+                user_role=current_user.role,
+                required_roles=list(roles),
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={

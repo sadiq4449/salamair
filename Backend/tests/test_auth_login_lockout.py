@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException, status
@@ -30,6 +31,8 @@ class _FakeSession:
 
 def _mk_user(password: str = "hashed", attempts: int = 0, lockout_until=None, active: bool = True):
     return SimpleNamespace(
+        id=uuid4(),
+        email="a@b.com",
         password=password,
         failed_login_attempts=attempts,
         lockout_until=lockout_until,
@@ -40,7 +43,9 @@ def _mk_user(password: str = "hashed", attempts: int = 0, lockout_until=None, ac
 def test_authenticate_increments_failed_attempts_and_locks_after_threshold(monkeypatch):
     user = _mk_user(attempts=4, lockout_until=None)
     db = _FakeSession(user)
+    events: list[str] = []
     monkeypatch.setattr(auth_routes, "verify_password", lambda _plain, _hashed: False)
+    monkeypatch.setattr(auth_routes, "log_security_event", lambda event, **_kwargs: events.append(event))
 
     with pytest.raises(HTTPException) as exc:
         auth_routes._authenticate(db, "a@b.com", "bad")
@@ -50,6 +55,7 @@ def test_authenticate_increments_failed_attempts_and_locks_after_threshold(monke
     assert user.failed_login_attempts == 5
     assert user.lockout_until is not None
     assert db.committed == 1
+    assert "auth.login.failed_bad_password" in events
 
 
 def test_authenticate_rejects_while_lock_window_active(monkeypatch):
@@ -75,3 +81,15 @@ def test_authenticate_resets_counters_on_success(monkeypatch):
     assert out is user
     assert user.failed_login_attempts == 0
     assert user.lockout_until is None
+
+
+def test_authenticate_logs_missing_user_attempt(monkeypatch):
+    db = _FakeSession(user=None)
+    events: list[str] = []
+    monkeypatch.setattr(auth_routes, "log_security_event", lambda event, **_kwargs: events.append(event))
+
+    with pytest.raises(HTTPException) as exc:
+        auth_routes._authenticate(db, "missing@user.com", "bad")
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "auth.login.failed_user_not_found" in events
