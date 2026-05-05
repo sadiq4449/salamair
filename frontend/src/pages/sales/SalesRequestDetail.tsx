@@ -96,6 +96,8 @@ export default function SalesRequestDetail() {
 
   const req = currentRequest;
   const isTerminal = ['approved', 'rejected'].includes(req.status);
+  const canManageRequest = user?.role === 'sales' || user?.role === 'admin';
+  const actionDisabled = !canManageRequest || isLoading;
 
   async function handleApprove() {
     if (id) await updateStatus(id, { status: 'approved' });
@@ -262,19 +264,19 @@ export default function SalesRequestDetail() {
                   </p>
                 ) : (
                   <>
-                    <Button variant="success" fullWidth onClick={handleApprove} isLoading={isLoading}>
+                    <Button variant="success" fullWidth onClick={handleApprove} isLoading={isLoading} disabled={actionDisabled}>
                       <CheckCircle size={16} />
                       Approve Request
                     </Button>
-                    <Button variant="warning" fullWidth onClick={() => setShowCounter(true)}>
+                    <Button variant="warning" fullWidth onClick={() => setShowCounter(true)} disabled={actionDisabled}>
                       <DollarSign size={16} />
                       Counter Offer
                     </Button>
-                    <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)}>
+                    <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)} disabled={actionDisabled}>
                       <Mail size={16} />
                       Send to RM
                     </Button>
-                    <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading}>
+                    <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading} disabled={actionDisabled}>
                       <XCircle size={16} />
                       Reject
                     </Button>

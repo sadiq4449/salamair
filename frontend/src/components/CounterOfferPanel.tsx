@@ -3,6 +3,7 @@ import { ArrowRightLeft, Check, X } from 'lucide-react';
 import Button from './ui/Button';
 import { useRequestStore } from '../store/requestStore';
 import { useToastStore } from '../store/toastStore';
+import { useAuth } from '../hooks/useAuth';
 import type { CounterOffer } from '../types';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
  * returns to `submitted` so sales can re-evaluate).
  */
 export default function CounterOfferPanel({ requestId, offer }: Props) {
+  const { user } = useAuth();
   const { acceptCounterOffer, rejectCounterOffer, isLoading } = useRequestStore();
   const { addToast } = useToastStore();
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -55,6 +57,7 @@ export default function CounterOfferPanel({ requestId, offer }: Props) {
       : delta < 0
         ? 'text-emerald-600 dark:text-emerald-400'
         : 'text-gray-500 dark:text-gray-400';
+  const canRespond = user?.role === 'agent' || user?.role === 'admin';
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm ring-1 ring-amber-100 dark:ring-amber-900/30">
@@ -90,7 +93,7 @@ export default function CounterOfferPanel({ requestId, offer }: Props) {
 
         {!showRejectForm ? (
           <div className="flex items-center gap-2.5 pt-1">
-            <Button variant="success" fullWidth onClick={handleAccept} isLoading={isLoading}>
+            <Button variant="success" fullWidth onClick={handleAccept} isLoading={isLoading} disabled={!canRespond}>
               <Check size={16} />
               Accept
             </Button>
@@ -98,7 +101,7 @@ export default function CounterOfferPanel({ requestId, offer }: Props) {
               variant="danger"
               fullWidth
               onClick={() => setShowRejectForm(true)}
-              disabled={isLoading}
+              disabled={isLoading || !canRespond}
             >
               <X size={16} />
               Reject
@@ -126,11 +129,11 @@ export default function CounterOfferPanel({ requestId, offer }: Props) {
                   setShowRejectForm(false);
                   setReason('');
                 }}
-                disabled={isLoading}
+                disabled={isLoading || !canRespond}
               >
                 Cancel
               </Button>
-              <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading}>
+              <Button variant="danger" fullWidth onClick={handleReject} isLoading={isLoading} disabled={!canRespond}>
                 <X size={16} />
                 Confirm Reject
               </Button>

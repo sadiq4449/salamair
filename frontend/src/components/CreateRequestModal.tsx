@@ -51,6 +51,15 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
       .catch(() => setAgentOptions([]));
   }, [isOpen, user?.role]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   function validateField(field: string, value: string, nextForm = form): string {
     if (field === 'route') {
       return value ? '' : 'Route is required';
@@ -175,6 +184,8 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
   }
 
   if (!isOpen) return null;
+  const lacksAgentPermission = user?.role === 'admin' && (!agentUserId || agentOptions.length === 0);
+  const disableSubmitActions = isLoading || lacksAgentPermission;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -360,10 +371,10 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={(e) => handleSubmit(e, true)} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={(e) => handleSubmit(e, true)} disabled={disableSubmitActions}>
               Save Draft
             </Button>
-            <Button type="submit" isLoading={isLoading}>
+            <Button type="submit" isLoading={isLoading} disabled={disableSubmitActions}>
               Submit Request
             </Button>
           </div>

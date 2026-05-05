@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import Button from './ui/Button';
 import { useRequestStore } from '../store/requestStore';
@@ -16,6 +16,15 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
   const [message, setMessage] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   function extractApiError(err: unknown, fallback: string): string {
     const e = err as { response?: { data?: { error?: { message?: string } } } };
