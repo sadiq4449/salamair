@@ -102,7 +102,11 @@ export default function UnifiedTimeline({ requestId }: Props) {
       setIsSending(true);
       try {
         const { sendMessage } = useMessageStore.getState();
-        await sendMessage(requestId, content);
+        await sendMessage(
+          requestId,
+          content,
+          user ? { id: user.id, name: user.name, role: user.role } : null,
+        );
       } catch {
         // error is set in the store
       }
@@ -123,6 +127,7 @@ export default function UnifiedTimeline({ requestId }: Props) {
         const carrier = await sendMessage(
           requestId,
           selected.length === 1 ? `📎 ${selected[0].name}` : `📎 ${selected.length} attachments`,
+          user ? { id: user.id, name: user.name, role: user.role } : null,
         );
         if (!carrier) {
           addToast('error', 'Failed to send attachment');
@@ -154,7 +159,7 @@ export default function UnifiedTimeline({ requestId }: Props) {
         setTimeout(scrollToBottom, 100);
       }
     },
-    [requestId],
+    [requestId, user],
   );
 
   const handleTypingInput = useCallback(

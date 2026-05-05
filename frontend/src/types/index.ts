@@ -235,7 +235,7 @@ export type MessageType = 'chat' | 'email' | 'system';
 export interface MessageSender {
   id: string | null;
   name: string;
-  role: 'agent' | 'sales' | 'rm' | 'system';
+  role: 'agent' | 'sales' | 'admin' | 'rm' | 'system';
 }
 
 export interface MessageAttachmentItem {

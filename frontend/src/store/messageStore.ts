@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { messageService } from '../services/messageService';
-import type { ChatMessage, TypingUser } from '../types';
+import type { ChatMessage, MessageSender, TypingUser } from '../types';
 
 interface OnlineUser {
   user_id: string;
@@ -19,7 +19,7 @@ interface MessageState {
 
   fetchMessages: (requestId: string, type?: string, page?: number) => Promise<void>;
   addMessage: (msg: ChatMessage) => void;
-  sendMessage: (requestId: string, content: string) => Promise<ChatMessage | null>;
+  sendMessage: (requestId: string, content: string, sender?: MessageSender | null) => Promise<ChatMessage | null>;
   adminPatchMessage: (messageId: string, content: string) => Promise<void>;
   adminDeleteMessage: (messageId: string) => Promise<void>;
   setTyping: (data: TypingUser) => void;
@@ -28,7 +28,7 @@ interface MessageState {
   clearMessages: () => void;
 }
 
-export const useMessageStore = create<MessageState>((set, get) => ({
+export const useMessageStore = create<MessageState>((set) => ({
   messages: [],
   total: 0,
   page: 1,
@@ -63,14 +63,47 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     });
   },
 
-  sendMessage: async (requestId, content) => {
+  sendMessage: async (requestId, content, sender = null) => {
+    const optimisticId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimisticMessage: ChatMessage = {
+      id: optimisticId,
+      request_id: requestId,
+      type: 'chat',
+      sender,
+      content,
+      attachments: [],
+      is_read: true,
+      timestamp: new Date().toISOString(),
+    };
+    set((s) => ({
+      messages: [...s.messages, optimisticMessage],
+      total: s.total + 1,
+      error: null,
+    }));
+
     try {
       const data = await messageService.sendMessage(requestId, content);
       const msg = data as unknown as ChatMessage;
-      get().addMessage(msg);
+      set((s) => {
+        const withoutOptimistic = s.messages.filter((m) => m.id !== optimisticId);
+        if (withoutOptimistic.some((m) => m.id === msg.id)) {
+          return {
+            messages: withoutOptimistic,
+            total: Math.max(s.total - 1, 0),
+          };
+        }
+        return {
+          messages: [...withoutOptimistic, msg],
+          total: withoutOptimistic.length + 1,
+        };
+      });
       return msg;
     } catch {
-      set({ error: 'Failed to send message' });
+      set((s) => ({
+        messages: s.messages.filter((m) => m.id !== optimisticId),
+        total: Math.max(s.total - 1, 0),
+        error: 'Failed to send message',
+      }));
       return null;
     }
   },
