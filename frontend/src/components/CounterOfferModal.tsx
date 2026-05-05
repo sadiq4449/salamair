@@ -15,24 +15,31 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
   const [counterPrice, setCounterPrice] = useState('');
   const [message, setMessage] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   function extractApiError(err: unknown, fallback: string): string {
     const e = err as { response?: { data?: { error?: { message?: string } } } };
     return e?.response?.data?.error?.message ?? fallback;
   }
 
+  function validatePriceInput(raw: string): string | null {
+    const priceNum = Number(raw);
+    if (!raw) return 'Counter price is required';
+    if (!Number.isFinite(priceNum) || priceNum <= 0) return 'Counter price must be greater than zero';
+    if (Math.abs(priceNum - Number(currentPrice)) < 0.01) return 'Counter price must differ from the current price';
+    return null;
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+    const liveErr = validatePriceInput(counterPrice);
+    setFieldError(liveErr);
+    if (liveErr) {
+      setSubmitError(liveErr);
+      return;
+    }
     const priceNum = Number(counterPrice);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      setSubmitError('Counter price must be greater than zero');
-      return;
-    }
-    if (Math.abs(priceNum - Number(currentPrice)) < 0.01) {
-      setSubmitError('Counter price must differ from the current price');
-      return;
-    }
     try {
       await createCounterOffer(requestId, {
         counter_price: priceNum,
@@ -81,11 +88,16 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
               min="0"
               step="0.01"
               value={counterPrice}
-              onChange={(e) => setCounterPrice(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCounterPrice(v);
+                setFieldError(validatePriceInput(v));
+              }}
               required
               placeholder="0.00"
               className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
             />
+            {fieldError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldError}</p>}
           </div>
 
           {/* Message */}
@@ -114,7 +126,7 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="warning" isLoading={isLoading}>
+            <Button type="submit" variant="warning" isLoading={isLoading} disabled={Boolean(fieldError) || !counterPrice}>
               Send Counter Offer
             </Button>
           </div>

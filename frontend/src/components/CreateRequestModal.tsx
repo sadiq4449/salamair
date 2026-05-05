@@ -38,6 +38,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
     notes: '',
   });
   const [files, setFiles] = useState<File[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isOpen || user?.role !== 'admin') return;
@@ -50,8 +51,53 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
       .catch(() => setAgentOptions([]));
   }, [isOpen, user?.role]);
 
+  function validateField(field: string, value: string, nextForm = form): string {
+    if (field === 'route') {
+      return value ? '' : 'Route is required';
+    }
+    if (field === 'pax') {
+      const n = Number(value);
+      if (!value) return 'Passengers is required';
+      if (!Number.isFinite(n) || n < 1) return 'Passengers must be at least 1';
+      return '';
+    }
+    if (field === 'travel_date') {
+      return value ? '' : 'Travel date is required';
+    }
+    if (field === 'return_date') {
+      if (!value) return '';
+      if (nextForm.travel_date && value < nextForm.travel_date) {
+        return 'Return date cannot be before travel date';
+      }
+      return '';
+    }
+    if (field === 'price') {
+      const n = Number(value);
+      if (!value) return 'Proposed price is required';
+      if (!Number.isFinite(n) || n <= 0) return 'Proposed price must be greater than 0';
+      return '';
+    }
+    if (field === 'agentUserId' && user?.role === 'admin') {
+      return value ? '' : 'Agent selection is required';
+    }
+    return '';
+  }
+
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    const nextForm = { ...form, [field]: value };
+    setErrors((prev) => {
+      const next = { ...prev };
+      const msg = validateField(field, value, nextForm);
+      if (msg) next[field] = msg;
+      else delete next[field];
+      if (field === 'travel_date' || field === 'return_date') {
+        const rmsg = validateField('return_date', nextForm.return_date, nextForm);
+        if (rmsg) next.return_date = rmsg;
+        else delete next.return_date;
+      }
+      return next;
+    });
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -73,7 +119,17 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
   async function handleSubmit(e: FormEvent, asDraft = false) {
     e.preventDefault();
     try {
-      if (user?.role === 'admin' && !agentUserId) {
+      const nextErrors: Record<string, string> = {};
+      (['route', 'pax', 'travel_date', 'return_date', 'price'] as const).forEach((field) => {
+        const msg = validateField(field, form[field], form);
+        if (msg) nextErrors[field] = msg;
+      });
+      if (user?.role === 'admin') {
+        const amsg = validateField('agentUserId', agentUserId, form);
+        if (amsg) nextErrors.agentUserId = amsg;
+      }
+      setErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) {
         return;
       }
       const created = await createRequest({
@@ -112,6 +168,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
       onClose();
       setForm({ route: '', pax: '', travel_date: '', return_date: '', price: '', priority: 'normal', notes: '' });
       setFiles([]);
+      setErrors({});
     } catch {
       // error is set in store
     }
@@ -140,7 +197,16 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
               </label>
               <select
                 value={agentUserId}
-                onChange={(e) => setAgentUserId(e.target.value)}
+                onChange={(e) => {
+                  setAgentUserId(e.target.value);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    const msg = validateField('agentUserId', e.target.value, form);
+                    if (msg) next.agentUserId = msg;
+                    else delete next.agentUserId;
+                    return next;
+                  });
+                }}
                 required
                 className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
               >
@@ -151,6 +217,10 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                   </option>
                 ))}
               </select>
+              {errors.agentUserId && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.agentUserId}</p>}
+              {!agentOptions.length && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">No active agents available.</p>
+              )}
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,6 +238,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
+              {errors.route && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.route}</p>}
             </div>
 
             {/* Passengers */}
@@ -182,6 +253,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                 placeholder="Number of passengers"
                 className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
               />
+              {errors.pax && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.pax}</p>}
             </div>
 
             {/* Travel Date */}
@@ -194,6 +266,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                 required
                 className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
               />
+              {errors.travel_date && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.travel_date}</p>}
             </div>
 
             {/* Return Date */}
@@ -205,6 +278,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                 onChange={(e) => update('return_date', e.target.value)}
                 className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
               />
+              {errors.return_date && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.return_date}</p>}
             </div>
 
             {/* Proposed Price */}
@@ -220,6 +294,7 @@ export default function CreateRequestModal({ isOpen, onClose, onCreated }: Props
                 placeholder="0.00"
                 className="w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 outline-none focus:border-teal-500 focus:ring-3 focus:ring-teal-500/10"
               />
+              {errors.price && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.price}</p>}
             </div>
 
             {/* Priority */}

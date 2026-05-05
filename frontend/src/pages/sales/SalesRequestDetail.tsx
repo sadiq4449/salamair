@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
 import AdminRequestControls from '../../components/admin/AdminRequestControls';
 import { useEmailStore } from '../../store/emailStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatusFlow from '../../components/StatusFlow';
 import SlaIndicator from '../../components/SlaIndicator';
@@ -28,7 +29,8 @@ export default function SalesRequestDetail() {
   const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentRequest, isDetailLoading, isLoading, history, fetchRequest, updateStatus, clearCurrent } = useRequestStore();
+  const { currentRequest, isDetailLoading, isLoading, history, fetchRequest, refreshRequest, updateStatus, clearCurrent } =
+    useRequestStore();
   const { clearThread } = useEmailStore();
   const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
@@ -41,6 +43,40 @@ export default function SalesRequestDetail() {
     }
     return () => { clearCurrent(); clearThread(); };
   }, [id, fetchRequest, clearCurrent, clearThread]);
+
+  // Refetch when returning to this tab to avoid stale request state.
+  useEffect(() => {
+    if (!id) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void refreshRequest(id);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [id, refreshRequest]);
+
+  // Refetch request details when relevant real-time notifications arrive.
+  useEffect(() => {
+    if (!id) return;
+    const refreshTypes = new Set([
+      'COUNTER_OFFERED',
+      'COUNTER_ACCEPTED',
+      'COUNTER_REJECTED',
+      'REQUEST_APPROVED',
+      'REQUEST_REJECTED',
+      'SENT_TO_RM',
+      'REQUEST_ASSIGNED',
+      'NEW_MESSAGE',
+      'EMAIL_RECEIVED',
+    ]);
+    return useNotificationStore.subscribe((state, prev) => {
+      const prevLen = prev?.notifications?.length ?? 0;
+      if (state.notifications.length <= prevLen) return;
+      const newest = state.notifications[0];
+      if (!newest?.request_id || newest.request_id !== id) return;
+      if (!refreshTypes.has(newest.type)) return;
+      void refreshRequest(id);
+    });
+  }, [id, refreshRequest]);
 
   if (isDetailLoading) {
     return (
@@ -71,7 +107,7 @@ export default function SalesRequestDetail() {
 
   function handleEmailSent() {
     addToast('success', 'Email sent to Revenue Management.');
-    if (id) void fetchRequest(id);
+    if (id) void refreshRequest(id);
   }
 
   return (
@@ -117,7 +153,7 @@ export default function SalesRequestDetail() {
                 <RequestTagsEditor
                   requestId={id}
                   initialTags={req.tags ?? []}
-                  onUpdated={() => id && fetchRequest(id)}
+                  onUpdated={() => id && refreshRequest(id)}
                 />
               )}
             </div>
@@ -253,12 +289,12 @@ export default function SalesRequestDetail() {
           )}
 
           {/* Attachments */}
-          {req.attachments && req.attachments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-border dark:border-gray-800">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
-              </div>
-              <div className="p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
+            </div>
+            <div className="p-4">
+              {req.attachments?.length ? (
                 <VirtualizedAttachmentList
                   attachments={req.attachments}
                   onDownload={(att) => {
@@ -268,9 +304,11 @@ export default function SalesRequestDetail() {
                       .catch(() => addToast('error', 'Download failed'));
                   }}
                 />
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No attachments yet.</p>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Notes Card */}
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">

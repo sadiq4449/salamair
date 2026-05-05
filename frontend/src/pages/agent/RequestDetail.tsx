@@ -31,7 +31,7 @@ export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentRequest, isDetailLoading, history, fetchRequest, clearCurrent } = useRequestStore();
+  const { currentRequest, isDetailLoading, history, fetchRequest, refreshRequest, clearCurrent } = useRequestStore();
   const { clearThread } = useEmailStore();
   const addToast = useToastStore((s) => s.addToast);
   const [commTab, setCommTab] = useState<'chat' | 'agentEmail' | 'rmEmail'>('chat');
@@ -50,11 +50,11 @@ export default function RequestDetail() {
   useEffect(() => {
     if (!id) return;
     const onVis = () => {
-      if (document.visibilityState === 'visible') fetchRequest(id);
+      if (document.visibilityState === 'visible') void refreshRequest(id);
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [id, fetchRequest]);
+  }, [id, refreshRequest]);
 
   // When a COUNTER_OFFERED notification arrives for this request, reload detail (fixes stale open tabs).
   useEffect(() => {
@@ -63,11 +63,22 @@ export default function RequestDetail() {
       const prevLen = prev?.notifications?.length ?? 0;
       if (state.notifications.length <= prevLen) return;
       const newest = state.notifications[0];
-      if (newest?.type === 'COUNTER_OFFERED' && newest.request_id === id) {
-        fetchRequest(id);
+      const refreshTypes = new Set([
+        'COUNTER_OFFERED',
+        'COUNTER_ACCEPTED',
+        'COUNTER_REJECTED',
+        'REQUEST_APPROVED',
+        'REQUEST_REJECTED',
+        'SENT_TO_RM',
+        'REQUEST_ASSIGNED',
+        'NEW_MESSAGE',
+        'EMAIL_RECEIVED',
+      ]);
+      if (newest?.request_id === id && refreshTypes.has(newest.type)) {
+        void refreshRequest(id);
       }
     });
-  }, [id, fetchRequest]);
+  }, [id, refreshRequest]);
 
   if (isDetailLoading) {
     return (
@@ -135,7 +146,7 @@ export default function RequestDetail() {
                 <RequestTagsEditor
                   requestId={id}
                   initialTags={req.tags ?? []}
-                  onUpdated={() => id && fetchRequest(id)}
+                  onUpdated={() => id && refreshRequest(id)}
                 />
               )}
             </div>
@@ -233,7 +244,7 @@ export default function RequestDetail() {
                 type="button"
                 variant="outline"
                 fullWidth
-                onClick={() => fetchRequest(id)}
+                onClick={() => refreshRequest(id)}
                 isLoading={isDetailLoading}
               >
                 <RefreshCw size={16} />
@@ -267,12 +278,12 @@ export default function RequestDetail() {
           </div>
 
           {/* Attachments Card */}
-          {req.attachments && req.attachments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-border dark:border-gray-800">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
-              </div>
-              <div className="p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-border dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border dark:border-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
+            </div>
+            <div className="p-4">
+              {req.attachments?.length ? (
                 <VirtualizedAttachmentList
                   attachments={req.attachments}
                   onDownload={(att) => {
@@ -282,9 +293,11 @@ export default function RequestDetail() {
                       .catch(() => addToast('error', 'Download failed'));
                   }}
                 />
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No attachments yet.</p>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

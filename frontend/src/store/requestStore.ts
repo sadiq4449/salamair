@@ -19,6 +19,7 @@ interface RequestState {
   resetFilters: () => void;
   fetchRequests: (params?: RequestFilters) => Promise<void>;
   fetchRequest: (id: string) => Promise<void>;
+  refreshRequest: (id: string) => Promise<void>;
   fetchSalesQueue: (params?: RequestFilters) => Promise<void>;
   createRequest: (data: CreateRequestData) => Promise<RequestDetail>;
   updateRequest: (id: string, data: UpdateRequestData) => Promise<void>;
@@ -80,6 +81,16 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       void get().fetchHistory(id);
     } catch {
       set({ error: 'Failed to load request', isDetailLoading: false });
+    }
+  },
+
+  refreshRequest: async (id) => {
+    try {
+      const detail = await requestService.getRequest(id);
+      set({ currentRequest: detail });
+      void get().fetchHistory(id);
+    } catch {
+      // Keep existing page data visible during background refresh failures.
     }
   },
 
