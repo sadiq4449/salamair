@@ -11,7 +11,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, status
 from fastapi.responses import Response
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, require_role
@@ -198,19 +198,48 @@ def admin_list_email_threads(
         .limit(limit)
         .all()
     )
+    thread_ids = [t.id for t in threads]
+    message_counts = {}
+    latest_messages = {}
+    if thread_ids:
+        message_counts = {
+            tid: int(cnt or 0)
+            for tid, cnt in (
+                db.query(EmailMessage.thread_id, func.count(EmailMessage.id))
+                .filter(EmailMessage.thread_id.in_(thread_ids))
+                .group_by(EmailMessage.thread_id)
+                .all()
+            )
+        }
+
+        latest_ts_subq = (
+            db.query(
+                EmailMessage.thread_id.label("thread_id"),
+                func.max(func.coalesce(EmailMessage.sent_at, EmailMessage.created_at)).label("latest_ts"),
+            )
+            .filter(EmailMessage.thread_id.in_(thread_ids))
+            .group_by(EmailMessage.thread_id)
+            .subquery()
+        )
+        latest_rows = (
+            db.query(EmailMessage)
+            .join(
+                latest_ts_subq,
+                and_(
+                    EmailMessage.thread_id == latest_ts_subq.c.thread_id,
+                    func.coalesce(EmailMessage.sent_at, EmailMessage.created_at) == latest_ts_subq.c.latest_ts,
+                ),
+            )
+            .all()
+        )
+        latest_messages = {m.thread_id: m for m in latest_rows}
+
     items: list[AdminEmailThreadListItem] = []
     for t in threads:
         req = t.request
         agent = req.agent if req else None
-        msg_count = (
-            db.query(func.count(EmailMessage.id)).filter(EmailMessage.thread_id == t.id).scalar() or 0
-        )
-        last = (
-            db.query(EmailMessage)
-            .filter(EmailMessage.thread_id == t.id)
-            .order_by(EmailMessage.sent_at.desc())
-            .first()
-        )
+        msg_count = message_counts.get(t.id, 0)
+        last = latest_messages.get(t.id)
         preview = ""
         last_at = t.updated_at
         if last:

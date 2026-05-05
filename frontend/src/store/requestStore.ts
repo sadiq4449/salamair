@@ -74,6 +74,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   },
 
   fetchRequest: async (id) => {
+    const existing = get().currentRequest
+    if (existing?.id === id) {
+      // SWR-style behavior: keep current screen data and refresh in background.
+      void get().refreshRequest(id);
+      return;
+    }
     set({ isDetailLoading: true, error: null });
     try {
       const detail = await requestService.getRequest(id);
