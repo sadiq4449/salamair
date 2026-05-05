@@ -8,9 +8,10 @@ interface Props {
   onClose: () => void;
   requestId: string;
   currentPrice: number;
+  requestStatus: string;
 }
 
-export default function CounterOfferModal({ isOpen, onClose, requestId, currentPrice }: Props) {
+export default function CounterOfferModal({ isOpen, onClose, requestId, currentPrice, requestStatus }: Props) {
   const { createCounterOffer, isLoading } = useRequestStore();
   const [counterPrice, setCounterPrice] = useState('');
   const [message, setMessage] = useState('');
@@ -42,6 +43,10 @@ export default function CounterOfferModal({ isOpen, onClose, requestId, currentP
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+    if (requestStatus !== 'under_review') {
+      setSubmitError('Can only counter-offer requests that are under review');
+      return;
+    }
     const liveErr = validatePriceInput(counterPrice);
     setFieldError(liveErr);
     if (liveErr) {

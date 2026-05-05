@@ -98,6 +98,7 @@ export default function SalesRequestDetail() {
   const isTerminal = ['approved', 'rejected'].includes(req.status);
   const canManageRequest = user?.role === 'sales' || user?.role === 'admin';
   const actionDisabled = !canManageRequest || isLoading;
+  const canCounterOffer = req.status === 'under_review';
 
   async function handleApprove() {
     if (id) await updateStatus(id, { status: 'approved' });
@@ -268,10 +269,20 @@ export default function SalesRequestDetail() {
                       <CheckCircle size={16} />
                       Approve Request
                     </Button>
-                    <Button variant="warning" fullWidth onClick={() => setShowCounter(true)} disabled={actionDisabled}>
+                    <Button
+                      variant="warning"
+                      fullWidth
+                      onClick={() => setShowCounter(true)}
+                      disabled={actionDisabled || !canCounterOffer}
+                    >
                       <DollarSign size={16} />
                       Counter Offer
                     </Button>
+                    {!canCounterOffer && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300 px-1">
+                        Counter offer is available only when status is Under Review.
+                      </p>
+                    )}
                     <Button variant="purple" fullWidth onClick={() => setShowEmailPreview(true)} disabled={actionDisabled}>
                       <Mail size={16} />
                       Send to RM
@@ -334,6 +345,7 @@ export default function SalesRequestDetail() {
           onClose={() => setShowCounter(false)}
           requestId={id}
           currentPrice={req.price}
+          requestStatus={req.status}
         />
       )}
 
