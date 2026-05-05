@@ -2,7 +2,12 @@ import api from './api';
 import type { LoginResponse, User } from '../types';
 
 export const authService = {
+  async ensureCsrfCookie(): Promise<void> {
+    await api.get('/auth/csrf');
+  },
+
   async login(email: string, password: string): Promise<LoginResponse> {
+    await authService.ensureCsrfCookie();
     const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
     return data;
   },

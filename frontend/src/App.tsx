@@ -31,6 +31,7 @@ import NotificationSettings from './pages/NotificationSettings';
 import Analytics from './pages/Analytics';
 import { ToastContainer } from './components/ui/Toast';
 import { useToastStore } from './store/toastStore';
+import api from './services/api';
 import { useNotificationSocket } from './hooks/useNotificationSocket';
 import { Loader2 } from 'lucide-react';
 import SalamAirBrandLogo from './components/branding/SalamAirBrandLogo';
@@ -115,6 +116,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadUser();
+    api.get('/auth/csrf').catch(() => {});
   }, [loadUser]);
 
   return <NotificationSocketProvider>{children}</NotificationSocketProvider>;

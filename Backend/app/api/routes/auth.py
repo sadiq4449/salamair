@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 
 from app.api.deps import get_current_user, get_db
+from app.core.csrf import generate_csrf_token, set_csrf_cookie
 from app.core.rate_limit import AUTH_RATE, limiter
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.agent_profile import AgentProfile
@@ -17,7 +20,15 @@ from app.schemas.user import UserLoginInfo, UserRead
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.get("/csrf")
+def issue_csrf_cookie(response: Response):
+    """Issue or refresh the CSRF double-submit cookie (call from SPA before mutating requests)."""
+    token = generate_csrf_token()
+    set_csrf_cookie(response, token)
+    return {"csrf_token": token}
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 @limiter.limit(AUTH_RATE)
 def register(request: Request, payload: RegisterRequest, db: Session = Depends(get_db)):
     _ = request  # used by slowapi
@@ -41,10 +52,15 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
         db.add(AgentProfile(user_id=user.id, company_name=None, credit_limit=Decimal("0")))
     db.commit()
     db.refresh(user)
-    return user
+    body = jsonable_encoder(UserRead.model_validate(user))
+    csrf = generate_csrf_token()
+    body["csrf_token"] = csrf
+    resp = JSONResponse(content=body, status_code=status.HTTP_201_CREATED)
+    set_csrf_cookie(resp, csrf)
+    return resp
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 @limiter.limit(AUTH_RATE)
 def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     _ = request
@@ -54,10 +70,10 @@ def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _build_token_response(user)
+    return _token_json_response(user)
 
 
-@router.post("/login/token", response_model=TokenResponse, tags=["Authentication"])
+@router.post("/login/token", tags=["Authentication"])
 @limiter.limit(AUTH_RATE)
 def login_form(
     request: Request,
@@ -72,7 +88,7 @@ def login_form(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _build_token_response(user)
+    return _token_json_response(user)
 
 
 @router.get("/me", response_model=UserRead)
@@ -103,3 +119,12 @@ def _build_token_response(user: User) -> dict:
         "token_type": "bearer",
         "user": UserLoginInfo.model_validate(user),
     }
+
+
+def _token_json_response(user: User) -> JSONResponse:
+    data = _build_token_response(user)
+    csrf = generate_csrf_token()
+    data["csrf_token"] = csrf
+    resp = JSONResponse(content=jsonable_encoder(TokenResponse.model_validate(data)))
+    set_csrf_cookie(resp, csrf)
+    return resp

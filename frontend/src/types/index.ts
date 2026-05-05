@@ -19,6 +19,7 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: User;
+  csrf_token: string;
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
