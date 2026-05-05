@@ -40,6 +40,7 @@ from app.models import (  # noqa: F401
     User,
     AgentProfile,
     Request,
+    RevokedToken,
     Attachment,
     RequestHistory,
     CounterOffer,

@@ -10,7 +10,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   clearError: () => void;
 }
@@ -42,7 +42,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // If token is already expired/invalid, proceed with local cleanup.
+    }
     localStorage.removeItem(TOKEN_KEY);
     set({ user: null, token: null, isAuthenticated: false, error: null });
   },

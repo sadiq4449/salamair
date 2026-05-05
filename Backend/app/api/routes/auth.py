@@ -8,11 +8,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_token_payload, get_current_user, get_db, parse_payload_exp_utc
 from app.core.csrf import generate_csrf_token, set_csrf_cookie
 from app.core.rate_limit import AUTH_RATE, limiter
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.agent_profile import AgentProfile
+from app.models.revoked_token import RevokedToken
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserLoginInfo, UserRead
@@ -94,6 +95,21 @@ def login_form(
 @router.get("/me", response_model=UserRead)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    current_user: User = Depends(get_current_user),
+    payload: dict = Depends(get_current_token_payload),
+    db: Session = Depends(get_db),
+):
+    token_jti = str(payload.get("jti"))
+    expires_at = parse_payload_exp_utc(payload)
+    already = db.query(RevokedToken).filter(RevokedToken.jti == token_jti).first()
+    if not already:
+        db.add(RevokedToken(user_id=current_user.id, jti=token_jti, expires_at=expires_at))
+        db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _authenticate(db: Session, email: str, password: str) -> User:

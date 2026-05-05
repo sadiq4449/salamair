@@ -2,6 +2,7 @@ from app.models.user import User
 from app.models.user_gmail_credential import UserGmailCredential
 from app.models.agent_profile import AgentProfile
 from app.models.request import Request
+from app.models.revoked_token import RevokedToken
 from app.models.attachment import Attachment
 from app.models.request_history import RequestHistory
 from app.models.counter_offer import CounterOffer
@@ -25,6 +26,7 @@ __all__ = [
     "UserGmailCredential",
     "AgentProfile",
     "Request",
+    "RevokedToken",
     "Attachment",
     "RequestHistory",
     "CounterOffer",
