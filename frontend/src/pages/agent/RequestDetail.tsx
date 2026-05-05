@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Paperclip, Loader2, RefreshCw, Mail } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequestStore } from '../../store/requestStore';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -19,6 +19,7 @@ import AiPricingAssistant from '../../components/AiPricingAssistant';
 import CounterOfferPanel from '../../components/CounterOfferPanel';
 import Button from '../../components/ui/Button';
 import RequestDealExportButtons from '../../components/RequestDealExportButtons';
+import VirtualizedAttachmentList from '../../components/attachments/VirtualizedAttachmentList';
 
 /** Backend may omit status on legacy rows; treat as pending when awaiting agent action. */
 function isPendingOfferStatus(status: string | undefined | null): boolean {
@@ -271,24 +272,16 @@ export default function RequestDetail() {
               <div className="px-6 py-4 border-b border-border dark:border-gray-800">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Attachments</h3>
               </div>
-              <div className="p-4 space-y-2">
-                {req.attachments.map((att) => (
-                  <button
-                    key={att.id}
-                    type="button"
-                    onClick={() => {
-                      if (!id) return;
-                      void requestService
-                        .downloadAttachment(id, att.id, att.filename)
-                        .catch(() => addToast('error', 'Download failed'));
-                    }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-left"
-                  >
-                    <Paperclip size={14} className="text-gray-400" />
-                    <span className="text-sm text-[#00A99D] dark:text-[#2dd4bf] truncate">{att.filename}</span>
-                    <span className="text-xs text-gray-400 ml-auto">{(att.file_size / 1024).toFixed(0)} KB</span>
-                  </button>
-                ))}
+              <div className="p-4">
+                <VirtualizedAttachmentList
+                  attachments={req.attachments}
+                  onDownload={(att) => {
+                    if (!id) return;
+                    void requestService
+                      .downloadAttachment(id, att.id, att.filename)
+                      .catch(() => addToast('error', 'Download failed'));
+                  }}
+                />
               </div>
             </div>
           )}
