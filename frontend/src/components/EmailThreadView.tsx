@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Paperclip, Mail, Reply, Loader2, Download, ArrowUpRight, ArrowDownLeft, RefreshCw, Bell } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { useEmailStore } from '../store/emailStore';
 import { useToastStore } from '../store/toastStore';
 import { useAuth } from '../hooks/useAuth';
@@ -51,6 +52,14 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
   const deliveryFailed = isOutgoing && email.status === 'failed';
   const deliveryOk = isOutgoing && email.status === 'sent';
   const showHtml = isOutgoing && Boolean(email.html_body?.trim());
+  const safeHtmlBody = useMemo(() => {
+    const raw = typeof email.html_body === 'string' ? email.html_body : '';
+    return DOMPurify.sanitize(raw, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
+    });
+  }, [email.html_body]);
   const outgoingLabel = channel === 'rm' ? 'Sales (portal)' : 'Outbound (email)';
   const incomingLabel = channel === 'rm' ? 'RM / inbox' : 'Inbound (email)';
 
@@ -127,7 +136,7 @@ function EmailBubble({ email, channel }: { email: EmailMessageItem; channel: Ema
             {showHtml ? (
               <div
                 className="email-thread-html max-w-full overflow-x-auto text-[13px] leading-relaxed text-gray-800 dark:text-gray-200 [&_*]:max-w-full [&_img]:max-h-40 [&_table]:text-xs [&_a]:text-teal-600"
-                dangerouslySetInnerHTML={{ __html: email.html_body as string }}
+                dangerouslySetInnerHTML={{ __html: safeHtmlBody }}
               />
             ) : (
               <div className="whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-gray-200">{email.body}</div>
