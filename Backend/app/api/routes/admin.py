@@ -406,6 +406,20 @@ def admin_reset_password(
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "User not found"}})
 
+    if not settings.email_sending_active:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": {
+                    "code": "EMAIL_DISABLED",
+                    "message": (
+                        "Password reset by email is disabled. Configure outbound email first, "
+                        "or set a password explicitly via admin user update."
+                    ),
+                }
+            },
+        )
+
     temp_password = secrets.token_urlsafe(12)
     target.password = get_password_hash(temp_password)
 
@@ -416,15 +430,24 @@ def admin_reset_password(
         f"Your new temporary password is: {temp_password}\n\n"
         "Sign in at the SmartDeal portal and change your password from your profile when available.\n"
     )
-    body_html = f"<p>Hello {target.name},</p><p>An administrator reset your portal password.</p><p><strong>Temporary password:</strong> {temp_password}</p>"
+    body_html = (
+        f"<p>Hello {target.name},</p>"
+        "<p>An administrator reset your portal password.</p>"
+        f"<p><strong>Temporary password:</strong> {temp_password}</p>"
+    )
 
-    email_sent = False
-    smtp_error: str | None = None
-    if settings.email_sending_active:
-        _, smtp_error = send_smtp_email(target.email, subject, body_text, body_html)
-        email_sent = smtp_error is None
-    else:
-        smtp_error = "SMTP disabled (set EMAIL_ENABLED or SMTP_USER + SMTP_PASSWORD)"
+    _mid, smtp_error = send_smtp_email(target.email, subject, body_text, body_html)
+    email_sent = smtp_error is None
+    if not email_sent:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": {
+                    "code": "EMAIL_DELIVERY_FAILED",
+                    "message": f"Password reset email delivery failed: {smtp_error or 'unknown error'}",
+                }
+            },
+        )
 
     log_admin_action(
         db,
@@ -439,10 +462,8 @@ def admin_reset_password(
     db.commit()
 
     return AdminPasswordResetResponse(
-        message="Password has been reset."
-        + (" Credentials were emailed to the user." if email_sent else f" Email was not sent ({smtp_error})."),
-        email_sent=email_sent,
-        temporary_password=temp_password if not email_sent else None,
+        message="Password has been reset and emailed to the user.",
+        email_sent=True,
     )
 
 

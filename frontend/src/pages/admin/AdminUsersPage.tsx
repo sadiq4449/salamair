@@ -171,9 +171,6 @@ export default function AdminUsersPage() {
     try {
       const res = await resetAdminUserPassword(u.id);
       addToast('success', res.message);
-      if (res.temporary_password) {
-        window.prompt('Copy temporary password (email not sent):', res.temporary_password);
-      }
       void load();
     } catch (err) {
       addToast('error', apiErr(err));

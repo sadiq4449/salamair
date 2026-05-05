@@ -437,7 +437,6 @@ export interface AdminUpdateUserResponse {
 export interface AdminPasswordResetResponse {
   message: string;
   email_sent: boolean;
-  temporary_password?: string | null;
 }
 
 export interface AdminAgentItem {

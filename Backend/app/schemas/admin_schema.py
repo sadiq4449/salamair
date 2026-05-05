@@ -153,10 +153,6 @@ class AdminAgentUpdateRequest(BaseModel):
 class AdminPasswordResetResponse(BaseModel):
     message: str
     email_sent: bool
-    temporary_password: str | None = Field(
-        None,
-        description="Only returned when outbound email is disabled",
-    )
 
 
 class AdminSimpleMessage(BaseModel):
