@@ -9,6 +9,8 @@ from slowapi.errors import RateLimitExceeded
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.csrf_middleware import CSRFProtectionMiddleware
+from app.middleware.request_size_middleware import RequestSizeLimitMiddleware
+from app.middleware.security_headers_middleware import SecurityHeadersMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.routes.auth import router as auth_router
@@ -94,6 +96,7 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -102,6 +105,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_bytes=max(int(settings.REQUEST_MAX_BODY_MB), 1) * 1024 * 1024,
 )
 app.add_middleware(CSRFProtectionMiddleware)
 

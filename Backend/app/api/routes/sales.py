@@ -13,6 +13,7 @@ from app.models.request import Request
 from app.models.request_history import RequestHistory
 from app.models.user import User
 from app.schemas.counter_offer_schema import CounterOfferCreate, CounterOfferRead
+from app.schemas.enums import RequestStatus
 from app.schemas.advanced_schema import TagBrief
 from app.schemas.request import (
     RequestListItem,
@@ -74,7 +75,7 @@ def _log_history(
 
 @router.get("/queue", response_model=RequestListResponse)
 def sales_queue(
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: RequestStatus | None = Query(None, alias="status"),
     route: str | None = None,
     priority: str | None = None,
     page: int = Query(1, ge=1),

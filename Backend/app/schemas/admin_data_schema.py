@@ -69,6 +69,9 @@ class AdminEmailThreadDetailResponse(BaseModel):
     thread_status: str
     created_at: datetime
     updated_at: datetime
+    total_messages: int
+    page: int
+    limit: int
     messages: list[AdminEmailMessageDetail]
 
 

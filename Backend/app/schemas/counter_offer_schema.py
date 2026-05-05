@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from app.schemas.enums import CounterOfferStatus
 
 
 class CounterOfferCreate(BaseModel):
@@ -17,7 +18,7 @@ class CounterOfferRead(BaseModel):
     message: str | None = None
     created_by: UUID
     creator_name: str | None = None
-    status: str
+    status: CounterOfferStatus
     created_at: datetime
 
     model_config = {"from_attributes": True}

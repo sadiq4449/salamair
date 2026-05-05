@@ -102,7 +102,7 @@ def _safe_zip_entry_name(request_code: str) -> str:
     return s or "thread"
 
 
-def _build_thread_detail(db: Session, thread_id: uuid.UUID) -> AdminEmailThreadDetailResponse:
+def _build_thread_detail(db: Session, thread_id: uuid.UUID, page: int = 1, limit: int = 100) -> AdminEmailThreadDetailResponse:
     t = (
         db.query(EmailThread)
         .options(joinedload(EmailThread.request).joinedload(Request.agent))
@@ -112,11 +112,16 @@ def _build_thread_detail(db: Session, thread_id: uuid.UUID) -> AdminEmailThreadD
     if not t:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error": {"code": "NOT_FOUND", "message": "Thread not found"}})
     req = t.request
-    msgs = (
+    q_msgs = (
         db.query(EmailMessage)
         .options(joinedload(EmailMessage.attachments))
         .filter(EmailMessage.thread_id == thread_id)
-        .order_by(EmailMessage.sent_at.asc(), EmailMessage.created_at.asc())
+    )
+    total_messages = q_msgs.count()
+    msgs = (
+        q_msgs.order_by(EmailMessage.sent_at.asc(), EmailMessage.created_at.asc())
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
     details: list[AdminEmailMessageDetail] = []
@@ -151,6 +156,9 @@ def _build_thread_detail(db: Session, thread_id: uuid.UUID) -> AdminEmailThreadD
         thread_status=t.status,
         created_at=t.created_at,
         updated_at=t.updated_at,
+        total_messages=total_messages,
+        page=page,
+        limit=limit,
         messages=details,
     )
 
@@ -338,10 +346,12 @@ def admin_export_one_email_thread(
 @router.get("/email-threads/{thread_id}", response_model=AdminEmailThreadDetailResponse)
 def admin_get_email_thread(
     thread_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     _user: User = Depends(require_role("admin")),
 ):
-    return _build_thread_detail(db, thread_id)
+    return _build_thread_detail(db, thread_id, page=page, limit=limit)
 
 
 @router.put("/email-threads/{thread_id}", response_model=AdminEmailThreadDetailResponse)
@@ -369,7 +379,7 @@ def admin_update_email_thread(
         ip_address=_client_ip(http_request),
     )
     db.commit()
-    return _build_thread_detail(db, thread_id)
+    return _build_thread_detail(db, thread_id, page=1, limit=100)
 
 
 @router.delete("/email-threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)

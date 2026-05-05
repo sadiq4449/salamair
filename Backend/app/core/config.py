@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
+    REQUEST_MAX_BODY_MB: int = 2
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     # Optional regex (e.g. https://.*\\.up\\.railway\\.app$) so the SPA and API on the same Railway URL work.
     CORS_ORIGIN_REGEX: str = ""

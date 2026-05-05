@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.advanced_schema import TagBrief
 from app.schemas.attachment import AttachmentRead
 from app.schemas.counter_offer_schema import CounterOfferRead
+from app.schemas.enums import RequestPriority, RequestStatus
 
 
 class RequestCreate(BaseModel):
@@ -15,7 +16,7 @@ class RequestCreate(BaseModel):
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
-    priority: str = Field("normal", pattern=r"^(normal|urgent)$")
+    priority: RequestPriority = RequestPriority.normal
     is_draft: bool = False
     agent_id: UUID | None = Field(
         None,
@@ -41,7 +42,7 @@ class RequestUpdate(BaseModel):
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
-    priority: str | None = Field(None, pattern=r"^(normal|urgent)$")
+    priority: RequestPriority | None = None
 
 
 class AgentInfo(BaseModel):
@@ -64,8 +65,8 @@ class RequestRead(BaseModel):
     travel_date: date | None = None
     return_date: date | None = None
     notes: str | None = None
-    status: str
-    priority: str
+    status: RequestStatus
+    priority: RequestPriority
     assigned_to: UUID | None = None
     tags: list[TagBrief] = Field(default_factory=list)
     attachments: list[AttachmentRead] = Field(default_factory=list)
@@ -84,8 +85,8 @@ class RequestListItem(BaseModel):
     route: str
     pax: int
     price: float
-    status: str
-    priority: str
+    status: RequestStatus
+    priority: RequestPriority
     travel_date: date | None = None
     tags: list[TagBrief] = Field(default_factory=list)
     attachments_count: int = 0
@@ -102,7 +103,7 @@ class RequestListResponse(BaseModel):
 
 
 class StatusUpdate(BaseModel):
-    status: str
+    status: RequestStatus
     reason: str | None = None
     force: bool = Field(
         False,

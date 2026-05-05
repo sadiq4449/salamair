@@ -19,6 +19,7 @@ from app.models.user import User
 from app.schemas.advanced_schema import RequestTagsBody, TagBrief
 from app.schemas.attachment import AttachmentRead
 from app.schemas.counter_offer_schema import CounterOfferRead
+from app.schemas.enums import RequestStatus
 from app.schemas.request import (
     RequestCreate,
     RequestListItem,
@@ -194,7 +195,7 @@ def create_request(
 
 @router.get("", response_model=RequestListResponse)
 def list_requests(
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: RequestStatus | None = Query(None, alias="status"),
     route: str | None = None,
     search: str | None = None,
     tag_ids: str | None = Query(None, description="Comma-separated tag UUIDs (match any)"),

@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from app.schemas.enums import CounterOfferStatus, RequestPriority, RequestStatus
 
 
 # --- Requests ---
@@ -36,8 +37,8 @@ class AdminDbRequestUpdate(BaseModel):
     route: str | None = Field(None, max_length=100)
     pax: int | None = Field(None, gt=0)
     price: float | None = Field(None, gt=0)
-    status: str | None = Field(None, max_length=20)
-    priority: str | None = Field(None, max_length=10)
+    status: RequestStatus | None = None
+    priority: RequestPriority | None = None
     notes: str | None = None
     travel_date: str | None = None
     return_date: str | None = None
@@ -149,7 +150,7 @@ class AdminDbCounterOfferListResponse(BaseModel):
 class AdminDbCounterOfferUpdate(BaseModel):
     counter_price: float | None = Field(None, gt=0)
     message: str | None = None
-    status: str | None = Field(None, max_length=20)
+    status: CounterOfferStatus | None = None
 
 
 # --- SLA tracking rows ---

@@ -42,6 +42,7 @@ from app.schemas.admin_explorer_schema import (
     AdminDbSlaRow,
     AdminDbSlaUpdate,
 )
+from app.schemas.enums import RequestStatus
 from app.services.admin_audit import log_admin_action
 
 router = APIRouter()
@@ -51,13 +52,23 @@ def _ip(req: FastAPIRequest) -> str | None:
     return req.client.host if req.client else None
 
 
+def _preview_text(value: str | None, max_chars: int = 400) -> str | None:
+    """Limit large free-text columns in list endpoints to reduce exposure/memory load."""
+    if value is None:
+        return None
+    txt = value.strip()
+    if len(txt) <= max_chars:
+        return txt
+    return txt[: max_chars - 1] + "…"
+
+
 # --- Requests ---
 @router.get("/requests", response_model=AdminDbRequestListResponse)
 def explorer_list_requests(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: str | None = None,
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: RequestStatus | None = Query(None, alias="status"),
     db: Session = Depends(get_db),
     _user: User = Depends(require_role("admin")),
 ):
@@ -88,7 +99,7 @@ def explorer_list_requests(
             priority=r.priority,
             travel_date=r.travel_date.isoformat() if r.travel_date else None,
             return_date=r.return_date.isoformat() if r.return_date else None,
-            notes=r.notes,
+            notes=_preview_text(r.notes, max_chars=600),
             assigned_to=r.assigned_to,
             created_at=r.created_at,
             updated_at=r.updated_at,
@@ -213,7 +224,7 @@ def explorer_list_messages(
                 sender_name=m.sender.name if m.sender else None,
                 type=m.type,
                 sender_role=m.sender_role,
-                content=m.content,
+                content=_preview_text(m.content, max_chars=600) or "",
                 is_internal=m.is_internal,
                 created_at=m.created_at,
             )
@@ -316,7 +327,7 @@ def explorer_list_history(
             to_status=h.to_status,
             actor_id=h.actor_id,
             actor_name=h.actor.name if h.actor else None,
-            details=h.details,
+            details=_preview_text(h.details, max_chars=600),
             created_at=h.created_at,
         )
         for h in rows
@@ -421,7 +432,7 @@ def explorer_list_notifications(
             user_email=user_emails.get(n.user_id, "?"),
             type=n.type,
             title=n.title,
-            message=n.message,
+            message=_preview_text(n.message, max_chars=600) or "",
             request_id=n.request_id,
             request_code=n.request_code,
             is_read=n.is_read,
@@ -525,7 +536,7 @@ def explorer_list_counter_offers(
             request_code=req_codes.get(c.request_id, "?"),
             original_price=float(c.original_price),
             counter_price=float(c.counter_price),
-            message=c.message,
+            message=_preview_text(c.message, max_chars=400),
             created_by=c.created_by,
             creator_name=c.creator.name if c.creator else None,
             status=c.status,
