@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, require_role
+from app.core.config import settings
 from app.models.attachment import Attachment
 from app.models.counter_offer import CounterOffer
 from app.models.request import Request
@@ -71,6 +72,31 @@ def _log_history(
         details=details,
     )
     db.add(entry)
+
+
+def _validate_counter_offer_price(counter_price: float) -> None:
+    min_price = float(settings.COUNTER_OFFER_MIN_PRICE)
+    max_price = float(settings.COUNTER_OFFER_MAX_PRICE)
+    if counter_price < min_price:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "COUNTER_PRICE_TOO_LOW",
+                    "message": f"Counter price must be at least {min_price:g}.",
+                }
+            },
+        )
+    if counter_price > max_price:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "COUNTER_PRICE_TOO_HIGH",
+                    "message": f"Counter price must be at most {max_price:g}.",
+                }
+            },
+        )
 
 
 @router.get("/queue", response_model=RequestListResponse)
@@ -235,6 +261,7 @@ def create_counter_offer(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("sales", "admin")),
 ):
+    _validate_counter_offer_price(float(payload.counter_price))
     req = db.query(Request).filter(Request.id == request_id).first()
     if not req:
         raise HTTPException(
