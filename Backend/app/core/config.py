@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     # Fallback for admin dashboard if app.state.started_at_utc is missing (should not happen in normal runs)
     REPORTED_SYSTEM_UPTIME: str = "99.9%"
 
+    # Optional one-time bootstrap for empty hosted databases (remove after first login).
+    BOOTSTRAP_ADMIN_EMAIL: str = ""
+    BOOTSTRAP_ADMIN_PASSWORD: str = ""
+    BOOTSTRAP_ADMIN_NAME: str = "Portal Admin"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
@@ -126,7 +131,7 @@ def validate_render_settings() -> None:
         raise RuntimeError(
             "Running on Render but DATABASE_URL is missing or still points to localhost. "
             "In the Render Dashboard: open the **salamair** web service → **Environment** → "
-            "**Add** → **Link database** (pick **my_db**), or add **DATABASE_URL** from Postgres "
+            "**Add** → **Link database** (pick **salamair-db**), or add **DATABASE_URL** from Postgres "
             "→ **Connect** → **Internal Database URL**."
         )
     sk = (settings.SECRET_KEY or "").strip()

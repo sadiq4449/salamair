@@ -1,9 +1,12 @@
 # Render Blueprint: Docker monolith (Vite frontend baked into FastAPI static/).
-# Existing Postgres (e.g. "my_db"): in the Dashboard, open this web service →
-# Environment → Link Database → select your database (sets DATABASE_URL).
-#
-# Your previous native-Python service "salamair" cannot switch runtime to Docker;
-# this defines a separate Docker web service. Retire the old one when this works.
+# DATABASE_URL is injected from salamair-db (internal connection string).
+
+databases:
+  - name: salamair-db
+    plan: free
+    region: singapore
+    databaseName: salamair_db
+    user: salamair_db_user
 
 services:
   - type: web
@@ -28,4 +31,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: salamair-db
+          property: connectionString

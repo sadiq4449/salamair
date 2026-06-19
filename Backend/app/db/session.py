@@ -19,6 +19,9 @@ def _pg_connect_args(url: str) -> dict:
         return {}
     if ".rlwy.net" in u or ".amazonaws.com" in u:
         return {"sslmode": "require"}
+    # Render Postgres (short internal host dpg-* or *.render.com external host)
+    if "dpg-" in u or ".render.com" in u:
+        return {"sslmode": "require"}
     return {}
 
 
