@@ -3,6 +3,24 @@ import { requestService } from '../services/requestService';
 import type { RequestItem, RequestDetail, HistoryEvent } from '../types';
 import type { RequestFilters, CreateRequestData, UpdateRequestData, StatusUpdateData, CounterOfferData, NoteData } from '../services/requestService';
 
+async function fetchAllPages(
+  fetchPage: (params: RequestFilters) => Promise<{ items: RequestItem[]; total: number; page: number; limit: number }>,
+  params: RequestFilters,
+) {
+  const first = await fetchPage(params);
+  const allItems = [...first.items];
+
+  if (first.total <= first.items.length || first.limit <= 0) return first;
+
+  const totalPages = Math.ceil(first.total / first.limit);
+  for (let p = first.page + 1; p <= totalPages; p += 1) {
+    const next = await fetchPage({ ...params, page: p, limit: first.limit });
+    allItems.push(...next.items);
+  }
+
+  return { ...first, items: allItems };
+}
+
 interface RequestState {
   requests: RequestItem[];
   currentRequest: RequestDetail | null;
@@ -66,7 +84,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const merged = { ...get().filters, ...params };
-      const res = await requestService.getRequests(merged);
+      const res = await fetchAllPages(requestService.getRequests, merged);
       set({ requests: res.items, total: res.total, page: res.page, limit: res.limit, isLoading: false });
     } catch {
       set({ error: 'Failed to load requests', isLoading: false });
@@ -104,7 +122,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const merged = { ...get().filters, ...params };
-      const res = await requestService.getSalesQueue(merged);
+      const res = await fetchAllPages(requestService.getSalesQueue, merged);
       set({ requests: res.items, total: res.total, page: res.page, limit: res.limit, isLoading: false });
     } catch {
       set({ error: 'Failed to load sales queue', isLoading: false });

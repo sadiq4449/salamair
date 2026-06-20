@@ -87,9 +87,18 @@ function _triggerBlobDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Omit blank query params — empty `status=` etc. make FastAPI return 422 on list endpoints. */
+function _listQueryParams(params: RequestFilters = {}): Record<string, string | number> {
+  return Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && String(value).trim() !== '',
+    ),
+  ) as Record<string, string | number>;
+}
+
 export const requestService = {
   async getRequests(params: RequestFilters = {}): Promise<RequestListResponse> {
-    const { data } = await api.get<RequestListResponse>('/requests', { params });
+    const { data } = await api.get<RequestListResponse>('/requests', { params: _listQueryParams(params) });
     return data;
   },
 
@@ -137,7 +146,7 @@ export const requestService = {
   },
 
   async getSalesQueue(params: RequestFilters = {}): Promise<RequestListResponse> {
-    const { data } = await api.get<RequestListResponse>('/sales/queue', { params });
+    const { data } = await api.get<RequestListResponse>('/sales/queue', { params: _listQueryParams(params) });
     return data;
   },
 
